@@ -256,3 +256,47 @@ foreach opt: opt_src
         aegisub_src += files(opt[1])
     endif
 endforeach
+
+# Temporary process boundary used by the new WinUI frontend.  This deliberately
+# reuses Aegisub's existing ASS/SRT readers rather than introducing a second
+# subtitle parser in the frontend.  It will eventually be replaced by the
+# in-process core library once the wxWidgets UI has been separated from core.
+if host_machine.system() == 'windows'
+    winui_bridge_src = files(
+        'winui_bridge_main.cpp',
+        'winui_subtitle_format_base.cpp',
+        'ass_attachment.cpp',
+        'ass_dialogue.cpp',
+        'ass_entry.cpp',
+        'ass_file.cpp',
+        'ass_override.cpp',
+        'ass_parser.cpp',
+        'ass_style.cpp',
+        'ass_style_storage.cpp',
+        'subtitle_format_ass.cpp',
+        'subtitle_format_srt.cpp',
+        'text_file_reader.cpp',
+        'text_file_writer.cpp',
+        'utils.cpp',
+        'version.cpp',
+    )
+
+    winui_bridge_args = conf_defines + ['-DWIN32_LEAN_AND_MEAN']
+
+    executable(
+        'aegisub-winui-bridge',
+        winui_bridge_src,
+        version_h,
+        aegisub_order_dep,
+        cpp_args: winui_bridge_args,
+        link_with: [libresrc, libaegisub],
+        include_directories: [
+            libaegisub_inc,
+            libresrc_inc,
+            version_inc,
+            include_directories('.'),
+        ],
+        dependencies: deps,
+        win_subsystem: 'console',
+    )
+endif
