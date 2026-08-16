@@ -6,6 +6,7 @@
 #include "subtitle_format_srt.h"
 
 #include <libaegisub/charset.h>
+#include <libaegisub/dispatch.h>
 #include <libaegisub/exception.h>
 #include <libaegisub/fs.h>
 #include <libaegisub/log.h>
@@ -124,47 +125,64 @@ void WriteBridgeFile(agi::fs::path const& output, AssFile const& file) {
                << EscapeField(text) << '\n';
     }
 }
+
+void WriteErrorFile(agi::fs::path const& output, std::string_view message) {
+    std::ofstream stream(static_cast<std::filesystem::path const&>(output), std::ios::binary | std::ios::trunc);
+    if (stream)
+        stream << "ERROR\t" << EscapeField(message) << '\n';
+}
 }
 
 int wmain(int argc, wchar_t **argv) {
     if (argc != 3)
         return 2;
 
-    auto log = std::make_unique<agi::log::LogSink>();
-    agi::log::log = log.get();
-
-    auto path = std::make_unique<agi::Path>();
-    config::path = path.get();
-
-    auto options = std::make_unique<agi::Options>(
-        agi::fs::path(),
-        GET_DEFAULT_CONFIG(default_config),
-        agi::Options::FLUSH_SKIP);
-    config::opt = options.get();
-
     const agi::fs::path input{ std::filesystem::path(argv[1]) };
     const agi::fs::path output{ std::filesystem::path(argv[2]) };
 
     try {
+        // Aegisub's LogSink creates a serial dispatch queue in its constructor,
+        // so dispatch must be initialized first just as it is in AegisubApp::OnInit.
+        // The bridge has no GUI main loop, so main-thread callbacks can execute
+        // immediately.
+        agi::dispatch::Init([](agi::dispatch::Thunk thunk) {
+            thunk();
+        });
+
+        auto path = std::make_unique<agi::Path>();
+        config::path = path.get();
+
+        auto log = std::make_unique<agi::log::LogSink>();
+        agi::log::log = log.get();
+
+        auto options = std::make_unique<agi::Options>(
+            agi::fs::path(),
+            GET_DEFAULT_CONFIG(default_config),
+            agi::Options::FLUSH_SKIP);
+        config::opt = options.get();
+
         AssFile file;
         LoadSubtitles(input, file);
         WriteBridgeFile(output, file);
+
+        config::opt = nullptr;
+        agi::log::log = nullptr;
+        config::path = nullptr;
     }
     catch (agi::Exception const& e) {
-        std::ofstream stream(static_cast<std::filesystem::path const&>(output), std::ios::binary | std::ios::trunc);
-        if (stream)
-            stream << "ERROR\t" << EscapeField(e.GetMessage()) << '\n';
+        config::opt = nullptr;
+        agi::log::log = nullptr;
+        config::path = nullptr;
+        WriteErrorFile(output, e.GetMessage());
         return 1;
     }
     catch (std::exception const& e) {
-        std::ofstream stream(static_cast<std::filesystem::path const&>(output), std::ios::binary | std::ios::trunc);
-        if (stream)
-            stream << "ERROR\t" << EscapeField(e.what()) << '\n';
+        config::opt = nullptr;
+        agi::log::log = nullptr;
+        config::path = nullptr;
+        WriteErrorFile(output, e.what());
         return 1;
     }
 
-    config::opt = nullptr;
-    config::path = nullptr;
-    agi::log::log = nullptr;
     return 0;
 }
