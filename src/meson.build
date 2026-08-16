@@ -277,7 +277,6 @@ if host_machine.system() == 'windows'
         'subtitle_format_srt.cpp',
         'text_file_reader.cpp',
         'text_file_writer.cpp',
-        'utils.cpp',
         'version.cpp',
     )
 
