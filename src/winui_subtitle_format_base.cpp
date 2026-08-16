@@ -15,7 +15,7 @@
 
 std::string float_to_string(double val, int precision) {
     std::string fmt = "%." + std::to_string(precision) + "f";
-    std::string s = agi::format(fmt, val);
+    std::string s = agi::format(fmt.c_str(), val);
     size_t pos = s.find_last_not_of("0");
     if (pos != s.find(".")) ++pos;
     s.erase(begin(s) + pos, end(s));
