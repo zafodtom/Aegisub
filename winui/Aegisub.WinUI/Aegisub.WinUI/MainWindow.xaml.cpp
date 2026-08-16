@@ -343,6 +343,7 @@ namespace winrt::Aegisub_WinUI::implementation
         auto& row = m_rows[m_currentIndex];
         row.target = TargetTextBox().Text();
         row.status = L"Upraveno";
+        row.targetModified = true;
         if (m_currentIndex < static_cast<int32_t>(m_targetEntries.size()))
         {
             m_targetEntries[m_currentIndex].text = row.target;
@@ -880,7 +881,9 @@ namespace winrt::Aegisub_WinUI::implementation
             return false;
         }
 
-        if (line != "AEGISUB-WINUI-BRIDGE\t1")
+        bool const protocolV1 = line == "AEGISUB-WINUI-BRIDGE\t1";
+        bool const protocolV2 = line == "AEGISUB-WINUI-BRIDGE\t2";
+        if (!protocolV1 && !protocolV2)
         {
             errorMessage = L"Aegisub bridge vr\u00E1til nezn\u00E1m\u00FD form\u00E1t dat.";
             std::filesystem::remove(output, fileError);
@@ -914,7 +917,24 @@ namespace winrt::Aegisub_WinUI::implementation
 
             auto const start = line.substr(0, firstTab);
             auto const end = line.substr(firstTab + 1, secondTab - firstTab - 1);
-            auto const text = UnescapeBridgeField(line.substr(secondTab + 1));
+
+            std::string displayText;
+            std::string rawText;
+            if (protocolV2)
+            {
+                auto const thirdTab = line.find('\t', secondTab + 1);
+                if (thirdTab == std::string::npos)
+                {
+                    continue;
+                }
+                displayText = UnescapeBridgeField(line.substr(secondTab + 1, thirdTab - secondTab - 1));
+                rawText = UnescapeBridgeField(line.substr(thirdTab + 1));
+            }
+            else
+            {
+                displayText = UnescapeBridgeField(line.substr(secondTab + 1));
+                rawText = displayText;
+            }
 
             SubtitleEntry entry;
             entry.start = to_hstring(start);
@@ -922,7 +942,8 @@ namespace winrt::Aegisub_WinUI::implementation
             entry.startSeconds = TimestampSeconds(start);
             entry.endSeconds = TimestampSeconds(end);
             entry.duration = (std::max)(0.0, entry.endSeconds - entry.startSeconds);
-            entry.text = to_hstring(text);
+            entry.text = to_hstring(displayText);
+            entry.rawText = to_hstring(rawText);
             entries.push_back(std::move(entry));
         }
 
@@ -955,11 +976,11 @@ namespace winrt::Aegisub_WinUI::implementation
                 row.end = target.end;
                 row.duration = target.duration;
                 row.target = target.text;
+                row.rawTarget = target.rawText;
                 row.status = L"P\u0159ipraveno";
+                row.targetModified = false;
 
                 bool matched = false;
-                double sourceStart = std::numeric_limits<double>::max();
-                double sourceEnd = 0.0;
                 std::wstring original;
 
                 for (auto const& source : m_sourceEntries)
@@ -976,8 +997,6 @@ namespace winrt::Aegisub_WinUI::implementation
                         original += L"\n";
                     }
                     original += source.text.c_str();
-                    sourceStart = (std::min)(sourceStart, source.startSeconds);
-                    sourceEnd = (std::max)(sourceEnd, source.endSeconds);
                     if (!matched)
                     {
                         row.sourceStart = source.start;
@@ -1011,7 +1030,9 @@ namespace winrt::Aegisub_WinUI::implementation
                 row.sourceEnd = source.end;
                 row.original = source.text;
                 row.target = L"";
+                row.rawTarget = L"";
                 row.status = L"P\u0159ipraveno";
+                row.targetModified = false;
                 m_rows.push_back(std::move(row));
             }
         }
@@ -1062,9 +1083,10 @@ namespace winrt::Aegisub_WinUI::implementation
             stream << "AEGISUB-WINUI-BRIDGE\t1\n";
             for (auto const& row : m_rows)
             {
+                auto const textForSave = row.targetModified ? row.target : row.rawTarget;
                 stream << to_string(row.start) << '\t'
                        << to_string(row.end) << '\t'
-                       << EscapeBridgeField(to_string(row.target)) << '\n';
+                       << EscapeBridgeField(to_string(textForSave)) << '\n';
             }
         }
 
@@ -1109,9 +1131,13 @@ namespace winrt::Aegisub_WinUI::implementation
 
         for (size_t i = 0; i < m_rows.size(); ++i)
         {
+            auto savedRaw = m_rows[i].targetModified ? m_rows[i].target : m_rows[i].rawTarget;
+            m_rows[i].rawTarget = savedRaw;
+            m_rows[i].targetModified = false;
             m_targetEntries[i].start = m_rows[i].start;
             m_targetEntries[i].end = m_rows[i].end;
             m_targetEntries[i].text = m_rows[i].target;
+            m_targetEntries[i].rawText = savedRaw;
         }
 
         return true;
