@@ -192,16 +192,20 @@ void WriteBridgeFile(agi::fs::path const& output, AssFile const& file) {
     if (!stream)
         throw agi::fs::FileNotAccessible(output);
 
-    stream << "AEGISUB-WINUI-BRIDGE\t1\n";
+    // v2 adds the raw Aegisub dialogue text as a fourth field.  The WinUI
+    // frontend displays the stripped third field, but can round-trip unchanged
+    // ASS/SSA/SRT formatting using the raw field.
+    stream << "AEGISUB-WINUI-BRIDGE\t2\n";
 
     for (auto const& line : file.Events) {
         if (line.Comment)
             continue;
 
-        auto text = NormalizeSubtitleText(line.GetStrippedText());
+        auto displayText = NormalizeSubtitleText(line.GetStrippedText());
         stream << NormalizeTimestamp(line.Start) << '\t'
                << NormalizeTimestamp(line.End) << '\t'
-               << EscapeField(text) << '\n';
+               << EscapeField(displayText) << '\t'
+               << EscapeField(line.Text.get()) << '\n';
     }
 }
 
@@ -215,7 +219,7 @@ void ApplyBridgeFile(agi::fs::path const& input, AssFile& file) {
         throw agi::InvalidInputException("WinUI update file is empty.");
     if (!line.empty() && line.back() == '\r')
         line.pop_back();
-    if (line != "AEGISUB-WINUI-BRIDGE\t1")
+    if (line != "AEGISUB-WINUI-BRIDGE\t1" && line != "AEGISUB-WINUI-BRIDGE\t2")
         throw agi::InvalidInputException("WinUI update file has an unknown format.");
 
     std::vector<AssDialogue*> dialogues;
