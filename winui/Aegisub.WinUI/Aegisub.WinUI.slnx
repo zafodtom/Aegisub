@@ -1,0 +1,10 @@
+<Solution>
+  <Configurations>
+    <Platform Name="ARM64" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="Aegisub.WinUI/Aegisub.WinUI.vcxproj" Id="e74752cf-fc08-4280-822b-88fa170a63bd">
+    <Deploy />
+  </Project>
+</Solution>

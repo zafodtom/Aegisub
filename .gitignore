@@ -6,3 +6,23 @@ build*/
 !/subprojects/csri
 !/subprojects/iconv
 !/subprojects/luabins
+
+# Visual Studio / WinUI
+/.vs/
+/winui/**/.vs/
+/winui/**/x64/
+/winui/**/x86/
+/winui/**/Debug/
+/winui/**/Release/
+/winui/**/Generated Files/
+/winui/**/AppPackages/
+/winui/**/*.user
+/winui/**/*.VC.db
+/winui/**/*.VC.opendb
+
+# WinUI build outputs
+/winui/**/bin/
+/winui/**/obj/
+
+# NuGet packages restored locally
+/winui/**/packages/
