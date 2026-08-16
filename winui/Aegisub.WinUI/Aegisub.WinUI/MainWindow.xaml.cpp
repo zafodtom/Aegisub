@@ -227,7 +227,7 @@ namespace winrt::Aegisub_WinUI::implementation
 
             if (character == L'\n')
             {
-                maxLineLength = std::max(maxLineLength, currentLineLength);
+                maxLineLength = (std::max)(maxLineLength, currentLineLength);
                 currentLineLength = 0;
                 continue;
             }
@@ -236,7 +236,7 @@ namespace winrt::Aegisub_WinUI::implementation
             ++characterCount;
         }
 
-        maxLineLength = std::max(maxLineLength, currentLineLength);
+        maxLineLength = (std::max)(maxLineLength, currentLineLength);
         double const cps = row.duration > 0.0
             ? static_cast<double>(characterCount) / row.duration
             : 0.0;
