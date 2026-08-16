@@ -12,33 +12,34 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="280" />
+            <RowDefinition Height="390" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- Header / command area -->
+        <!-- Compact command bar -->
         <Border
             Grid.Row="0"
-            Margin="16,16,16,0"
+            Margin="14,12,14,0"
             Padding="14,10"
             BorderBrush="Gray"
             BorderThickness="1"
             CornerRadius="8">
-            <Grid ColumnSpacing="12">
+            <Grid ColumnSpacing="16">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <StackPanel Spacing="2">
+                <StackPanel Spacing="1">
                     <TextBlock
-                        Text="Subtitle Translation Workspace"
-                        FontSize="20"
+                        Text="Překlad titulků"
+                        FontSize="21"
                         FontWeight="SemiBold" />
                     <TextBlock
-                        Text="Test workspace · source + Czech target + transcript"
-                        Opacity="0.65" />
+                        Text="Aktuální titulek #145 · 00:12:44.120 → 00:12:46.840 · délka 2.72 s"
+                        FontSize="12"
+                        Opacity="0.62" />
                 </StackPanel>
 
                 <StackPanel
@@ -46,30 +47,30 @@
                     Orientation="Horizontal"
                     Spacing="8"
                     VerticalAlignment="Center">
-                    <Button Content="Otevřít projekt" />
-                    <Button Content="Uložit" />
-                    <Button Content="◀ Předchozí" />
-                    <Button Content="Další ▶" />
-                    <Button Content="Schválit" />
+                    <Button Content="Otevřít projekt" MinHeight="34" />
+                    <Button Content="Uložit" MinHeight="34" />
+                    <Button Content="◀ Předchozí" MinHeight="34" />
+                    <Button Content="Další ▶" MinHeight="34" />
+                    <Button Content="Schválit" MinHeight="34" />
                 </StackPanel>
             </Grid>
         </Border>
 
-        <!-- Main translation workspace -->
+        <!-- Translation workspace -->
         <Grid
             Grid.Row="1"
-            Margin="16,12,16,0"
+            Margin="14,12,14,0"
             ColumnSpacing="12">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="1.1*" />
+                <ColumnDefinition Width="1.1*" />
+                <ColumnDefinition Width="0.8*" />
             </Grid.ColumnDefinitions>
 
-            <!-- Original source -->
+            <!-- Original -->
             <Border
                 Grid.Column="0"
-                Padding="14"
+                Padding="16"
                 BorderBrush="Gray"
                 BorderThickness="1"
                 CornerRadius="8">
@@ -80,38 +81,36 @@
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
-                    <Grid ColumnSpacing="8">
+                    <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock
-                            Text="Originál"
-                            FontSize="17"
-                            FontWeight="SemiBold" />
+                        <TextBlock Text="Originál" FontSize="18" FontWeight="SemiBold" />
                         <TextBlock
                             Grid.Column="1"
-                            Text="READ ONLY"
-                            FontSize="11"
-                            Opacity="0.55"
+                            Text="POUZE PRO ČTENÍ"
+                            FontSize="10"
+                            Opacity="0.5"
                             VerticalAlignment="Center" />
                     </Grid>
 
                     <TextBlock
                         Grid.Row="1"
-                        Margin="0,4,0,10"
+                        Margin="0,5,0,12"
                         Text="#145 · 00:12:44.120 → 00:12:46.840"
                         FontFamily="Consolas"
-                        FontSize="12"
-                        Opacity="0.65" />
+                        FontSize="13"
+                        Opacity="0.62" />
 
                     <TextBox
                         Grid.Row="2"
+                        Padding="14"
                         Text="We should be there before sunrise."
                         IsReadOnly="True"
                         AcceptsReturn="True"
                         TextWrapping="Wrap"
-                        FontSize="19"
+                        FontSize="24"
                         VerticalContentAlignment="Top" />
                 </Grid>
             </Border>
@@ -119,7 +118,7 @@
             <!-- Czech target -->
             <Border
                 Grid.Column="1"
-                Padding="14"
+                Padding="16"
                 BorderBrush="#0078D4"
                 BorderThickness="2"
                 CornerRadius="8">
@@ -131,54 +130,54 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <Grid ColumnSpacing="8">
+                    <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock
-                            Text="Čeština"
-                            FontSize="17"
-                            FontWeight="SemiBold" />
+                        <TextBlock Text="Čeština" FontSize="18" FontWeight="SemiBold" />
                         <TextBlock
                             Grid.Column="1"
-                            Text="EDITOVATELNÉ"
-                            FontSize="11"
-                            Opacity="0.65"
+                            Text="EDITACE"
+                            FontSize="10"
+                            Opacity="0.58"
                             VerticalAlignment="Center" />
                     </Grid>
 
                     <TextBlock
                         Grid.Row="1"
-                        Margin="0,4,0,10"
+                        Margin="0,5,0,12"
                         Text="#145 · připravený překlad"
-                        FontSize="12"
-                        Opacity="0.65" />
+                        FontSize="13"
+                        Opacity="0.62" />
 
                     <TextBox
                         Grid.Row="2"
+                        Padding="14"
                         Text="Měli bychom tam být před východem slunce."
                         AcceptsReturn="True"
                         TextWrapping="Wrap"
-                        FontSize="19"
+                        FontSize="24"
                         VerticalContentAlignment="Top" />
 
-                    <StackPanel
-                        Grid.Row="3"
-                        Margin="0,10,0,0"
-                        Orientation="Horizontal"
-                        Spacing="12">
-                        <TextBlock Text="CPL 43" Opacity="0.65" />
-                        <TextBlock Text="CPS 15.8" Opacity="0.65" />
-                        <TextBlock Text="Stav: upraveno" Opacity="0.65" />
-                    </StackPanel>
+                    <Grid Grid.Row="3" Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="CPL 43" FontSize="12" Opacity="0.62" />
+                        <TextBlock Grid.Column="1" Margin="16,0,0,0" Text="CPS 15.8" FontSize="12" Opacity="0.62" />
+                        <TextBlock Grid.Column="3" Text="Stav: upraveno" FontSize="12" Opacity="0.62" />
+                    </Grid>
                 </Grid>
             </Border>
 
             <!-- Transcript -->
             <Border
                 Grid.Column="2"
-                Padding="14"
+                Padding="16"
                 BorderBrush="Gray"
                 BorderThickness="1"
                 CornerRadius="8">
@@ -189,70 +188,62 @@
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
-                    <Grid ColumnSpacing="8">
+                    <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock
-                            Text="Přepis"
-                            FontSize="17"
-                            FontWeight="SemiBold" />
+                        <TextBlock Text="Přepis" FontSize="18" FontWeight="SemiBold" />
                         <TextBlock
                             Grid.Column="1"
                             Text="AUTO FOLLOW"
-                            FontSize="11"
-                            Opacity="0.55"
+                            FontSize="10"
+                            Opacity="0.5"
                             VerticalAlignment="Center" />
                     </Grid>
 
                     <TextBlock
                         Grid.Row="1"
-                        Margin="0,4,0,10"
+                        Margin="0,5,0,12"
                         Text="Kontext kolem aktuálního času"
                         FontSize="12"
-                        Opacity="0.65" />
+                        Opacity="0.62" />
 
                     <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
-                        <StackPanel Spacing="10">
+                        <StackPanel Spacing="16">
                             <StackPanel>
+                                <TextBlock Text="00:12:41.980" FontFamily="Consolas" FontSize="11" Opacity="0.5" />
                                 <TextBlock
-                                    Text="00:12:41.980"
-                                    FontFamily="Consolas"
-                                    FontSize="11"
-                                    Opacity="0.55" />
-                                <TextBlock
+                                    Margin="0,3,0,0"
                                     Text="If the road stays clear, we can still make it."
                                     TextWrapping="Wrap"
-                                    Opacity="0.65" />
+                                    FontSize="15"
+                                    Opacity="0.62" />
                             </StackPanel>
 
                             <Border
-                                Padding="8"
+                                Padding="10,8"
                                 BorderBrush="#0078D4"
-                                BorderThickness="3,0,0,0">
+                                BorderThickness="4,0,0,0">
                                 <StackPanel>
+                                    <TextBlock Text="00:12:44.120" FontFamily="Consolas" FontSize="11" />
                                     <TextBlock
-                                        Text="00:12:44.120"
-                                        FontFamily="Consolas"
-                                        FontSize="11" />
-                                    <TextBlock
+                                        Margin="0,3,0,0"
                                         Text="We should be there before sunrise."
                                         TextWrapping="Wrap"
+                                        FontSize="16"
                                         FontWeight="SemiBold" />
                                 </StackPanel>
                             </Border>
 
                             <StackPanel>
+                                <TextBlock Text="00:12:47.050" FontFamily="Consolas" FontSize="11" Opacity="0.5" />
                                 <TextBlock
-                                    Text="00:12:47.050"
-                                    FontFamily="Consolas"
-                                    FontSize="11"
-                                    Opacity="0.55" />
-                                <TextBlock
+                                    Margin="0,3,0,0"
                                     Text="Then we wait for the signal."
                                     TextWrapping="Wrap"
-                                    Opacity="0.65" />
+                                    FontSize="15"
+                                    Opacity="0.62" />
                             </StackPanel>
                         </StackPanel>
                     </ScrollViewer>
@@ -263,29 +254,31 @@
         <!-- Subtitle grid -->
         <Border
             Grid.Row="2"
-            Margin="16,12,16,0"
+            Margin="14,12,14,0"
             BorderBrush="Gray"
             BorderThickness="1"
             CornerRadius="8">
             <Grid>
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="42" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
-                <Grid Padding="12,9" ColumnSpacing="8">
+                <Grid Padding="12,0" ColumnSpacing="8">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <TextBlock
                         Text="Titulky"
-                        FontSize="16"
-                        FontWeight="SemiBold" />
+                        FontSize="17"
+                        FontWeight="SemiBold"
+                        VerticalAlignment="Center" />
                     <TextBlock
                         Grid.Column="1"
                         Text="5 z 842 · aktuální #145"
-                        Opacity="0.6"
+                        FontSize="12"
+                        Opacity="0.58"
                         VerticalAlignment="Center" />
                 </Grid>
 
@@ -293,82 +286,76 @@
                     Grid.Row="1"
                     HorizontalScrollBarVisibility="Auto"
                     VerticalScrollBarVisibility="Auto">
-                    <Grid MinWidth="1050">
+                    <Grid MinWidth="1180">
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="34" />
+                            <RowDefinition Height="34" />
+                            <RowDefinition Height="34" />
+                            <RowDefinition Height="38" />
+                            <RowDefinition Height="34" />
+                            <RowDefinition Height="34" />
                         </Grid.RowDefinitions>
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="60" />
-                            <ColumnDefinition Width="115" />
-                            <ColumnDefinition Width="115" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="110" />
+                            <ColumnDefinition Width="58" />
+                            <ColumnDefinition Width="132" />
+                            <ColumnDefinition Width="132" />
+                            <ColumnDefinition Width="1.15*" />
+                            <ColumnDefinition Width="1.15*" />
+                            <ColumnDefinition Width="118" />
                         </Grid.ColumnDefinitions>
 
-                        <!-- Header -->
                         <Border Grid.Row="0" Grid.ColumnSpan="6" BorderBrush="Gray" BorderThickness="0,1,0,1" />
-                        <TextBlock Grid.Row="0" Grid.Column="0" Margin="10,8" Text="#" FontWeight="SemiBold" />
-                        <TextBlock Grid.Row="0" Grid.Column="1" Margin="8" Text="Start" FontWeight="SemiBold" />
-                        <TextBlock Grid.Row="0" Grid.Column="2" Margin="8" Text="Konec" FontWeight="SemiBold" />
-                        <TextBlock Grid.Row="0" Grid.Column="3" Margin="8" Text="Originál" FontWeight="SemiBold" />
-                        <TextBlock Grid.Row="0" Grid.Column="4" Margin="8" Text="Čeština" FontWeight="SemiBold" />
-                        <TextBlock Grid.Row="0" Grid.Column="5" Margin="8" Text="Stav" FontWeight="SemiBold" />
+                        <TextBlock Grid.Row="0" Grid.Column="0" Margin="10,0" Text="#" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="0" Grid.Column="1" Margin="8,0" Text="Start" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="0" Grid.Column="2" Margin="8,0" Text="Konec" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="0" Grid.Column="3" Margin="8,0" Text="Originál" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="0" Grid.Column="4" Margin="8,0" Text="Čeština" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="0" Grid.Column="5" Margin="8,0" Text="Stav" FontWeight="SemiBold" VerticalAlignment="Center" />
 
-                        <!-- Row 143 -->
-                        <TextBlock Grid.Row="1" Grid.Column="0" Margin="10,8" Text="143" />
-                        <TextBlock Grid.Row="1" Grid.Column="1" Margin="8" Text="00:12:38.310" FontFamily="Consolas" />
-                        <TextBlock Grid.Row="1" Grid.Column="2" Margin="8" Text="00:12:41.420" FontFamily="Consolas" />
-                        <TextBlock Grid.Row="1" Grid.Column="3" Margin="8" Text="We still have time." TextTrimming="CharacterEllipsis" />
-                        <TextBlock Grid.Row="1" Grid.Column="4" Margin="8" Text="Pořád máme čas." TextTrimming="CharacterEllipsis" />
-                        <TextBlock Grid.Row="1" Grid.Column="5" Margin="8" Text="Schváleno" />
+                        <TextBlock Grid.Row="1" Grid.Column="0" Margin="10,0" Text="143" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="1" Grid.Column="1" Margin="8,0" Text="00:12:38.310" FontFamily="Consolas" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="1" Grid.Column="2" Margin="8,0" Text="00:12:41.420" FontFamily="Consolas" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="1" Grid.Column="3" Margin="8,0" Text="We still have time." TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="1" Grid.Column="4" Margin="8,0" Text="Pořád máme čas." TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="1" Grid.Column="5" Margin="8,0" Text="Schváleno" VerticalAlignment="Center" />
 
-                        <!-- Row 144 -->
-                        <TextBlock Grid.Row="2" Grid.Column="0" Margin="10,8" Text="144" />
-                        <TextBlock Grid.Row="2" Grid.Column="1" Margin="8" Text="00:12:41.980" FontFamily="Consolas" />
-                        <TextBlock Grid.Row="2" Grid.Column="2" Margin="8" Text="00:12:43.980" FontFamily="Consolas" />
-                        <TextBlock Grid.Row="2" Grid.Column="3" Margin="8" Text="If the road stays clear, we can still make it." TextTrimming="CharacterEllipsis" />
-                        <TextBlock Grid.Row="2" Grid.Column="4" Margin="8" Text="Jestli zůstane cesta volná, pořád to stihneme." TextTrimming="CharacterEllipsis" />
-                        <TextBlock Grid.Row="2" Grid.Column="5" Margin="8" Text="Schváleno" />
+                        <TextBlock Grid.Row="2" Grid.Column="0" Margin="10,0" Text="144" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="2" Grid.Column="1" Margin="8,0" Text="00:12:41.980" FontFamily="Consolas" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="2" Grid.Column="2" Margin="8,0" Text="00:12:43.980" FontFamily="Consolas" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="2" Grid.Column="3" Margin="8,0" Text="If the road stays clear, we can still make it." TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="2" Grid.Column="4" Margin="8,0" Text="Jestli zůstane cesta volná, pořád to stihneme." TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="2" Grid.Column="5" Margin="8,0" Text="Schváleno" VerticalAlignment="Center" />
 
-                        <!-- Current row 145 -->
                         <Border Grid.Row="3" Grid.ColumnSpan="6" BorderBrush="#0078D4" BorderThickness="4,1,0,1" />
-                        <TextBlock Grid.Row="3" Grid.Column="0" Margin="10,8" Text="145" FontWeight="SemiBold" />
-                        <TextBlock Grid.Row="3" Grid.Column="1" Margin="8" Text="00:12:44.120" FontFamily="Consolas" FontWeight="SemiBold" />
-                        <TextBlock Grid.Row="3" Grid.Column="2" Margin="8" Text="00:12:46.840" FontFamily="Consolas" FontWeight="SemiBold" />
-                        <TextBlock Grid.Row="3" Grid.Column="3" Margin="8" Text="We should be there before sunrise." TextTrimming="CharacterEllipsis" FontWeight="SemiBold" />
-                        <TextBlock Grid.Row="3" Grid.Column="4" Margin="8" Text="Měli bychom tam být před východem slunce." TextTrimming="CharacterEllipsis" FontWeight="SemiBold" />
-                        <TextBlock Grid.Row="3" Grid.Column="5" Margin="8" Text="Upraveno" FontWeight="SemiBold" />
+                        <TextBlock Grid.Row="3" Grid.Column="0" Margin="10,0" Text="145" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="3" Grid.Column="1" Margin="8,0" Text="00:12:44.120" FontFamily="Consolas" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="3" Grid.Column="2" Margin="8,0" Text="00:12:46.840" FontFamily="Consolas" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="3" Grid.Column="3" Margin="8,0" Text="We should be there before sunrise." TextTrimming="CharacterEllipsis" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="3" Grid.Column="4" Margin="8,0" Text="Měli bychom tam být před východem slunce." TextTrimming="CharacterEllipsis" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="3" Grid.Column="5" Margin="8,0" Text="Upraveno" FontWeight="SemiBold" VerticalAlignment="Center" />
 
-                        <!-- Row 146 -->
-                        <TextBlock Grid.Row="4" Grid.Column="0" Margin="10,8" Text="146" />
-                        <TextBlock Grid.Row="4" Grid.Column="1" Margin="8" Text="00:12:47.050" FontFamily="Consolas" />
-                        <TextBlock Grid.Row="4" Grid.Column="2" Margin="8" Text="00:12:49.300" FontFamily="Consolas" />
-                        <TextBlock Grid.Row="4" Grid.Column="3" Margin="8" Text="Then we wait for the signal." TextTrimming="CharacterEllipsis" />
-                        <TextBlock Grid.Row="4" Grid.Column="4" Margin="8" Text="Pak počkáme na signál." TextTrimming="CharacterEllipsis" />
-                        <TextBlock Grid.Row="4" Grid.Column="5" Margin="8" Text="Připraveno" />
+                        <TextBlock Grid.Row="4" Grid.Column="0" Margin="10,0" Text="146" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="4" Grid.Column="1" Margin="8,0" Text="00:12:47.050" FontFamily="Consolas" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="4" Grid.Column="2" Margin="8,0" Text="00:12:49.300" FontFamily="Consolas" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="4" Grid.Column="3" Margin="8,0" Text="Then we wait for the signal." TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="4" Grid.Column="4" Margin="8,0" Text="Pak počkáme na signál." TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="4" Grid.Column="5" Margin="8,0" Text="Připraveno" VerticalAlignment="Center" />
 
-                        <!-- Row 147 -->
-                        <TextBlock Grid.Row="5" Grid.Column="0" Margin="10,8" Text="147" />
-                        <TextBlock Grid.Row="5" Grid.Column="1" Margin="8" Text="00:12:50.100" FontFamily="Consolas" />
-                        <TextBlock Grid.Row="5" Grid.Column="2" Margin="8" Text="00:12:52.650" FontFamily="Consolas" />
-                        <TextBlock Grid.Row="5" Grid.Column="3" Margin="8" Text="No mistakes this time." TextTrimming="CharacterEllipsis" />
-                        <TextBlock Grid.Row="5" Grid.Column="4" Margin="8" Text="Tentokrát bez chyb." TextTrimming="CharacterEllipsis" />
-                        <TextBlock Grid.Row="5" Grid.Column="5" Margin="8" Text="Připraveno" />
+                        <TextBlock Grid.Row="5" Grid.Column="0" Margin="10,0" Text="147" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="5" Grid.Column="1" Margin="8,0" Text="00:12:50.100" FontFamily="Consolas" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="5" Grid.Column="2" Margin="8,0" Text="00:12:52.650" FontFamily="Consolas" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="5" Grid.Column="3" Margin="8,0" Text="No mistakes this time." TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="5" Grid.Column="4" Margin="8,0" Text="Tentokrát bez chyb." TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="5" Grid.Column="5" Margin="8,0" Text="Připraveno" VerticalAlignment="Center" />
                     </Grid>
                 </ScrollViewer>
             </Grid>
         </Border>
 
-        <!-- Status / keyboard hints -->
+        <!-- Status bar -->
         <Grid
             Grid.Row="3"
-            Margin="16,8,16,14"
+            Margin="14,8,14,12"
             ColumnSpacing="16">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
@@ -377,15 +364,16 @@
 
             <TextBlock
                 Text="Testovací data · bez napojení na Aegisub core"
-                Opacity="0.55" />
+                FontSize="11"
+                Opacity="0.5" />
 
             <StackPanel
                 Grid.Column="1"
                 Orientation="Horizontal"
-                Spacing="14">
-                <TextBlock Text="Enter  →  uložit + další" Opacity="0.55" />
-                <TextBlock Text="Ctrl+Enter  →  schválit + další" Opacity="0.55" />
-                <TextBlock Text="Space  →  play/pause" Opacity="0.55" />
+                Spacing="16">
+                <TextBlock Text="Enter → uložit + další" FontSize="11" Opacity="0.5" />
+                <TextBlock Text="Ctrl+Enter → schválit + další" FontSize="11" Opacity="0.5" />
+                <TextBlock Text="Space → play/pause" FontSize="11" Opacity="0.5" />
             </StackPanel>
         </Grid>
     </Grid>
