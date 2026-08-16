@@ -70,12 +70,12 @@ namespace winrt::Aegisub_WinUI::implementation
     {
         auto& row = m_rows[m_currentIndex];
         row.target = TargetTextBox().Text();
-        row.status = L"Schváleno";
+        row.status = L"Schv\u00E1leno";
 
         UpdateTableRow(m_currentIndex);
-        TargetInfoText().Text(hstring{ L"#" + std::to_wstring(row.number) + L" · schváleno" });
-        TargetStatusText().Text(L"Stav: schváleno");
-        StatusBarText().Text(L"Testovací režim · titulek schválen");
+        TargetInfoText().Text(hstring{ L"#" + std::to_wstring(row.number) + L" \u00B7 schv\u00E1leno" });
+        TargetStatusText().Text(L"Stav: schv\u00E1leno");
+        StatusBarText().Text(L"Testovac\u00ED re\u017Eim \u00B7 titulek schv\u00E1len");
 
         if (m_currentIndex < static_cast<int32_t>(m_rows.size()) - 1)
         {
@@ -97,7 +97,7 @@ namespace winrt::Aegisub_WinUI::implementation
         row.target = TargetTextBox().Text();
         UpdateTableRow(m_currentIndex);
         UpdateMetrics();
-        StatusBarText().Text(L"Testovací režim · změny jsou uloženy pouze v paměti");
+        StatusBarText().Text(L"Testovac\u00ED re\u017Eim \u00B7 zm\u011Bny jsou ulo\u017Eeny pouze v pam\u011Bti");
     }
 
     void MainWindow::TargetTextBox_TextChanged(
@@ -113,11 +113,11 @@ namespace winrt::Aegisub_WinUI::implementation
         row.target = TargetTextBox().Text();
         row.status = L"Upraveno";
 
-        TargetInfoText().Text(hstring{ L"#" + std::to_wstring(row.number) + L" · upravený překlad" });
+        TargetInfoText().Text(hstring{ L"#" + std::to_wstring(row.number) + L" \u00B7 upraven\u00FD p\u0159eklad" });
         TargetStatusText().Text(L"Stav: upraveno");
         UpdateTableRow(m_currentIndex);
         UpdateMetrics();
-        StatusBarText().Text(L"Testovací režim · neuložená změna v aktuálním titulku");
+        StatusBarText().Text(L"Testovac\u00ED re\u017Eim \u00B7 neulo\u017Een\u00E1 zm\u011Bna v aktu\u00E1ln\u00EDm titulku");
     }
 
     void MainWindow::SubtitleRow_Tapped(
@@ -139,12 +139,12 @@ namespace winrt::Aegisub_WinUI::implementation
         auto const& row = m_rows[m_currentIndex];
         m_loadingSelection = true;
 
-        std::wstring header = L"Aktuální titulek #" + std::to_wstring(row.number);
-        header += L" · ";
+        std::wstring header = L"Aktu\u00E1ln\u00ED titulek #" + std::to_wstring(row.number);
+        header += L" \u00B7 ";
         header += row.start.c_str();
-        header += L" → ";
+        header += L" \u2192 ";
         header += row.end.c_str();
-        header += L" · délka ";
+        header += L" \u00B7 d\u00E9lka ";
 
         std::wostringstream durationStream;
         durationStream << std::fixed << std::setprecision(2) << row.duration;
@@ -153,14 +153,14 @@ namespace winrt::Aegisub_WinUI::implementation
         HeaderCurrentSubtitleText().Text(hstring{ header });
 
         std::wstring timing = L"#" + std::to_wstring(row.number);
-        timing += L" · ";
+        timing += L" \u00B7 ";
         timing += row.start.c_str();
-        timing += L" → ";
+        timing += L" \u2192 ";
         timing += row.end.c_str();
         OriginalTimingText().Text(hstring{ timing });
         OriginalTextBox().Text(row.original);
 
-        std::wstring targetInfo = L"#" + std::to_wstring(row.number) + L" · ";
+        std::wstring targetInfo = L"#" + std::to_wstring(row.number) + L" \u00B7 ";
         targetInfo += row.status.c_str();
         TargetInfoText().Text(hstring{ targetInfo });
         TargetTextBox().Text(row.target);
@@ -196,7 +196,7 @@ namespace winrt::Aegisub_WinUI::implementation
             TranscriptNextBlock().Visibility(Visibility::Collapsed);
         }
 
-        std::wstring tablePosition = L"5 testovacích řádků · aktuální #" + std::to_wstring(row.number);
+        std::wstring tablePosition = L"5 testovac\u00EDch \u0159\u00E1dk\u016F \u00B7 aktu\u00E1ln\u00ED #" + std::to_wstring(row.number);
         TablePositionText().Text(hstring{ tablePosition });
 
         PreviousButton().IsEnabled(m_currentIndex > 0);
@@ -205,7 +205,7 @@ namespace winrt::Aegisub_WinUI::implementation
         UpdateSelectionVisuals();
         UpdateMetrics();
 
-        StatusBarText().Text(L"Testovací data · bez napojení na Aegisub core");
+        StatusBarText().Text(L"Testovac\u00ED data \u00B7 bez napojen\u00ED na Aegisub core");
         m_loadingSelection = false;
     }
 
