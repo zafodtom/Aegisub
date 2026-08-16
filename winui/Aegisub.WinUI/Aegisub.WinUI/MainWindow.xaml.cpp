@@ -9,6 +9,8 @@
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
+#include <iterator>
+#include <limits>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -73,6 +75,26 @@ namespace
         return {};
     }
 
+    std::string EscapeBridgeField(std::string const& value)
+    {
+        std::string output;
+        output.reserve(value.size());
+
+        for (char c : value)
+        {
+            switch (c)
+            {
+            case '\\': output += "\\\\"; break;
+            case '\t': output += "\\t"; break;
+            case '\r': output += "\\r"; break;
+            case '\n': output += "\\n"; break;
+            default: output.push_back(c); break;
+            }
+        }
+
+        return output;
+    }
+
     std::string UnescapeBridgeField(std::string const& value)
     {
         std::string output;
@@ -126,6 +148,64 @@ namespace
     {
         auto const converted = winrt::to_hstring(value);
         return std::wstring(converted.c_str());
+    }
+
+    bool RunProcess(std::wstring commandLine, DWORD& exitCode)
+    {
+        std::vector<wchar_t> mutableCommand(commandLine.begin(), commandLine.end());
+        mutableCommand.push_back(L'\0');
+
+        STARTUPINFOW startupInfo{};
+        startupInfo.cb = sizeof(startupInfo);
+        PROCESS_INFORMATION processInfo{};
+
+        if (!CreateProcessW(
+            nullptr,
+            mutableCommand.data(),
+            nullptr,
+            nullptr,
+            FALSE,
+            CREATE_NO_WINDOW,
+            nullptr,
+            nullptr,
+            &startupInfo,
+            &processInfo))
+        {
+            return false;
+        }
+
+        WaitForSingleObject(processInfo.hProcess, INFINITE);
+        exitCode = 0;
+        GetExitCodeProcess(processInfo.hProcess, &exitCode);
+        CloseHandle(processInfo.hThread);
+        CloseHandle(processInfo.hProcess);
+        return true;
+    }
+
+    bool ReadBridgeError(std::filesystem::path const& output, std::wstring& errorMessage)
+    {
+        std::ifstream stream(output, std::ios::binary);
+        if (!stream)
+        {
+            return false;
+        }
+
+        std::string line;
+        if (!std::getline(stream, line))
+        {
+            return false;
+        }
+        if (!line.empty() && line.back() == '\r')
+        {
+            line.pop_back();
+        }
+        if (line.rfind("ERROR\t", 0) != 0)
+        {
+            return false;
+        }
+
+        errorMessage = ToWide(UnescapeBridgeField(line.substr(6)));
+        return true;
     }
 }
 
@@ -195,6 +275,10 @@ namespace winrt::Aegisub_WinUI::implementation
         auto& row = m_rows[m_currentIndex];
         row.target = TargetTextBox().Text();
         row.status = L"Schv\u00E1leno";
+        if (m_currentIndex < static_cast<int32_t>(m_targetEntries.size()))
+        {
+            m_targetEntries[m_currentIndex].text = row.target;
+        }
 
         UpdateTableRow(m_currentIndex);
         TargetInfoText().Text(hstring{ L"#" + std::to_wstring(row.number) + L" \u00B7 schv\u00E1leno" });
@@ -224,9 +308,27 @@ namespace winrt::Aegisub_WinUI::implementation
 
         auto& row = m_rows[m_currentIndex];
         row.target = TargetTextBox().Text();
+        if (m_currentIndex < static_cast<int32_t>(m_targetEntries.size()))
+        {
+            m_targetEntries[m_currentIndex].text = row.target;
+        }
         UpdateTableRow(m_currentIndex);
         UpdateMetrics();
-        StatusBarText().Text(L"Zm\u011Bny jsou zat\u00EDm ulo\u017Eeny pouze v pam\u011Bti");
+
+        std::wstring errorMessage;
+        if (!SaveTargetSubtitleFile(errorMessage))
+        {
+            StatusBarText().Text(L"Ulo\u017Een\u00ED \u010Desk\u00FDch titulk\u016F se nezda\u0159ilo");
+            MessageBoxW(
+                GetActiveWindow(),
+                errorMessage.c_str(),
+                L"Aegisub Translation Workspace",
+                MB_OK | MB_ICONERROR);
+            return;
+        }
+
+        auto const targetName = std::filesystem::path(m_targetPath.c_str()).filename().wstring();
+        StatusBarText().Text(hstring{ L"\u010Ce\u0161tina ulo\u017Eena p\u0159es Aegisub core \u00B7 " + targetName });
     }
 
     void MainWindow::TargetTextBox_TextChanged(
@@ -241,6 +343,10 @@ namespace winrt::Aegisub_WinUI::implementation
         auto& row = m_rows[m_currentIndex];
         row.target = TargetTextBox().Text();
         row.status = L"Upraveno";
+        if (m_currentIndex < static_cast<int32_t>(m_targetEntries.size()))
+        {
+            m_targetEntries[m_currentIndex].text = row.target;
+        }
 
         TargetInfoText().Text(hstring{ L"#" + std::to_wstring(row.number) + L" \u00B7 upraven\u00FD p\u0159eklad" });
         TargetStatusText().Text(L"Stav: upraveno");
@@ -286,12 +392,19 @@ namespace winrt::Aegisub_WinUI::implementation
         header += L" s";
         HeaderCurrentSubtitleText().Text(hstring{ header });
 
-        std::wstring timing = L"#" + std::to_wstring(row.number);
-        timing += L" \u00B7 ";
-        timing += row.start.c_str();
-        timing += L" \u2192 ";
-        timing += row.end.c_str();
-        OriginalTimingText().Text(hstring{ timing });
+        if (row.sourceStart.empty())
+        {
+            OriginalTimingText().Text(hstring{ L"#" + std::to_wstring(row.number) + L" \u00B7 bez \u010Dasov\u00E9ho p\u00E1ru" });
+        }
+        else
+        {
+            std::wstring timing = L"#" + std::to_wstring(row.number);
+            timing += L" \u00B7 ";
+            timing += row.sourceStart.c_str();
+            timing += L" \u2192 ";
+            timing += row.sourceEnd.c_str();
+            OriginalTimingText().Text(hstring{ timing });
+        }
         OriginalTextBox().Text(row.original);
 
         std::wstring targetInfo = L"#" + std::to_wstring(row.number) + L" \u00B7 ";
@@ -343,12 +456,19 @@ namespace winrt::Aegisub_WinUI::implementation
 
         if (m_sourcePath.empty())
         {
-            StatusBarText().Text(L"Uk\u00E1zkov\u00E1 data \u00B7 otev\u0159ete SRT/ASS/SSA tla\u010D\u00EDtkem Otev\u0159\u00EDt projekt");
+            StatusBarText().Text(L"Uk\u00E1zkov\u00E1 data \u00B7 tla\u010D\u00EDtko Otev\u0159\u00EDt projekt na\u010Dte origin\u00E1l a \u010De\u0161tinu");
+        }
+        else if (m_targetPath.empty())
+        {
+            auto const sourceName = std::filesystem::path(m_sourcePath.c_str()).filename().wstring();
+            StatusBarText().Text(hstring{ L"Origin\u00E1l: " + sourceName + L" \u00B7 \u010De\u0161tina nen\u00ED na\u010Dtena" });
         }
         else
         {
             auto const sourceName = std::filesystem::path(m_sourcePath.c_str()).filename().wstring();
-            StatusBarText().Text(hstring{ L"Zdroj na\u010Dten p\u0159es Aegisub core \u00B7 " + sourceName });
+            auto const targetName = std::filesystem::path(m_targetPath.c_str()).filename().wstring();
+            StatusBarText().Text(hstring{
+                L"Origin\u00E1l: " + sourceName + L" \u00B7 \u010Ce\u0161tina: " + targetName + L" \u00B7 p\u00E1rov\u00E1n\u00ED podle \u010Dasu" });
         }
 
         m_loadingSelection = false;
@@ -625,13 +745,13 @@ namespace winrt::Aegisub_WinUI::implementation
 
         button.Click([this](auto const&, auto const&)
         {
-            OpenSourceSubtitleFile();
+            OpenProjectFiles();
         });
     }
 
-    void MainWindow::OpenSourceSubtitleFile()
+    bool MainWindow::SelectSubtitleFile(std::wstring const& title, std::wstring& filename) const
     {
-        wchar_t filename[32768]{};
+        wchar_t buffer[32768]{};
         wchar_t const filter[] =
             L"Titulky (*.srt;*.ass;*.ssa)\0*.srt;*.ass;*.ssa\0"
             L"V\u0161echny soubory (*.*)\0*.*\0\0";
@@ -640,29 +760,68 @@ namespace winrt::Aegisub_WinUI::implementation
         dialog.lStructSize = sizeof(dialog);
         dialog.hwndOwner = GetActiveWindow();
         dialog.lpstrFilter = filter;
-        dialog.lpstrFile = filename;
-        dialog.nMaxFile = static_cast<DWORD>(std::size(filename));
-        dialog.lpstrTitle = L"Otev\u0159\u00EDt zdrojov\u00E9 titulky";
+        dialog.lpstrFile = buffer;
+        dialog.nMaxFile = static_cast<DWORD>(std::size(buffer));
+        dialog.lpstrTitle = title.c_str();
         dialog.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
 
         if (!GetOpenFileNameW(&dialog))
         {
+            return false;
+        }
+
+        filename = buffer;
+        return true;
+    }
+
+    void MainWindow::OpenProjectFiles()
+    {
+        std::wstring sourceFilename;
+        if (!SelectSubtitleFile(L"Otev\u0159\u00EDt origin\u00E1ln\u00ED titulky", sourceFilename))
+        {
             return;
         }
 
+        std::vector<SubtitleEntry> sourceEntries;
         std::wstring errorMessage;
-        if (!LoadSourceSubtitleFile(filename, errorMessage))
+        if (!ReadSubtitleFile(sourceFilename, sourceEntries, errorMessage))
         {
-            StatusBarText().Text(L"Na\u010Dten\u00ED titulk\u016F se nezda\u0159ilo");
-            MessageBoxW(
-                dialog.hwndOwner,
-                errorMessage.c_str(),
-                L"Aegisub Translation Workspace",
-                MB_OK | MB_ICONERROR);
+            MessageBoxW(GetActiveWindow(), errorMessage.c_str(), L"Aegisub Translation Workspace", MB_OK | MB_ICONERROR);
+            return;
         }
+
+        m_sourceEntries = std::move(sourceEntries);
+        m_sourcePath = hstring{ sourceFilename };
+        m_targetEntries.clear();
+        m_targetPath = L"";
+        BuildAlignedRows();
+        RebuildSubtitleGrid();
+        LoadCurrentRow();
+
+        std::wstring targetFilename;
+        if (!SelectSubtitleFile(L"Otev\u0159\u00EDt p\u0159ipraven\u00E9 \u010Desk\u00E9 titulky", targetFilename))
+        {
+            return;
+        }
+
+        std::vector<SubtitleEntry> targetEntries;
+        if (!ReadSubtitleFile(targetFilename, targetEntries, errorMessage))
+        {
+            MessageBoxW(GetActiveWindow(), errorMessage.c_str(), L"Aegisub Translation Workspace", MB_OK | MB_ICONERROR);
+            return;
+        }
+
+        m_targetEntries = std::move(targetEntries);
+        m_targetPath = hstring{ targetFilename };
+        BuildAlignedRows();
+        RebuildSubtitleGrid();
+        LoadCurrentRow();
     }
 
-    bool MainWindow::LoadSourceSubtitleFile(std::wstring const& filename, std::wstring& errorMessage)
+    bool MainWindow::ReadSubtitleFile(
+        std::wstring const& filename,
+        std::vector<SubtitleEntry>& entries,
+        std::wstring& errorMessage) const
     {
         auto const bridge = FindBridgeExecutable();
         if (bridge.empty())
@@ -674,45 +833,22 @@ namespace winrt::Aegisub_WinUI::implementation
         }
 
         auto output = std::filesystem::temp_directory_path();
-        output /= L"aegisub-winui-bridge-" + std::to_wstring(GetCurrentProcessId()) + L".tsv";
+        output /= L"aegisub-winui-read-" + std::to_wstring(GetCurrentProcessId()) + L"-" + std::to_wstring(GetTickCount64()) + L".tsv";
 
         std::error_code fileError;
         std::filesystem::remove(output, fileError);
 
         std::wstring commandLine = L"\"" + bridge.wstring() + L"\" \"" + filename + L"\" \"" + output.wstring() + L"\"";
-        std::vector<wchar_t> mutableCommand(commandLine.begin(), commandLine.end());
-        mutableCommand.push_back(L'\0');
-
-        STARTUPINFOW startupInfo{};
-        startupInfo.cb = sizeof(startupInfo);
-        PROCESS_INFORMATION processInfo{};
-
-        if (!CreateProcessW(
-            nullptr,
-            mutableCommand.data(),
-            nullptr,
-            nullptr,
-            FALSE,
-            CREATE_NO_WINDOW,
-            nullptr,
-            nullptr,
-            &startupInfo,
-            &processInfo))
+        DWORD exitCode = 0;
+        if (!RunProcess(commandLine, exitCode))
         {
             errorMessage = L"Nepoda\u0159ilo se spustit aegisub-winui-bridge.exe.";
             return false;
         }
 
-        WaitForSingleObject(processInfo.hProcess, INFINITE);
-
-        DWORD exitCode = 0;
-        GetExitCodeProcess(processInfo.hProcess, &exitCode);
-        CloseHandle(processInfo.hThread);
-        CloseHandle(processInfo.hProcess);
-
         if (!std::filesystem::exists(output))
         {
-            errorMessage = L"Aegisub bridge nevytvo\u0159il v\u00FDstupn\u00ED soubor.";
+            errorMessage = L"Aegisub bridge nevytvo\u0159il v\u00FDstupn\u00ED soubor. K\u00F3d: " + std::to_wstring(exitCode) + L".";
             return false;
         }
 
@@ -758,7 +894,7 @@ namespace winrt::Aegisub_WinUI::implementation
             return false;
         }
 
-        std::vector<SubtitleRowData> loadedRows;
+        entries.clear();
         while (std::getline(stream, line))
         {
             if (!line.empty() && line.back() == '\r')
@@ -778,33 +914,206 @@ namespace winrt::Aegisub_WinUI::implementation
 
             auto const start = line.substr(0, firstTab);
             auto const end = line.substr(firstTab + 1, secondTab - firstTab - 1);
-            auto const original = UnescapeBridgeField(line.substr(secondTab + 1));
+            auto const text = UnescapeBridgeField(line.substr(secondTab + 1));
 
-            SubtitleRowData row;
-            row.number = static_cast<int32_t>(loadedRows.size()) + 1;
-            row.start = to_hstring(start);
-            row.end = to_hstring(end);
-            row.duration = (std::max)(0.0, TimestampSeconds(end) - TimestampSeconds(start));
-            row.original = to_hstring(original);
-            row.target = L"";
-            row.status = L"P\u0159ipraveno";
-            loadedRows.push_back(std::move(row));
+            SubtitleEntry entry;
+            entry.start = to_hstring(start);
+            entry.end = to_hstring(end);
+            entry.startSeconds = TimestampSeconds(start);
+            entry.endSeconds = TimestampSeconds(end);
+            entry.duration = (std::max)(0.0, entry.endSeconds - entry.startSeconds);
+            entry.text = to_hstring(text);
+            entries.push_back(std::move(entry));
         }
 
         stream.close();
         std::filesystem::remove(output, fileError);
 
-        if (loadedRows.empty())
+        if (entries.empty())
         {
             errorMessage = L"Soubor neobsahuje \u017E\u00E1dn\u00E9 dialogov\u00E9 titulky.";
             return false;
         }
 
-        m_rows = std::move(loadedRows);
+        return true;
+    }
+
+    void MainWindow::BuildAlignedRows()
+    {
+        m_rows.clear();
+
+        if (!m_targetEntries.empty())
+        {
+            m_rows.reserve(m_targetEntries.size());
+
+            for (size_t targetIndex = 0; targetIndex < m_targetEntries.size(); ++targetIndex)
+            {
+                auto const& target = m_targetEntries[targetIndex];
+                SubtitleRowData row;
+                row.number = static_cast<int32_t>(targetIndex) + 1;
+                row.start = target.start;
+                row.end = target.end;
+                row.duration = target.duration;
+                row.target = target.text;
+                row.status = L"P\u0159ipraveno";
+
+                bool matched = false;
+                double sourceStart = std::numeric_limits<double>::max();
+                double sourceEnd = 0.0;
+                std::wstring original;
+
+                for (auto const& source : m_sourceEntries)
+                {
+                    double const overlap = (std::min)(target.endSeconds, source.endSeconds) -
+                        (std::max)(target.startSeconds, source.startSeconds);
+                    if (overlap <= 0.0)
+                    {
+                        continue;
+                    }
+
+                    if (!original.empty())
+                    {
+                        original += L"\n";
+                    }
+                    original += source.text.c_str();
+                    sourceStart = (std::min)(sourceStart, source.startSeconds);
+                    sourceEnd = (std::max)(sourceEnd, source.endSeconds);
+                    if (!matched)
+                    {
+                        row.sourceStart = source.start;
+                    }
+                    row.sourceEnd = source.end;
+                    matched = true;
+                }
+
+                row.original = hstring{ original };
+                if (!matched)
+                {
+                    row.sourceStart = L"";
+                    row.sourceEnd = L"";
+                }
+
+                m_rows.push_back(std::move(row));
+            }
+        }
+        else
+        {
+            m_rows.reserve(m_sourceEntries.size());
+            for (size_t sourceIndex = 0; sourceIndex < m_sourceEntries.size(); ++sourceIndex)
+            {
+                auto const& source = m_sourceEntries[sourceIndex];
+                SubtitleRowData row;
+                row.number = static_cast<int32_t>(sourceIndex) + 1;
+                row.start = source.start;
+                row.end = source.end;
+                row.duration = source.duration;
+                row.sourceStart = source.start;
+                row.sourceEnd = source.end;
+                row.original = source.text;
+                row.target = L"";
+                row.status = L"P\u0159ipraveno";
+                m_rows.push_back(std::move(row));
+            }
+        }
+
         m_currentIndex = 0;
-        m_sourcePath = hstring{ filename };
-        RebuildSubtitleGrid();
-        LoadCurrentRow();
+    }
+
+    bool MainWindow::SaveTargetSubtitleFile(std::wstring& errorMessage)
+    {
+        if (m_targetPath.empty() || m_targetEntries.empty())
+        {
+            errorMessage = L"Nejd\u0159\u00EDve na\u010Dt\u011Bte p\u0159ipraven\u00E9 \u010Desk\u00E9 titulky pomoc\u00ED Otev\u0159\u00EDt projekt.";
+            return false;
+        }
+
+        if (m_rows.size() != m_targetEntries.size())
+        {
+            errorMessage = L"Po\u010Det pracovn\u00EDch \u0159\u00E1dk\u016F neodpov\u00EDd\u00E1 \u010Desk\u00E9mu souboru.";
+            return false;
+        }
+
+        auto const bridge = FindBridgeExecutable();
+        if (bridge.empty())
+        {
+            errorMessage = L"Nebyl nalezen aegisub-winui-bridge.exe.";
+            return false;
+        }
+
+        auto const targetPath = std::filesystem::path(m_targetPath.c_str());
+        auto updateFile = std::filesystem::temp_directory_path();
+        updateFile /= L"aegisub-winui-write-" + std::to_wstring(GetCurrentProcessId()) + L"-" + std::to_wstring(GetTickCount64()) + L".tsv";
+
+        auto tempOutput = targetPath.parent_path();
+        tempOutput /= targetPath.filename().wstring() + L".winui.tmp";
+
+        std::error_code fileError;
+        std::filesystem::remove(updateFile, fileError);
+        std::filesystem::remove(tempOutput, fileError);
+
+        {
+            std::ofstream stream(updateFile, std::ios::binary | std::ios::trunc);
+            if (!stream)
+            {
+                errorMessage = L"Nelze vytvo\u0159it do\u010Dasn\u00FD soubor pro ulo\u017Een\u00ED titulk\u016F.";
+                return false;
+            }
+
+            stream << "AEGISUB-WINUI-BRIDGE\t1\n";
+            for (auto const& row : m_rows)
+            {
+                stream << to_string(row.start) << '\t'
+                       << to_string(row.end) << '\t'
+                       << EscapeBridgeField(to_string(row.target)) << '\n';
+            }
+        }
+
+        std::wstring commandLine = L"\"" + bridge.wstring() + L"\" --write \"" +
+            targetPath.wstring() + L"\" \"" + updateFile.wstring() + L"\" \"" + tempOutput.wstring() + L"\"";
+
+        DWORD exitCode = 0;
+        if (!RunProcess(commandLine, exitCode))
+        {
+            std::filesystem::remove(updateFile, fileError);
+            errorMessage = L"Nepoda\u0159ilo se spustit Aegisub bridge pro ulo\u017Een\u00ED.";
+            return false;
+        }
+
+        std::filesystem::remove(updateFile, fileError);
+
+        if (exitCode != 0)
+        {
+            if (!ReadBridgeError(tempOutput, errorMessage))
+            {
+                errorMessage = L"Aegisub bridge skon\u010Dil p\u0159i ukl\u00E1d\u00E1n\u00ED s chybou " + std::to_wstring(exitCode) + L".";
+            }
+            std::filesystem::remove(tempOutput, fileError);
+            return false;
+        }
+
+        if (!std::filesystem::exists(tempOutput))
+        {
+            errorMessage = L"Aegisub bridge nevytvo\u0159il ulo\u017Een\u00FD soubor.";
+            return false;
+        }
+
+        if (!MoveFileExW(
+            tempOutput.c_str(),
+            targetPath.c_str(),
+            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+        {
+            errorMessage = L"Do\u010Dasn\u00FD soubor se poda\u0159ilo vytvo\u0159it, ale nepoda\u0159ilo se nahradit p\u016Fvodn\u00ED \u010Desk\u00FD soubor.";
+            std::filesystem::remove(tempOutput, fileError);
+            return false;
+        }
+
+        for (size_t i = 0; i < m_rows.size(); ++i)
+        {
+            m_targetEntries[i].start = m_rows[i].start;
+            m_targetEntries[i].end = m_rows[i].end;
+            m_targetEntries[i].text = m_rows[i].target;
+        }
+
         return true;
     }
 }
