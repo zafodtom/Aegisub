@@ -61,6 +61,10 @@
                         MinHeight="34"
                         Click="NextButton_Click" />
                     <Button Content="Schválit" MinHeight="34" Click="ApproveButton_Click" />
+                    <Button
+                        Content="Další problém"
+                        MinHeight="34"
+                        Click="NextProblemButton_Click" />
                 </StackPanel>
             </Grid>
         </Border>
@@ -173,29 +177,44 @@
                         TextWrapping="Wrap"
                         FontSize="24"
                         VerticalContentAlignment="Top"
+                        Loaded="TargetTextBox_WorkflowLoaded"
                         TextChanged="TargetTextBox_TextChanged" />
 
-                    <Grid Grid.Row="3" Margin="0,10,0,0">
+                    <Grid Grid.Row="3" Margin="0,10,0,0" ColumnSpacing="12">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock x:Name="TargetCplText" Text="CPL 43" FontSize="12" Opacity="0.62" />
+                        <TextBlock
+                            x:Name="TargetCplText"
+                            Text="CPL 43"
+                            FontSize="12"
+                            Opacity="0.62"
+                            VerticalAlignment="Center" />
                         <TextBlock
                             x:Name="TargetCpsText"
                             Grid.Column="1"
-                            Margin="16,0,0,0"
                             Text="CPS 15.8"
                             FontSize="12"
-                            Opacity="0.62" />
+                            Opacity="0.62"
+                            VerticalAlignment="Center" />
+                        <Button
+                            Grid.Column="3"
+                            Content="Zalomit řádek"
+                            Padding="8,2"
+                            MinHeight="26"
+                            FontSize="11"
+                            Click="InsertLineBreakButton_Click" />
                         <TextBlock
                             x:Name="TargetStatusText"
-                            Grid.Column="3"
+                            Grid.Column="4"
                             Text="Stav: Upraveno"
                             FontSize="12"
-                            Opacity="0.62" />
+                            Opacity="0.62"
+                            VerticalAlignment="Center" />
                     </Grid>
                 </Grid>
             </Border>
@@ -294,7 +313,7 @@
             </Border>
         </Grid>
 
-        <!-- Subtitle grid -->
+        <!-- Subtitle grid. Rows are created dynamically from loaded subtitle data. -->
         <Border
             Grid.Row="2"
             Margin="14,12,14,0"
@@ -320,7 +339,7 @@
                     <TextBlock
                         x:Name="TablePositionText"
                         Grid.Column="1"
-                        Text="5 testovacích řádků · aktuální #145"
+                        Text="Načítání titulků…"
                         FontSize="12"
                         Opacity="0.58"
                         VerticalAlignment="Center" />
@@ -331,14 +350,6 @@
                     HorizontalScrollBarVisibility="Auto"
                     VerticalScrollBarVisibility="Auto">
                     <Grid MinWidth="1180">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="34" />
-                            <RowDefinition Height="36" />
-                            <RowDefinition Height="36" />
-                            <RowDefinition Height="36" />
-                            <RowDefinition Height="36" />
-                            <RowDefinition Height="36" />
-                        </Grid.RowDefinitions>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="58" />
                             <ColumnDefinition Width="132" />
@@ -347,90 +358,6 @@
                             <ColumnDefinition Width="1.15*" />
                             <ColumnDefinition Width="118" />
                         </Grid.ColumnDefinitions>
-
-                        <Border Grid.Row="0" Grid.ColumnSpan="6" BorderBrush="Gray" BorderThickness="0,1,0,1" />
-                        <TextBlock Grid.Row="0" Grid.Column="0" Margin="10,0" Text="#" FontWeight="SemiBold" VerticalAlignment="Center" />
-                        <TextBlock Grid.Row="0" Grid.Column="1" Margin="8,0" Text="Start" FontWeight="SemiBold" VerticalAlignment="Center" />
-                        <TextBlock Grid.Row="0" Grid.Column="2" Margin="8,0" Text="Konec" FontWeight="SemiBold" VerticalAlignment="Center" />
-                        <TextBlock Grid.Row="0" Grid.Column="3" Margin="8,0" Text="Originál" FontWeight="SemiBold" VerticalAlignment="Center" />
-                        <TextBlock Grid.Row="0" Grid.Column="4" Margin="8,0" Text="Čeština" FontWeight="SemiBold" VerticalAlignment="Center" />
-                        <TextBlock Grid.Row="0" Grid.Column="5" Margin="8,0" Text="Stav" FontWeight="SemiBold" VerticalAlignment="Center" />
-
-                        <!-- Row 143 -->
-                        <Border
-                            x:Name="Row143Border"
-                            Grid.Row="1"
-                            Grid.ColumnSpan="6"
-                            Background="Transparent"
-                            BorderBrush="#0078D4"
-                            Tapped="SubtitleRow_Tapped" />
-                        <TextBlock Grid.Row="1" Grid.Column="0" Margin="10,0" Text="143" VerticalAlignment="Center" IsHitTestVisible="False" />
-                        <TextBlock Grid.Row="1" Grid.Column="1" Margin="8,0" Text="00:12:38.310" FontFamily="Consolas" VerticalAlignment="Center" IsHitTestVisible="False" />
-                        <TextBlock Grid.Row="1" Grid.Column="2" Margin="8,0" Text="00:12:41.420" FontFamily="Consolas" VerticalAlignment="Center" IsHitTestVisible="False" />
-                        <TextBlock Grid.Row="1" Grid.Column="3" Margin="8,0" Text="We still have time." TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsHitTestVisible="False" />
-                        <TextBlock x:Name="Row143TargetText" Grid.Row="1" Grid.Column="4" Margin="8,0" Text="Pořád máme čas." TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsHitTestVisible="False" />
-                        <TextBlock x:Name="Row143StatusText" Grid.Row="1" Grid.Column="5" Margin="8,0" Text="Schváleno" VerticalAlignment="Center" IsHitTestVisible="False" />
-
-                        <!-- Row 144 -->
-                        <Border
-                            x:Name="Row144Border"
-                            Grid.Row="2"
-                            Grid.ColumnSpan="6"
-                            Background="Transparent"
-                            BorderBrush="#0078D4"
-                            Tapped="SubtitleRow_Tapped" />
-                        <TextBlock Grid.Row="2" Grid.Column="0" Margin="10,0" Text="144" VerticalAlignment="Center" IsHitTestVisible="False" />
-                        <TextBlock Grid.Row="2" Grid.Column="1" Margin="8,0" Text="00:12:41.980" FontFamily="Consolas" VerticalAlignment="Center" IsHitTestVisible="False" />
-                        <TextBlock Grid.Row="2" Grid.Column="2" Margin="8,0" Text="00:12:43.980" FontFamily="Consolas" VerticalAlignment="Center" IsHitTestVisible="False" />
-                        <TextBlock Grid.Row="2" Grid.Column="3" Margin="8,0" Text="If the road stays clear, we can still make it." TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsHitTestVisible="False" />
-                        <TextBlock x:Name="Row144TargetText" Grid.Row="2" Grid.Column="4" Margin="8,0" Text="Jestli zůstane cesta volná, pořád to stihneme." TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsHitTestVisible="False" />
-                        <TextBlock x:Name="Row144StatusText" Grid.Row="2" Grid.Column="5" Margin="8,0" Text="Schváleno" VerticalAlignment="Center" IsHitTestVisible="False" />
-
-                        <!-- Row 145 -->
-                        <Border
-                            x:Name="Row145Border"
-                            Grid.Row="3"
-                            Grid.ColumnSpan="6"
-                            Background="Transparent"
-                            BorderBrush="#0078D4"
-                            BorderThickness="4,1,0,1"
-                            Tapped="SubtitleRow_Tapped" />
-                        <TextBlock Grid.Row="3" Grid.Column="0" Margin="10,0" Text="145" VerticalAlignment="Center" IsHitTestVisible="False" />
-                        <TextBlock Grid.Row="3" Grid.Column="1" Margin="8,0" Text="00:12:44.120" FontFamily="Consolas" VerticalAlignment="Center" IsHitTestVisible="False" />
-                        <TextBlock Grid.Row="3" Grid.Column="2" Margin="8,0" Text="00:12:46.840" FontFamily="Consolas" VerticalAlignment="Center" IsHitTestVisible="False" />
-                        <TextBlock Grid.Row="3" Grid.Column="3" Margin="8,0" Text="We should be there before sunrise." TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsHitTestVisible="False" />
-                        <TextBlock x:Name="Row145TargetText" Grid.Row="3" Grid.Column="4" Margin="8,0" Text="Měli bychom tam být před východem slunce." TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsHitTestVisible="False" />
-                        <TextBlock x:Name="Row145StatusText" Grid.Row="3" Grid.Column="5" Margin="8,0" Text="Upraveno" VerticalAlignment="Center" IsHitTestVisible="False" />
-
-                        <!-- Row 146 -->
-                        <Border
-                            x:Name="Row146Border"
-                            Grid.Row="4"
-                            Grid.ColumnSpan="6"
-                            Background="Transparent"
-                            BorderBrush="#0078D4"
-                            Tapped="SubtitleRow_Tapped" />
-                        <TextBlock Grid.Row="4" Grid.Column="0" Margin="10,0" Text="146" VerticalAlignment="Center" IsHitTestVisible="False" />
-                        <TextBlock Grid.Row="4" Grid.Column="1" Margin="8,0" Text="00:12:47.050" FontFamily="Consolas" VerticalAlignment="Center" IsHitTestVisible="False" />
-                        <TextBlock Grid.Row="4" Grid.Column="2" Margin="8,0" Text="00:12:49.300" FontFamily="Consolas" VerticalAlignment="Center" IsHitTestVisible="False" />
-                        <TextBlock Grid.Row="4" Grid.Column="3" Margin="8,0" Text="Then we wait for the signal." TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsHitTestVisible="False" />
-                        <TextBlock x:Name="Row146TargetText" Grid.Row="4" Grid.Column="4" Margin="8,0" Text="Pak počkáme na signál." TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsHitTestVisible="False" />
-                        <TextBlock x:Name="Row146StatusText" Grid.Row="4" Grid.Column="5" Margin="8,0" Text="Připraveno" VerticalAlignment="Center" IsHitTestVisible="False" />
-
-                        <!-- Row 147 -->
-                        <Border
-                            x:Name="Row147Border"
-                            Grid.Row="5"
-                            Grid.ColumnSpan="6"
-                            Background="Transparent"
-                            BorderBrush="#0078D4"
-                            Tapped="SubtitleRow_Tapped" />
-                        <TextBlock Grid.Row="5" Grid.Column="0" Margin="10,0" Text="147" VerticalAlignment="Center" IsHitTestVisible="False" />
-                        <TextBlock Grid.Row="5" Grid.Column="1" Margin="8,0" Text="00:12:50.100" FontFamily="Consolas" VerticalAlignment="Center" IsHitTestVisible="False" />
-                        <TextBlock Grid.Row="5" Grid.Column="2" Margin="8,0" Text="00:12:52.650" FontFamily="Consolas" VerticalAlignment="Center" IsHitTestVisible="False" />
-                        <TextBlock Grid.Row="5" Grid.Column="3" Margin="8,0" Text="No mistakes this time." TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsHitTestVisible="False" />
-                        <TextBlock x:Name="Row147TargetText" Grid.Row="5" Grid.Column="4" Margin="8,0" Text="Tentokrát bez chyb." TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsHitTestVisible="False" />
-                        <TextBlock x:Name="Row147StatusText" Grid.Row="5" Grid.Column="5" Margin="8,0" Text="Připraveno" VerticalAlignment="Center" IsHitTestVisible="False" />
                     </Grid>
                 </ScrollViewer>
             </Grid>
@@ -448,17 +375,18 @@
 
             <TextBlock
                 x:Name="StatusBarText"
-                Text="Testovací data · bez napojení na Aegisub core"
+                Text="Připraveno"
                 FontSize="11"
                 Opacity="0.5" />
 
             <StackPanel
                 Grid.Column="1"
                 Orientation="Horizontal"
-                Spacing="16">
-                <TextBlock Text="Enter → uložit + další" FontSize="11" Opacity="0.5" />
+                Spacing="14">
+                <TextBlock Text="Shift+Enter → nový řádek" FontSize="11" Opacity="0.5" />
+                <TextBlock Text="Enter → potvrdit + další" FontSize="11" Opacity="0.5" />
                 <TextBlock Text="Ctrl+Enter → schválit + další" FontSize="11" Opacity="0.5" />
-                <TextBlock Text="Space → play/pause" FontSize="11" Opacity="0.5" />
+                <TextBlock Text="Ctrl+S → uložit" FontSize="11" Opacity="0.5" />
             </StackPanel>
         </Grid>
     </Grid>
