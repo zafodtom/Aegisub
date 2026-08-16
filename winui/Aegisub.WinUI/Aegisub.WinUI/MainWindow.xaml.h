@@ -59,11 +59,11 @@ namespace winrt::Aegisub_WinUI::implementation
 
         std::array<SubtitleRowData, 5> m_rows
         {{
-            { 143, L"00:12:38.310", L"00:12:41.420", 3.11, L"We still have time.", L"Pořád máme čas.", L"Schváleno" },
-            { 144, L"00:12:41.980", L"00:12:43.980", 2.00, L"If the road stays clear, we can still make it.", L"Jestli zůstane cesta volná, pořád to stihneme.", L"Schváleno" },
-            { 145, L"00:12:44.120", L"00:12:46.840", 2.72, L"We should be there before sunrise.", L"Měli bychom tam být před východem slunce.", L"Upraveno" },
-            { 146, L"00:12:47.050", L"00:12:49.300", 2.25, L"Then we wait for the signal.", L"Pak počkáme na signál.", L"Připraveno" },
-            { 147, L"00:12:50.100", L"00:12:52.650", 2.55, L"No mistakes this time.", L"Tentokrát bez chyb.", L"Připraveno" },
+            { 143, L"00:12:38.310", L"00:12:41.420", 3.11, L"We still have time.", L"Po\u0159\u00E1d m\u00E1me \u010Das.", L"Schv\u00E1leno" },
+            { 144, L"00:12:41.980", L"00:12:43.980", 2.00, L"If the road stays clear, we can still make it.", L"Jestli z\u016Fstane cesta voln\u00E1, po\u0159\u00E1d to stihneme.", L"Schv\u00E1leno" },
+            { 145, L"00:12:44.120", L"00:12:46.840", 2.72, L"We should be there before sunrise.", L"M\u011Bli bychom tam b\u00FDt p\u0159ed v\u00FDchodem slunce.", L"Upraveno" },
+            { 146, L"00:12:47.050", L"00:12:49.300", 2.25, L"Then we wait for the signal.", L"Pak po\u010Dk\u00E1me na sign\u00E1l.", L"P\u0159ipraveno" },
+            { 147, L"00:12:50.100", L"00:12:52.650", 2.55, L"No mistakes this time.", L"Tentokr\u00E1t bez chyb.", L"P\u0159ipraveno" },
         }};
 
         int32_t m_currentIndex{ 2 };
