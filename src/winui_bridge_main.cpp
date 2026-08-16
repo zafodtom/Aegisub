@@ -4,6 +4,7 @@
 #include "options.h"
 #include "subtitle_format_ass.h"
 #include "subtitle_format_srt.h"
+#include "subtitle_format_ssa.h"
 
 #include <libaegisub/charset.h>
 #include <libaegisub/dispatch.h>
@@ -21,6 +22,7 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace config {
     agi::Options *opt = nullptr;
@@ -54,6 +56,28 @@ std::string NormalizeSubtitleText(std::string_view input) {
     return output;
 }
 
+std::string DenormalizeSubtitleText(std::string_view input) {
+    std::string output;
+    output.reserve(input.size());
+
+    for (size_t i = 0; i < input.size(); ++i) {
+        char const c = input[i];
+        if (c == '\r') {
+            if (i + 1 < input.size() && input[i + 1] == '\n')
+                ++i;
+            output += "\\N";
+        }
+        else if (c == '\n') {
+            output += "\\N";
+        }
+        else {
+            output.push_back(c);
+        }
+    }
+
+    return output;
+}
+
 std::string EscapeField(std::string_view input) {
     std::string output;
     output.reserve(input.size());
@@ -65,6 +89,31 @@ std::string EscapeField(std::string_view input) {
         case '\r': output += "\\r"; break;
         case '\n': output += "\\n"; break;
         default: output.push_back(c); break;
+        }
+    }
+
+    return output;
+}
+
+std::string UnescapeField(std::string_view input) {
+    std::string output;
+    output.reserve(input.size());
+
+    for (size_t i = 0; i < input.size(); ++i) {
+        if (input[i] != '\\' || i + 1 >= input.size()) {
+            output.push_back(input[i]);
+            continue;
+        }
+
+        switch (input[++i]) {
+        case '\\': output.push_back('\\'); break;
+        case 't': output.push_back('\t'); break;
+        case 'r': output.push_back('\r'); break;
+        case 'n': output.push_back('\n'); break;
+        default:
+            output.push_back('\\');
+            output.push_back(input[i]);
+            break;
         }
     }
 
@@ -85,11 +134,15 @@ std::string DetectEncoding(agi::fs::path const& input) {
     return encoding;
 }
 
-void LoadSubtitles(agi::fs::path const& input, AssFile& file) {
+std::string LowerExtension(agi::fs::path const& input) {
     auto extension = input.extension().string();
     std::transform(extension.begin(), extension.end(), extension.begin(),
         [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    return extension;
+}
 
+void LoadSubtitles(agi::fs::path const& input, AssFile& file) {
+    auto const extension = LowerExtension(input);
     auto encoding = DetectEncoding(input);
     agi::vfr::Framerate fps;
 
@@ -106,6 +159,32 @@ void LoadSubtitles(agi::fs::path const& input, AssFile& file) {
     }
 
     throw agi::InvalidInputException("WinUI bridge currently supports .ass, .ssa and .srt files only.");
+}
+
+void SaveSubtitles(agi::fs::path const& templateFile, agi::fs::path const& output, AssFile const& file) {
+    auto const extension = LowerExtension(templateFile);
+    auto encoding = DetectEncoding(templateFile);
+    agi::vfr::Framerate fps;
+
+    if (extension == ".ass") {
+        AssSubtitleFormat format;
+        format.WriteFile(&file, output, fps, encoding.c_str());
+        return;
+    }
+
+    if (extension == ".ssa") {
+        SsaSubtitleFormat format;
+        format.WriteFile(&file, output, fps, encoding.c_str());
+        return;
+    }
+
+    if (extension == ".srt") {
+        SRTSubtitleFormat format;
+        format.WriteFile(&file, output, fps, encoding.c_str());
+        return;
+    }
+
+    throw agi::InvalidInputException("WinUI bridge currently supports writing .ass, .ssa and .srt files only.");
 }
 
 void WriteBridgeFile(agi::fs::path const& output, AssFile const& file) {
@@ -126,6 +205,53 @@ void WriteBridgeFile(agi::fs::path const& output, AssFile const& file) {
     }
 }
 
+void ApplyBridgeFile(agi::fs::path const& input, AssFile& file) {
+    std::ifstream stream(static_cast<std::filesystem::path const&>(input), std::ios::binary);
+    if (!stream)
+        throw agi::fs::FileNotAccessible(input);
+
+    std::string line;
+    if (!std::getline(stream, line))
+        throw agi::InvalidInputException("WinUI update file is empty.");
+    if (!line.empty() && line.back() == '\r')
+        line.pop_back();
+    if (line != "AEGISUB-WINUI-BRIDGE\t1")
+        throw agi::InvalidInputException("WinUI update file has an unknown format.");
+
+    std::vector<AssDialogue*> dialogues;
+    for (auto& dialogue : file.Events) {
+        if (!dialogue.Comment)
+            dialogues.push_back(&dialogue);
+    }
+
+    size_t index = 0;
+    while (std::getline(stream, line)) {
+        if (!line.empty() && line.back() == '\r')
+            line.pop_back();
+
+        auto const firstTab = line.find('\t');
+        auto const secondTab = firstTab == std::string::npos
+            ? std::string::npos
+            : line.find('\t', firstTab + 1);
+        if (firstTab == std::string::npos || secondTab == std::string::npos)
+            throw agi::InvalidInputException("WinUI update file contains an invalid row.");
+        if (index >= dialogues.size())
+            throw agi::InvalidInputException("WinUI update file contains more dialogue rows than the subtitle template.");
+
+        auto const start = line.substr(0, firstTab);
+        auto const end = line.substr(firstTab + 1, secondTab - firstTab - 1);
+        auto const text = UnescapeField(std::string_view(line).substr(secondTab + 1));
+
+        auto& dialogue = *dialogues[index++];
+        dialogue.Start = std::string_view(start);
+        dialogue.End = std::string_view(end);
+        dialogue.Text = DenormalizeSubtitleText(text);
+    }
+
+    if (index != dialogues.size())
+        throw agi::InvalidInputException("WinUI update file contains fewer dialogue rows than the subtitle template.");
+}
+
 void WriteErrorFile(agi::fs::path const& output, std::string_view message) {
     std::ofstream stream(static_cast<std::filesystem::path const&>(output), std::ios::binary | std::ios::trunc);
     if (stream)
@@ -134,11 +260,14 @@ void WriteErrorFile(agi::fs::path const& output, std::string_view message) {
 }
 
 int wmain(int argc, wchar_t **argv) {
-    if (argc != 3)
+    bool const writeMode = argc == 5 && std::wstring_view(argv[1]) == L"--write";
+    bool const readMode = argc == 3;
+    if (!writeMode && !readMode)
         return 2;
 
-    const agi::fs::path input{ std::filesystem::path(argv[1]) };
-    const agi::fs::path output{ std::filesystem::path(argv[2]) };
+    const agi::fs::path input{ std::filesystem::path(argv[writeMode ? 2 : 1]) };
+    const agi::fs::path update{ writeMode ? std::filesystem::path(argv[3]) : std::filesystem::path() };
+    const agi::fs::path output{ std::filesystem::path(argv[writeMode ? 4 : 2]) };
 
     try {
         // Aegisub's LogSink creates a serial dispatch queue in its constructor,
@@ -163,7 +292,14 @@ int wmain(int argc, wchar_t **argv) {
 
         AssFile file;
         LoadSubtitles(input, file);
-        WriteBridgeFile(output, file);
+
+        if (writeMode) {
+            ApplyBridgeFile(update, file);
+            SaveSubtitles(input, output, file);
+        }
+        else {
+            WriteBridgeFile(output, file);
+        }
 
         config::opt = nullptr;
         agi::log::log = nullptr;
