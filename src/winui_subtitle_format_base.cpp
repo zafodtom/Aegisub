@@ -3,6 +3,7 @@
 #include "ass_dialogue.h"
 #include "ass_file.h"
 
+#include <libaegisub/format.h>
 #include <libaegisub/fs.h>
 #include <libaegisub/string.h>
 #include <libaegisub/util.h>
@@ -11,6 +12,15 @@
 #include <iterator>
 #include <memory>
 #include <boost/algorithm/string/replace.hpp>
+
+std::string float_to_string(double val, int precision) {
+    std::string fmt = "%." + std::to_string(precision) + "f";
+    std::string s = agi::format(fmt, val);
+    size_t pos = s.find_last_not_of("0");
+    if (pos != s.find(".")) ++pos;
+    s.erase(begin(s) + pos, end(s));
+    return s;
+}
 
 SubtitleFormat::SubtitleFormat(std::string_view name)
 : name(name)
