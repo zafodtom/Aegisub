@@ -2,7 +2,13 @@
 
 #include "MainWindow.g.h"
 
+#include <algorithm>
+#include <cwctype>
+#include <iomanip>
+#include <sstream>
+#include <string>
 #include <vector>
+#include <winrt/Windows.System.h>
 
 namespace winrt::Aegisub_WinUI::implementation
 {
@@ -45,6 +51,18 @@ namespace winrt::Aegisub_WinUI::implementation
             winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::Input::TappedRoutedEventArgs const& args);
 
+        void TargetTextBox_WorkflowLoaded(
+            winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+
+        void InsertLineBreakButton_Click(
+            winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+
+        void NextProblemButton_Click(
+            winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+
     private:
         struct SubtitleEntry
         {
@@ -70,6 +88,8 @@ namespace winrt::Aegisub_WinUI::implementation
             winrt::hstring rawTarget;
             winrt::hstring status;
             bool targetModified{};
+            winrt::hstring workflowStatus;
+            winrt::hstring qaIssue;
         };
 
         std::vector<SubtitleRowData> m_rows
@@ -93,6 +113,10 @@ namespace winrt::Aegisub_WinUI::implementation
         int32_t m_currentIndex{ 2 };
         bool m_loadingSelection{ false };
         bool m_initialized{ false };
+        bool m_workflowHooksInstalled{ false };
+
+        static constexpr size_t kMaxCpl = 42;
+        static constexpr double kMaxCps = 20.0;
 
         void LoadCurrentRow();
         void UpdateMetrics();
@@ -114,7 +138,443 @@ namespace winrt::Aegisub_WinUI::implementation
 
         winrt::Microsoft::UI::Xaml::Controls::Button FindOpenProjectButton(
             winrt::Microsoft::UI::Xaml::DependencyObject const& root) const;
+
+        void TargetTextBox_WorkflowKeyDown(
+            winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const& args);
+        void RootGrid_WorkflowKeyDown(
+            winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const& args);
+        void InitializeWorkflowStatuses();
+        void SyncWorkflowStatusesFromDisplay();
+        void RefreshQaAll();
+        void RefreshCurrentQaVisuals();
+        winrt::hstring EvaluateQaIssue(int32_t index) const;
+        void CommitCurrentAndMoveNext(bool approve);
+        void MoveCurrentBy(int32_t delta);
+        void SaveFromShortcut();
+        double WorkflowTimestampSeconds(winrt::hstring const& value) const;
+        winrt::Microsoft::UI::Xaml::Controls::Button FindWorkflowButton(
+            winrt::Microsoft::UI::Xaml::DependencyObject const& root,
+            winrt::hstring const& content) const;
     };
+
+    inline double MainWindow::WorkflowTimestampSeconds(winrt::hstring const& value) const
+    {
+        std::wstring const text{ value.c_str() };
+        if (text.size() < 12)
+            return 0.0;
+
+        try
+        {
+            auto const hours = std::stoi(text.substr(0, 2));
+            auto const minutes = std::stoi(text.substr(3, 2));
+            auto const seconds = std::stod(text.substr(6));
+            return hours * 3600.0 + minutes * 60.0 + seconds;
+        }
+        catch (...)
+        {
+            return 0.0;
+        }
+    }
+
+    inline winrt::Microsoft::UI::Xaml::Controls::Button MainWindow::FindWorkflowButton(
+        winrt::Microsoft::UI::Xaml::DependencyObject const& root,
+        winrt::hstring const& content) const
+    {
+        using namespace winrt::Microsoft::UI::Xaml::Controls;
+        if (!root)
+            return nullptr;
+
+        if (auto const button = root.try_as<Button>())
+        {
+            try
+            {
+                if (winrt::unbox_value<winrt::hstring>(button.Content()) == content)
+                    return button;
+            }
+            catch (...)
+            {
+            }
+        }
+
+        auto const count = winrt::Microsoft::UI::Xaml::Media::VisualTreeHelper::GetChildrenCount(root);
+        for (int32_t i = 0; i < count; ++i)
+        {
+            auto const child = winrt::Microsoft::UI::Xaml::Media::VisualTreeHelper::GetChild(root, i);
+            if (auto const found = FindWorkflowButton(child, content))
+                return found;
+        }
+        return nullptr;
+    }
+
+    inline void MainWindow::InitializeWorkflowStatuses()
+    {
+        for (auto& row : m_rows)
+        {
+            if (row.workflowStatus.empty())
+                row.workflowStatus = row.status.empty() ? winrt::hstring{ L"P\u0159ipraveno" } : row.status;
+        }
+    }
+
+    inline void MainWindow::SyncWorkflowStatusesFromDisplay()
+    {
+        for (auto& row : m_rows)
+        {
+            if (row.status != L"Probl\u00E9m" && !row.status.empty())
+                row.workflowStatus = row.status;
+            else if (row.workflowStatus.empty())
+                row.workflowStatus = L"P\u0159ipraveno";
+        }
+    }
+
+    inline winrt::hstring MainWindow::EvaluateQaIssue(int32_t index) const
+    {
+        if (m_targetPath.empty() || index < 0 || index >= static_cast<int32_t>(m_rows.size()))
+            return L"";
+
+        auto const& row = m_rows[index];
+        std::wstring const text{ row.target.c_str() };
+        std::wstring issues;
+        auto addIssue = [&](std::wstring const& issue)
+        {
+            if (!issues.empty())
+                issues += L"; ";
+            issues += issue;
+        };
+
+        bool const emptyText = text.empty() || std::all_of(text.begin(), text.end(), [](wchar_t c)
+        {
+            return std::iswspace(c) != 0;
+        });
+        if (emptyText)
+            addIssue(L"pr\u00E1zdn\u00FD \u010Desk\u00FD titulek");
+
+        if (row.sourceStart.empty())
+            addIssue(L"bez \u010Dasov\u00E9ho p\u00E1ru s origin\u00E1lem");
+
+        if (row.duration <= 0.0)
+            addIssue(L"neplatn\u00E1 d\u00E9lka");
+
+        size_t lineCount = 1;
+        size_t currentLineLength = 0;
+        size_t maxLineLength = 0;
+        size_t characterCount = 0;
+        for (wchar_t c : text)
+        {
+            if (c == L'\r')
+                continue;
+            if (c == L'\n')
+            {
+                ++lineCount;
+                maxLineLength = (std::max)(maxLineLength, currentLineLength);
+                currentLineLength = 0;
+                continue;
+            }
+            ++currentLineLength;
+            ++characterCount;
+        }
+        maxLineLength = (std::max)(maxLineLength, currentLineLength);
+
+        if (lineCount > 2)
+            addIssue(L"v\u00EDce ne\u017E 2 \u0159\u00E1dky");
+        if (maxLineLength > kMaxCpl)
+            addIssue(L"CPL " + std::to_wstring(maxLineLength) + L" > " + std::to_wstring(kMaxCpl));
+
+        double const cps = row.duration > 0.0 ? static_cast<double>(characterCount) / row.duration : 0.0;
+        if (cps > kMaxCps)
+        {
+            std::wostringstream stream;
+            stream << L"CPS " << std::fixed << std::setprecision(1) << cps << L" > " << kMaxCps;
+            addIssue(stream.str());
+        }
+
+        if (index + 1 < static_cast<int32_t>(m_rows.size()))
+        {
+            double const currentEnd = WorkflowTimestampSeconds(row.end);
+            double const nextStart = WorkflowTimestampSeconds(m_rows[index + 1].start);
+            if (currentEnd > nextStart + 0.0005)
+                addIssue(L"p\u0159ekryv s n\u00E1sleduj\u00EDc\u00EDm titulkem");
+        }
+
+        return winrt::hstring{ issues };
+    }
+
+    inline void MainWindow::RefreshQaAll()
+    {
+        InitializeWorkflowStatuses();
+        for (int32_t i = 0; i < static_cast<int32_t>(m_rows.size()); ++i)
+        {
+            auto& row = m_rows[i];
+            row.qaIssue = EvaluateQaIssue(i);
+            row.status = row.qaIssue.empty() ? row.workflowStatus : winrt::hstring{ L"Probl\u00E9m" };
+            UpdateTableRow(i);
+        }
+    }
+
+    inline void MainWindow::RefreshCurrentQaVisuals()
+    {
+        if (m_rows.empty() || m_currentIndex < 0 || m_currentIndex >= static_cast<int32_t>(m_rows.size()))
+            return;
+
+        auto const& row = m_rows[m_currentIndex];
+        std::wstring info = L"#" + std::to_wstring(row.number) + L" \u00B7 ";
+        info += row.status.c_str();
+        if (!row.qaIssue.empty())
+        {
+            info += L" \u00B7 ";
+            info += row.qaIssue.c_str();
+        }
+        TargetInfoText().Text(winrt::hstring{ info });
+        TargetStatusText().Text(winrt::hstring{ L"Stav: " + std::wstring(row.status.c_str()) });
+
+        if (!row.qaIssue.empty())
+        {
+            StatusBarText().Text(winrt::hstring{
+                L"QA #" + std::to_wstring(row.number) + L" \u00B7 " + std::wstring(row.qaIssue.c_str()) });
+        }
+    }
+
+    inline void MainWindow::MoveCurrentBy(int32_t delta)
+    {
+        if (m_rows.empty())
+            return;
+
+        auto const candidate = m_currentIndex + delta;
+        auto const last = static_cast<int32_t>(m_rows.size()) - 1;
+        auto const next = (std::max)(0, (std::min)(last, candidate));
+        if (next == m_currentIndex)
+            return;
+
+        m_currentIndex = next;
+        LoadCurrentRow();
+        RefreshCurrentQaVisuals();
+        TargetTextBox().Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
+    }
+
+    inline void MainWindow::CommitCurrentAndMoveNext(bool approve)
+    {
+        if (m_rows.empty())
+            return;
+
+        auto& row = m_rows[m_currentIndex];
+        row.target = TargetTextBox().Text();
+        if (m_currentIndex < static_cast<int32_t>(m_targetEntries.size()))
+            m_targetEntries[m_currentIndex].text = row.target;
+
+        if (approve)
+        {
+            row.workflowStatus = L"Schv\u00E1leno";
+            row.status = row.workflowStatus;
+        }
+        else if (row.targetModified)
+        {
+            row.workflowStatus = L"Upraveno";
+            row.status = row.workflowStatus;
+        }
+        else if (row.workflowStatus.empty())
+        {
+            row.workflowStatus = row.status == L"Probl\u00E9m" ? winrt::hstring{ L"P\u0159ipraveno" } : row.status;
+        }
+
+        RefreshQaAll();
+        UpdateTableRow(m_currentIndex);
+
+        if (m_currentIndex < static_cast<int32_t>(m_rows.size()) - 1)
+        {
+            ++m_currentIndex;
+            LoadCurrentRow();
+        }
+        RefreshCurrentQaVisuals();
+        TargetTextBox().Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
+    }
+
+    inline void MainWindow::SaveFromShortcut()
+    {
+        if (m_rows.empty())
+            return;
+
+        auto& row = m_rows[m_currentIndex];
+        row.target = TargetTextBox().Text();
+        if (m_currentIndex < static_cast<int32_t>(m_targetEntries.size()))
+            m_targetEntries[m_currentIndex].text = row.target;
+
+        std::wstring errorMessage;
+        if (!SaveTargetSubtitleFile(errorMessage))
+        {
+            StatusBarText().Text(L"Ulo\u017Een\u00ED \u010Desk\u00FDch titulk\u016F se nezda\u0159ilo");
+            MessageBoxW(GetActiveWindow(), errorMessage.c_str(), L"Aegisub Translation Workspace", MB_OK | MB_ICONERROR);
+            return;
+        }
+
+        auto const targetName = std::filesystem::path(m_targetPath.c_str()).filename().wstring();
+        StatusBarText().Text(winrt::hstring{ L"\u010Ce\u0161tina ulo\u017Eena \u00B7 " + targetName + L" \u00B7 Ctrl+S" });
+    }
+
+    inline void MainWindow::TargetTextBox_WorkflowKeyDown(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const& args)
+    {
+        bool const shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+        bool const control = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
+        auto const key = args.Key();
+
+        if (key == winrt::Windows::System::VirtualKey::Enter)
+        {
+            if (shift)
+                return; // TextBox inserts the real line break; bridge saves it as ASS \\N.
+
+            args.Handled(true);
+            CommitCurrentAndMoveNext(control);
+            return;
+        }
+
+        if (key == winrt::Windows::System::VirtualKey::PageUp)
+        {
+            args.Handled(true);
+            MoveCurrentBy(-1);
+            return;
+        }
+        if (key == winrt::Windows::System::VirtualKey::PageDown)
+        {
+            args.Handled(true);
+            MoveCurrentBy(1);
+            return;
+        }
+        if (control && key == winrt::Windows::System::VirtualKey::S)
+        {
+            args.Handled(true);
+            SaveFromShortcut();
+        }
+    }
+
+    inline void MainWindow::RootGrid_WorkflowKeyDown(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const& args)
+    {
+        bool const control = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
+        auto const key = args.Key();
+
+        if (key == winrt::Windows::System::VirtualKey::PageUp)
+        {
+            args.Handled(true);
+            MoveCurrentBy(-1);
+        }
+        else if (key == winrt::Windows::System::VirtualKey::PageDown)
+        {
+            args.Handled(true);
+            MoveCurrentBy(1);
+        }
+        else if (control && key == winrt::Windows::System::VirtualKey::S)
+        {
+            args.Handled(true);
+            SaveFromShortcut();
+        }
+    }
+
+    inline void MainWindow::TargetTextBox_WorkflowLoaded(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        if (m_workflowHooksInstalled)
+            return;
+        m_workflowHooksInstalled = true;
+
+        TargetTextBox().KeyDown({ this, &MainWindow::TargetTextBox_WorkflowKeyDown });
+        RootGrid().KeyDown({ this, &MainWindow::RootGrid_WorkflowKeyDown });
+
+        TargetTextBox().TextChanged([this](auto const&, auto const&)
+        {
+            if (m_loadingSelection || !m_initialized || m_rows.empty())
+                return;
+            auto& row = m_rows[m_currentIndex];
+            if (row.status != L"Probl\u00E9m")
+                row.workflowStatus = row.status;
+            RefreshQaAll();
+            RefreshCurrentQaVisuals();
+        });
+
+        PreviousButton().Click([this](auto const&, auto const&)
+        {
+            RefreshCurrentQaVisuals();
+        });
+        NextButton().Click([this](auto const&, auto const&)
+        {
+            RefreshCurrentQaVisuals();
+        });
+
+        if (auto const approve = FindWorkflowButton(RootGrid(), L"Schv\u00E1lit"))
+        {
+            approve.Click([this](auto const&, auto const&)
+            {
+                SyncWorkflowStatusesFromDisplay();
+                RefreshQaAll();
+                RefreshCurrentQaVisuals();
+            });
+        }
+
+        if (auto const open = FindWorkflowButton(RootGrid(), L"Otev\u0159\u00EDt projekt"))
+        {
+            open.Click([this](auto const&, auto const&)
+            {
+                for (auto& row : m_rows)
+                {
+                    row.workflowStatus = row.status.empty() ? winrt::hstring{ L"P\u0159ipraveno" } : row.status;
+                    row.qaIssue = L"";
+                }
+                RefreshQaAll();
+                RebuildSubtitleGrid();
+                LoadCurrentRow();
+                RefreshCurrentQaVisuals();
+            });
+        }
+
+        InitializeWorkflowStatuses();
+        RefreshQaAll();
+        RefreshCurrentQaVisuals();
+    }
+
+    inline void MainWindow::InsertLineBreakButton_Click(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        auto const box = TargetTextBox();
+        std::wstring text{ box.Text().c_str() };
+        auto const selectionStart = static_cast<size_t>((std::max)(0, box.SelectionStart()));
+        auto const selectionLength = static_cast<size_t>((std::max)(0, box.SelectionLength()));
+        auto const safeStart = (std::min)(selectionStart, text.size());
+        auto const safeLength = (std::min)(selectionLength, text.size() - safeStart);
+
+        text.replace(safeStart, safeLength, L"\r\n");
+        box.Text(winrt::hstring{ text });
+        box.SelectionStart(static_cast<int32_t>(safeStart + 2));
+        box.SelectionLength(0);
+        box.Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
+    }
+
+    inline void MainWindow::NextProblemButton_Click(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        if (m_rows.empty())
+            return;
+
+        RefreshQaAll();
+        for (size_t offset = 1; offset <= m_rows.size(); ++offset)
+        {
+            auto const index = static_cast<int32_t>((static_cast<size_t>(m_currentIndex) + offset) % m_rows.size());
+            if (m_rows[index].qaIssue.empty())
+                continue;
+
+            m_currentIndex = index;
+            LoadCurrentRow();
+            RefreshCurrentQaVisuals();
+            TargetTextBox().Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
+            return;
+        }
+
+        StatusBarText().Text(L"QA \u00B7 nebyl nalezen \u017E\u00E1dn\u00FD probl\u00E9m");
+    }
 }
 
 namespace winrt::Aegisub_WinUI::factory_implementation
