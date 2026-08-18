@@ -342,20 +342,39 @@ namespace winrt::Aegisub_WinUI::implementation
         }
 
         auto& row = m_rows[m_currentIndex];
-        row.target = TargetTextBox().Text();
-        row.status = L"Upraveno";
-        row.targetModified = true;
-        SetDirty(true);
+        auto const newText = TargetTextBox().Text();
+        if (!row.historyInitialized)
+        {
+            row.savedTarget = row.target;
+            row.historyInitialized = true;
+        }
+        if (!m_applyingEditHistory && newText != row.target)
+        {
+            row.undoHistory.push_back(row.target);
+            if (row.undoHistory.size() > 200)
+            {
+                row.undoHistory.erase(row.undoHistory.begin());
+            }
+            row.redoHistory.clear();
+        }
+
+        row.target = newText;
+        row.targetModified = row.target != row.savedTarget;
+        row.status = row.targetModified ? L"Upraveno" : L"Ulo\u017Eeno";
+        UpdateDirtyFromRows();
         if (m_currentIndex < static_cast<int32_t>(m_targetEntries.size()))
         {
             m_targetEntries[m_currentIndex].text = row.target;
         }
 
-        TargetInfoText().Text(hstring{ L"#" + std::to_wstring(row.number) + L" \u00B7 upraven\u00FD p\u0159eklad" });
-        TargetStatusText().Text(L"Stav: upraveno");
+        TargetInfoText().Text(hstring{ L"#" + std::to_wstring(row.number) +
+            (row.targetModified ? L" \u00B7 upraven\u00FD p\u0159eklad" : L" \u00B7 ulo\u017Een\u00E1 verze") });
+        TargetStatusText().Text(row.targetModified ? L"Stav: upraveno" : L"Stav: ulo\u017Eeno");
         UpdateTableRow(m_currentIndex);
         UpdateMetrics();
-        StatusBarText().Text(L"Neulo\u017Een\u00E1 zm\u011Bna v aktu\u00E1ln\u00EDm titulku");
+        StatusBarText().Text(row.targetModified
+            ? L"Neulo\u017Een\u00E1 zm\u011Bna v aktu\u00E1ln\u00EDm titulku"
+            : L"Text odpov\u00EDd\u00E1 ulo\u017Een\u00E9 verzi");
     }
 
     void MainWindow::SubtitleRow_Tapped(
@@ -1060,8 +1079,10 @@ namespace winrt::Aegisub_WinUI::implementation
                 row.duration = target.duration;
                 row.target = target.text;
                 row.rawTarget = target.rawText;
+                row.savedTarget = row.target;
                 row.status = L"P\u0159ipraveno";
                 row.targetModified = false;
+                row.historyInitialized = true;
 
                 bool matched = false;
                 std::wstring original;
@@ -1114,8 +1135,10 @@ namespace winrt::Aegisub_WinUI::implementation
                 row.original = source.text;
                 row.target = L"";
                 row.rawTarget = L"";
+                row.savedTarget = row.target;
                 row.status = L"P\u0159ipraveno";
                 row.targetModified = false;
+                row.historyInitialized = true;
                 m_rows.push_back(std::move(row));
             }
         }
@@ -1218,6 +1241,8 @@ namespace winrt::Aegisub_WinUI::implementation
         {
             auto savedRaw = m_rows[i].targetModified ? m_rows[i].target : m_rows[i].rawTarget;
             m_rows[i].rawTarget = savedRaw;
+            m_rows[i].savedTarget = m_rows[i].target;
+            m_rows[i].historyInitialized = true;
             m_rows[i].targetModified = false;
             m_targetEntries[i].start = m_rows[i].start;
             m_targetEntries[i].end = m_rows[i].end;

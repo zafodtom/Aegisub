@@ -386,6 +386,7 @@
                 <TextBlock Text="Shift+Enter → nový řádek" FontSize="11" Opacity="0.5" />
                 <TextBlock Text="Enter → potvrdit + další" FontSize="11" Opacity="0.5" />
                 <TextBlock Text="Ctrl+Enter → schválit + další" FontSize="11" Opacity="0.5" />
+                <TextBlock Text="Ctrl+Z/Y → zpět/znovu" FontSize="11" Opacity="0.5" />
                 <TextBlock Text="Ctrl+S → uložit" FontSize="11" Opacity="0.5" />
             </StackPanel>
         </Grid>

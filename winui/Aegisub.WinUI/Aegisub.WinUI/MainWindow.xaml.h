@@ -91,6 +91,10 @@ namespace winrt::Aegisub_WinUI::implementation
             bool targetModified{};
             winrt::hstring workflowStatus;
             winrt::hstring qaIssue;
+            winrt::hstring savedTarget;
+            std::vector<winrt::hstring> undoHistory;
+            std::vector<winrt::hstring> redoHistory;
+            bool historyInitialized{};
         };
 
         std::vector<SubtitleRowData> m_rows
@@ -117,6 +121,7 @@ namespace winrt::Aegisub_WinUI::implementation
         bool m_workflowHooksInstalled{ false };
         bool m_windowClosingHookInstalled{ false };
         bool m_hasUnsavedChanges{ false };
+        bool m_applyingEditHistory{ false };
 
         static constexpr size_t kMaxCpl = 42;
         static constexpr double kMaxCps = 20.0;
@@ -160,6 +165,8 @@ namespace winrt::Aegisub_WinUI::implementation
         void MoveCurrentBy(int32_t delta);
         void SaveFromShortcut();
         void InsertLineBreakAtSelection();
+        void ApplyEditHistory(bool redo);
+        void UpdateDirtyFromRows();
         double WorkflowTimestampSeconds(winrt::hstring const& value) const;
         winrt::Microsoft::UI::Xaml::Controls::Button FindWorkflowButton(
             winrt::Microsoft::UI::Xaml::DependencyObject const& root,
@@ -221,6 +228,11 @@ namespace winrt::Aegisub_WinUI::implementation
         {
             if (row.workflowStatus.empty())
                 row.workflowStatus = row.status.empty() ? winrt::hstring{ L"P\u0159ipraveno" } : row.status;
+            if (!row.historyInitialized)
+            {
+                row.savedTarget = row.target;
+                row.historyInitialized = true;
+            }
         }
     }
 
@@ -452,6 +464,18 @@ namespace winrt::Aegisub_WinUI::implementation
         {
             args.Handled(true);
             SaveFromShortcut();
+            return;
+        }
+        if (control && key == winrt::Windows::System::VirtualKey::Z)
+        {
+            args.Handled(true);
+            ApplyEditHistory(shift);
+            return;
+        }
+        if (control && key == winrt::Windows::System::VirtualKey::Y)
+        {
+            args.Handled(true);
+            ApplyEditHistory(true);
         }
     }
 
@@ -563,6 +587,44 @@ namespace winrt::Aegisub_WinUI::implementation
         box.SelectionStart(static_cast<int32_t>(safeStart + 2));
         box.SelectionLength(0);
         box.Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
+    }
+
+    inline void MainWindow::ApplyEditHistory(bool redo)
+    {
+        if (m_rows.empty())
+            return;
+
+        auto& row = m_rows[m_currentIndex];
+        auto& source = redo ? row.redoHistory : row.undoHistory;
+        auto& destination = redo ? row.undoHistory : row.redoHistory;
+        if (source.empty())
+        {
+            StatusBarText().Text(redo
+                ? L"Nen\u00ED k dispozici \u017E\u00E1dn\u00E1 zm\u011Bna k opakov\u00E1n\u00ED"
+                : L"Nen\u00ED k dispozici \u017E\u00E1dn\u00E1 zm\u011Bna k vr\u00E1cen\u00ED");
+            return;
+        }
+
+        destination.push_back(row.target);
+        auto const nextText = source.back();
+        source.pop_back();
+
+        m_applyingEditHistory = true;
+        auto const box = TargetTextBox();
+        box.Text(nextText);
+        m_applyingEditHistory = false;
+        box.SelectionStart(static_cast<int32_t>(nextText.size()));
+        box.SelectionLength(0);
+        box.Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
+        StatusBarText().Text(redo ? L"Zm\u011Bna zopakov\u00E1na \u00B7 Ctrl+Y" : L"Zm\u011Bna vr\u00E1cena \u00B7 Ctrl+Z");
+    }
+
+    inline void MainWindow::UpdateDirtyFromRows()
+    {
+        SetDirty(std::any_of(m_rows.begin(), m_rows.end(), [](auto const& row)
+        {
+            return row.targetModified;
+        }));
     }
 
     inline void MainWindow::NextProblemButton_Click(
