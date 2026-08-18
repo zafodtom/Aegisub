@@ -283,8 +283,7 @@ namespace winrt::Aegisub_WinUI::implementation
             return;
         }
 
-        --m_currentIndex;
-        LoadCurrentRow();
+        MoveCurrentBy(-1);
     }
 
     void MainWindow::NextButton_Click(
@@ -296,8 +295,7 @@ namespace winrt::Aegisub_WinUI::implementation
             return;
         }
 
-        ++m_currentIndex;
-        LoadCurrentRow();
+        MoveCurrentBy(1);
     }
 
     void MainWindow::ApproveButton_Click(
@@ -324,6 +322,7 @@ namespace winrt::Aegisub_WinUI::implementation
 
         if (m_currentIndex < static_cast<int32_t>(m_rows.size()) - 1)
         {
+            StoreCurrentEditorSelection();
             ++m_currentIndex;
             LoadCurrentRow();
         }
@@ -449,6 +448,7 @@ namespace winrt::Aegisub_WinUI::implementation
             return;
         }
 
+        StoreCurrentEditorSelection();
         m_currentIndex = index;
         LoadCurrentRow();
     }
@@ -496,6 +496,20 @@ namespace winrt::Aegisub_WinUI::implementation
         targetInfo += row.status.c_str();
         TargetInfoText().Text(hstring{ targetInfo });
         TargetTextBox().Text(row.target);
+        if (row.selectionInitialized)
+        {
+            auto const textLength = static_cast<int32_t>(row.target.size());
+            auto const selectionStart = (std::max)(0, (std::min)(textLength, row.selectionStart));
+            auto const selectionLength = (std::max)(0,
+                (std::min)(textLength - selectionStart, row.selectionLength));
+            TargetTextBox().SelectionStart(selectionStart);
+            TargetTextBox().SelectionLength(selectionLength);
+        }
+        else
+        {
+            TargetTextBox().SelectionStart(0);
+            TargetTextBox().SelectionLength(0);
+        }
 
         std::wstring status = L"Stav: ";
         status += row.status.c_str();
@@ -537,6 +551,7 @@ namespace winrt::Aegisub_WinUI::implementation
         NextButton().IsEnabled(m_currentIndex < static_cast<int32_t>(m_rows.size()) - 1);
 
         UpdateSelectionVisuals();
+        ScrollCurrentRowIntoView();
         UpdateMetrics();
 
         if (m_sourcePath.empty())
@@ -619,6 +634,31 @@ namespace winrt::Aegisub_WinUI::implementation
         {
             m_rowBorders[m_currentIndex].BorderThickness(Thickness{ 4.0, 1.0, 0.0, 1.0 });
         }
+    }
+
+    void MainWindow::StoreCurrentEditorSelection()
+    {
+        if (m_loadingSelection || m_rows.empty() || m_currentIndex < 0
+            || m_currentIndex >= static_cast<int32_t>(m_rows.size()))
+        {
+            return;
+        }
+
+        auto& row = m_rows[m_currentIndex];
+        row.selectionStart = TargetTextBox().SelectionStart();
+        row.selectionLength = TargetTextBox().SelectionLength();
+        row.selectionInitialized = true;
+        row.editSequenceKind = 0;
+    }
+
+    void MainWindow::ScrollCurrentRowIntoView()
+    {
+        if (m_currentIndex < 0 || m_currentIndex >= static_cast<int32_t>(m_rowBorders.size()))
+        {
+            return;
+        }
+
+        m_rowBorders[m_currentIndex].StartBringIntoView();
     }
 
     void MainWindow::UpdateTableRow(int32_t index)
@@ -765,8 +805,10 @@ namespace winrt::Aegisub_WinUI::implementation
                     return;
                 }
 
+                StoreCurrentEditorSelection();
                 m_currentIndex = index;
                 LoadCurrentRow();
+                TargetTextBox().Focus(FocusState::Programmatic);
             });
             grid.Children().Append(rowBorder);
             m_rowBorders.push_back(rowBorder);

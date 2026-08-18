@@ -97,6 +97,9 @@ namespace winrt::Aegisub_WinUI::implementation
             bool historyInitialized{};
             int editSequenceKind{};
             size_t editSequencePosition{};
+            int32_t selectionStart{};
+            int32_t selectionLength{};
+            bool selectionInitialized{};
         };
 
         std::vector<SubtitleRowData> m_rows
@@ -132,6 +135,8 @@ namespace winrt::Aegisub_WinUI::implementation
         void LoadCurrentRow();
         void UpdateMetrics();
         void UpdateSelectionVisuals();
+        void StoreCurrentEditorSelection();
+        void ScrollCurrentRowIntoView();
         void UpdateTableRow(int32_t index);
         int32_t RowIndexFromSender(winrt::Windows::Foundation::IInspectable const& sender) const;
 
@@ -368,6 +373,7 @@ namespace winrt::Aegisub_WinUI::implementation
         if (next == m_currentIndex)
             return;
 
+        StoreCurrentEditorSelection();
         m_currentIndex = next;
         LoadCurrentRow();
         RefreshCurrentQaVisuals();
@@ -404,6 +410,7 @@ namespace winrt::Aegisub_WinUI::implementation
 
         if (m_currentIndex < static_cast<int32_t>(m_rows.size()) - 1)
         {
+            StoreCurrentEditorSelection();
             ++m_currentIndex;
             LoadCurrentRow();
         }
@@ -645,6 +652,7 @@ namespace winrt::Aegisub_WinUI::implementation
             if (m_rows[index].qaIssue.empty())
                 continue;
 
+            StoreCurrentEditorSelection();
             m_currentIndex = index;
             LoadCurrentRow();
             RefreshCurrentQaVisuals();
