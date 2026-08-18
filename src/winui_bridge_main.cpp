@@ -5,6 +5,7 @@
 #include "subtitle_format_ass.h"
 #include "subtitle_format_srt.h"
 #include "subtitle_format_ssa.h"
+#include "winui_bridge_text.h"
 
 #include <libaegisub/charset.h>
 #include <libaegisub/dispatch.h>
@@ -32,93 +33,10 @@ namespace config {
 }
 
 namespace {
-std::string NormalizeSubtitleText(std::string_view input) {
-    std::string output;
-    output.reserve(input.size());
-
-    for (size_t i = 0; i < input.size(); ++i) {
-        if (input[i] == '\\' && i + 1 < input.size()) {
-            const char next = input[i + 1];
-            if (next == 'N' || next == 'n') {
-                output.push_back('\n');
-                ++i;
-                continue;
-            }
-            if (next == 'h') {
-                output.push_back(' ');
-                ++i;
-                continue;
-            }
-        }
-        output.push_back(input[i]);
-    }
-
-    return output;
-}
-
-std::string DenormalizeSubtitleText(std::string_view input) {
-    std::string output;
-    output.reserve(input.size());
-
-    for (size_t i = 0; i < input.size(); ++i) {
-        char const c = input[i];
-        if (c == '\r') {
-            if (i + 1 < input.size() && input[i + 1] == '\n')
-                ++i;
-            output += "\\N";
-        }
-        else if (c == '\n') {
-            output += "\\N";
-        }
-        else {
-            output.push_back(c);
-        }
-    }
-
-    return output;
-}
-
-std::string EscapeField(std::string_view input) {
-    std::string output;
-    output.reserve(input.size());
-
-    for (char c : input) {
-        switch (c) {
-        case '\\': output += "\\\\"; break;
-        case '\t': output += "\\t"; break;
-        case '\r': output += "\\r"; break;
-        case '\n': output += "\\n"; break;
-        default: output.push_back(c); break;
-        }
-    }
-
-    return output;
-}
-
-std::string UnescapeField(std::string_view input) {
-    std::string output;
-    output.reserve(input.size());
-
-    for (size_t i = 0; i < input.size(); ++i) {
-        if (input[i] != '\\' || i + 1 >= input.size()) {
-            output.push_back(input[i]);
-            continue;
-        }
-
-        switch (input[++i]) {
-        case '\\': output.push_back('\\'); break;
-        case 't': output.push_back('\t'); break;
-        case 'r': output.push_back('\r'); break;
-        case 'n': output.push_back('\n'); break;
-        default:
-            output.push_back('\\');
-            output.push_back(input[i]);
-            break;
-        }
-    }
-
-    return output;
-}
+using agi::winui::DenormalizeSubtitleText;
+using agi::winui::EscapeBridgeField;
+using agi::winui::NormalizeSubtitleText;
+using agi::winui::UnescapeBridgeField;
 
 std::string NormalizeTimestamp(agi::Time const& time) {
     std::string value = time.GetSrtFormatted();
@@ -204,8 +122,8 @@ void WriteBridgeFile(agi::fs::path const& output, AssFile const& file) {
         auto displayText = NormalizeSubtitleText(line.GetStrippedText());
         stream << NormalizeTimestamp(line.Start) << '\t'
                << NormalizeTimestamp(line.End) << '\t'
-               << EscapeField(displayText) << '\t'
-               << EscapeField(line.Text.get()) << '\n';
+               << EscapeBridgeField(displayText) << '\t'
+               << EscapeBridgeField(line.Text.get()) << '\n';
     }
 }
 
@@ -244,7 +162,7 @@ void ApplyBridgeFile(agi::fs::path const& input, AssFile& file) {
 
         auto const start = line.substr(0, firstTab);
         auto const end = line.substr(firstTab + 1, secondTab - firstTab - 1);
-        auto const text = UnescapeField(std::string_view(line).substr(secondTab + 1));
+        auto const text = UnescapeBridgeField(std::string_view(line).substr(secondTab + 1));
 
         auto& dialogue = *dialogues[index++];
         dialogue.Start = std::string_view(start);
@@ -259,7 +177,7 @@ void ApplyBridgeFile(agi::fs::path const& input, AssFile& file) {
 void WriteErrorFile(agi::fs::path const& output, std::string_view message) {
     std::ofstream stream(static_cast<std::filesystem::path const&>(output), std::ios::binary | std::ios::trunc);
     if (stream)
-        stream << "ERROR\t" << EscapeField(message) << '\n';
+        stream << "ERROR\t" << EscapeBridgeField(message) << '\n';
 }
 }
 

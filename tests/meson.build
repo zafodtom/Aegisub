@@ -46,6 +46,7 @@ tests_src = [
     'tests/util.cpp',
     'tests/uuencode.cpp',
     'tests/vfr.cpp',
+    'tests/winui_bridge_text.cpp',
     'tests/word_split.cpp',
     'tests/ycbcr.cpp',
 ]
