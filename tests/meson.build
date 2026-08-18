@@ -85,3 +85,12 @@ test_setup = custom_target('setup-test-data',
 
 test('gtest main', runner, env: {'AEGISUB_TEST_DATA_DIR': meson.current_source_dir()}, depends: test_setup)
 test('luajit-52', executable('luajit-52', 'tests/luajit_52.c', dependencies: luajit))
+
+if host_machine.system() == 'windows'
+    winui_bridge_test_python = find_program('python3', 'python')
+    test(
+        'winui bridge round trips',
+        winui_bridge_test_python,
+        args: files('winui_bridge_roundtrip.py') + [winui_bridge],
+    )
+endif

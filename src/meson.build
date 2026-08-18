@@ -283,7 +283,7 @@ if host_machine.system() == 'windows'
 
     winui_bridge_args = conf_defines + ['-DWIN32_LEAN_AND_MEAN']
 
-    executable(
+    winui_bridge = executable(
         'aegisub-winui-bridge',
         winui_bridge_src,
         version_h,
