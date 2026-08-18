@@ -153,6 +153,7 @@ namespace winrt::Aegisub_WinUI::implementation
         void CommitCurrentAndMoveNext(bool approve);
         void MoveCurrentBy(int32_t delta);
         void SaveFromShortcut();
+        void InsertLineBreakAtSelection();
         double WorkflowTimestampSeconds(winrt::hstring const& value) const;
         winrt::Microsoft::UI::Xaml::Controls::Button FindWorkflowButton(
             winrt::Microsoft::UI::Xaml::DependencyObject const& root,
@@ -421,11 +422,11 @@ namespace winrt::Aegisub_WinUI::implementation
 
         if (key == winrt::Windows::System::VirtualKey::Enter)
         {
-            if (shift)
-                return; // TextBox inserts the real line break; bridge saves it as ASS \\N.
-
             args.Handled(true);
-            CommitCurrentAndMoveNext(control);
+            if (shift)
+                InsertLineBreakAtSelection();
+            else
+                CommitCurrentAndMoveNext(control);
             return;
         }
 
@@ -480,8 +481,11 @@ namespace winrt::Aegisub_WinUI::implementation
             return;
         m_workflowHooksInstalled = true;
 
-        TargetTextBox().KeyDown({ this, &MainWindow::TargetTextBox_WorkflowKeyDown });
-        RootGrid().KeyDown({ this, &MainWindow::RootGrid_WorkflowKeyDown });
+        // TextBox class handling may consume Enter before a bubbling KeyDown
+        // subscription runs. PreviewKeyDown lets the workflow decide whether
+        // Enter is a commit or an explicit line break before TextBox edits text.
+        TargetTextBox().PreviewKeyDown({ this, &MainWindow::TargetTextBox_WorkflowKeyDown });
+        RootGrid().PreviewKeyDown({ this, &MainWindow::RootGrid_WorkflowKeyDown });
 
         TargetTextBox().TextChanged([this](auto const&, auto const&)
         {
@@ -537,6 +541,11 @@ namespace winrt::Aegisub_WinUI::implementation
     inline void MainWindow::InsertLineBreakButton_Click(
         winrt::Windows::Foundation::IInspectable const&,
         winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        InsertLineBreakAtSelection();
+    }
+
+    inline void MainWindow::InsertLineBreakAtSelection()
     {
         auto const box = TargetTextBox();
         std::wstring text{ box.Text().c_str() };

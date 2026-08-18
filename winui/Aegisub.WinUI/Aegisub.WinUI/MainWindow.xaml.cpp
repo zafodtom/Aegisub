@@ -1066,7 +1066,9 @@ namespace winrt::Aegisub_WinUI::implementation
         updateFile /= L"aegisub-winui-write-" + std::to_wstring(GetCurrentProcessId()) + L"-" + std::to_wstring(GetTickCount64()) + L".tsv";
 
         auto tempOutput = targetPath.parent_path();
-        tempOutput /= targetPath.filename().wstring() + L".winui.tmp";
+        tempOutput /= targetPath.filename().wstring() +
+            L".winui-" + std::to_wstring(GetCurrentProcessId()) +
+            L"-" + std::to_wstring(GetTickCount64()) + L".tmp";
 
         std::error_code fileError;
         std::filesystem::remove(updateFile, fileError);
