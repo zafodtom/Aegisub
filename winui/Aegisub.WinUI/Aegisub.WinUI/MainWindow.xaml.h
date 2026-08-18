@@ -175,6 +175,7 @@ namespace winrt::Aegisub_WinUI::implementation
         void InsertLineBreakAtSelection();
         void ApplyEditHistory(bool redo);
         void UpdateDirtyFromRows();
+        void MoveToProblem(int32_t direction);
         double WorkflowTimestampSeconds(winrt::hstring const& value) const;
         winrt::Microsoft::UI::Xaml::Controls::Button FindWorkflowButton(
             winrt::Microsoft::UI::Xaml::DependencyObject const& root,
@@ -494,6 +495,7 @@ namespace winrt::Aegisub_WinUI::implementation
         winrt::Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const& args)
     {
         bool const control = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
+        bool const shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
         auto const key = args.Key();
 
         if (key == winrt::Windows::System::VirtualKey::PageUp)
@@ -510,6 +512,11 @@ namespace winrt::Aegisub_WinUI::implementation
         {
             args.Handled(true);
             SaveFromShortcut();
+        }
+        else if (key == winrt::Windows::System::VirtualKey::F8)
+        {
+            args.Handled(true);
+            MoveToProblem(shift ? -1 : 1);
         }
     }
 
@@ -642,13 +649,21 @@ namespace winrt::Aegisub_WinUI::implementation
         winrt::Windows::Foundation::IInspectable const&,
         winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
-        if (m_rows.empty())
+        MoveToProblem(1);
+    }
+
+    inline void MainWindow::MoveToProblem(int32_t direction)
+    {
+        if (m_rows.empty() || direction == 0)
             return;
 
         RefreshQaAll();
-        for (size_t offset = 1; offset <= m_rows.size(); ++offset)
+        auto const rowCount = static_cast<int32_t>(m_rows.size());
+        for (int32_t offset = 1; offset <= rowCount; ++offset)
         {
-            auto const index = static_cast<int32_t>((static_cast<size_t>(m_currentIndex) + offset) % m_rows.size());
+            auto index = (m_currentIndex + direction * offset) % rowCount;
+            if (index < 0)
+                index += rowCount;
             if (m_rows[index].qaIssue.empty())
                 continue;
 

@@ -64,6 +64,7 @@
                     <Button
                         Content="Další problém"
                         MinHeight="34"
+                        ToolTipService.ToolTip="F8 další problém · Shift+F8 předchozí problém"
                         Click="NextProblemButton_Click" />
                 </StackPanel>
             </Grid>
