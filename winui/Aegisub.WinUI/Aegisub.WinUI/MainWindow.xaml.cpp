@@ -234,6 +234,7 @@ namespace winrt::Aegisub_WinUI::implementation
         InitializeDynamicSubtitleGrid();
         RebuildSubtitleGrid();
         HookOpenProjectButton();
+        HookWindowClosing();
         LoadCurrentRow();
     }
 
@@ -344,6 +345,7 @@ namespace winrt::Aegisub_WinUI::implementation
         row.target = TargetTextBox().Text();
         row.status = L"Upraveno";
         row.targetModified = true;
+        SetDirty(true);
         if (m_currentIndex < static_cast<int32_t>(m_targetEntries.size()))
         {
             m_targetEntries[m_currentIndex].text = row.target;
@@ -750,6 +752,71 @@ namespace winrt::Aegisub_WinUI::implementation
         });
     }
 
+    void MainWindow::SetDirty(bool dirty)
+    {
+        m_hasUnsavedChanges = dirty;
+        Title(dirty
+            ? L"Aegisub Translation Workspace *"
+            : L"Aegisub Translation Workspace");
+    }
+
+    bool MainWindow::ConfirmSaveBefore(std::wstring const& action)
+    {
+        if (!m_hasUnsavedChanges)
+        {
+            return true;
+        }
+
+        auto const message =
+            L"Projekt obsahuje neulo\u017Een\u00E9 zm\u011Bny.\n\nChcete je ulo\u017Eit p\u0159ed " + action + L"?";
+        auto const result = MessageBoxW(
+            GetActiveWindow(),
+            message.c_str(),
+            L"Aegisub Translation Workspace",
+            MB_YESNOCANCEL | MB_ICONWARNING);
+
+        if (result == IDCANCEL)
+        {
+            return false;
+        }
+        if (result == IDNO)
+        {
+            return true;
+        }
+
+        std::wstring errorMessage;
+        if (SaveTargetSubtitleFile(errorMessage))
+        {
+            return true;
+        }
+
+        MessageBoxW(
+            GetActiveWindow(),
+            errorMessage.c_str(),
+            L"Ulo\u017Een\u00ED se nezda\u0159ilo",
+            MB_OK | MB_ICONERROR);
+        return false;
+    }
+
+    void MainWindow::HookWindowClosing()
+    {
+        if (m_windowClosingHookInstalled)
+        {
+            return;
+        }
+
+        m_windowClosingHookInstalled = true;
+        AppWindow().Closing([this](
+            Microsoft::UI::Windowing::AppWindow const&,
+            Microsoft::UI::Windowing::AppWindowClosingEventArgs const& args)
+        {
+            if (!ConfirmSaveBefore(L"zav\u0159en\u00EDm aplikace"))
+            {
+                args.Cancel(true);
+            }
+        });
+    }
+
     bool MainWindow::SelectSubtitleFile(std::wstring const& title, std::wstring& filename) const
     {
         wchar_t buffer[32768]{};
@@ -777,6 +844,11 @@ namespace winrt::Aegisub_WinUI::implementation
 
     void MainWindow::OpenProjectFiles()
     {
+        if (!ConfirmSaveBefore(L"otev\u0159en\u00EDm jin\u00E9ho projektu"))
+        {
+            return;
+        }
+
         std::wstring sourceFilename;
         if (!SelectSubtitleFile(L"Otev\u0159\u00EDt origin\u00E1ln\u00ED titulky", sourceFilename))
         {
@@ -791,17 +863,22 @@ namespace winrt::Aegisub_WinUI::implementation
             return;
         }
 
-        m_sourceEntries = std::move(sourceEntries);
-        m_sourcePath = hstring{ sourceFilename };
-        m_targetEntries.clear();
-        m_targetPath = L"";
-        BuildAlignedRows();
-        RebuildSubtitleGrid();
-        LoadCurrentRow();
-
         std::wstring targetFilename;
         if (!SelectSubtitleFile(L"Otev\u0159\u00EDt p\u0159ipraven\u00E9 \u010Desk\u00E9 titulky", targetFilename))
         {
+            // Loading only a source track is a supported workflow. Commit it
+            // only after the target picker has been deliberately dismissed.
+            m_sourceEntries = std::move(sourceEntries);
+            m_sourcePath = hstring{ sourceFilename };
+            m_targetEntries.clear();
+            m_targetPath = L"";
+            BuildAlignedRows();
+            InitializeWorkflowStatuses();
+            RefreshQaAll();
+            RebuildSubtitleGrid();
+            LoadCurrentRow();
+            RefreshCurrentQaVisuals();
+            SetDirty(false);
             return;
         }
 
@@ -812,11 +889,17 @@ namespace winrt::Aegisub_WinUI::implementation
             return;
         }
 
+        m_sourceEntries = std::move(sourceEntries);
+        m_sourcePath = hstring{ sourceFilename };
         m_targetEntries = std::move(targetEntries);
         m_targetPath = hstring{ targetFilename };
         BuildAlignedRows();
+        InitializeWorkflowStatuses();
+        RefreshQaAll();
         RebuildSubtitleGrid();
         LoadCurrentRow();
+        RefreshCurrentQaVisuals();
+        SetDirty(false);
     }
 
     bool MainWindow::ReadSubtitleFile(
@@ -1141,6 +1224,8 @@ namespace winrt::Aegisub_WinUI::implementation
             m_targetEntries[i].text = m_rows[i].target;
             m_targetEntries[i].rawText = savedRaw;
         }
+
+        SetDirty(false);
 
         return true;
     }

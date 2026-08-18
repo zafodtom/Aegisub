@@ -114,6 +114,8 @@ namespace winrt::Aegisub_WinUI::implementation
         bool m_loadingSelection{ false };
         bool m_initialized{ false };
         bool m_workflowHooksInstalled{ false };
+        bool m_windowClosingHookInstalled{ false };
+        bool m_hasUnsavedChanges{ false };
 
         static constexpr size_t kMaxCpl = 42;
         static constexpr double kMaxCps = 20.0;
@@ -127,7 +129,10 @@ namespace winrt::Aegisub_WinUI::implementation
         void InitializeDynamicSubtitleGrid();
         void RebuildSubtitleGrid();
         void HookOpenProjectButton();
+        void HookWindowClosing();
         void OpenProjectFiles();
+        void SetDirty(bool dirty);
+        bool ConfirmSaveBefore(std::wstring const& action);
         bool SelectSubtitleFile(std::wstring const& title, std::wstring& filename) const;
         bool ReadSubtitleFile(
             std::wstring const& filename,
@@ -513,22 +518,6 @@ namespace winrt::Aegisub_WinUI::implementation
             {
                 SyncWorkflowStatusesFromDisplay();
                 RefreshQaAll();
-                RefreshCurrentQaVisuals();
-            });
-        }
-
-        if (auto const open = FindWorkflowButton(RootGrid(), L"Otev\u0159\u00EDt projekt"))
-        {
-            open.Click([this](auto const&, auto const&)
-            {
-                for (auto& row : m_rows)
-                {
-                    row.workflowStatus = row.status.empty() ? winrt::hstring{ L"P\u0159ipraveno" } : row.status;
-                    row.qaIssue = L"";
-                }
-                RefreshQaAll();
-                RebuildSubtitleGrid();
-                LoadCurrentRow();
                 RefreshCurrentQaVisuals();
             });
         }
