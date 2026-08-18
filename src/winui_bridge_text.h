@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cwctype>
+#include <limits>
 #include <string>
 #include <string_view>
 
@@ -91,6 +93,66 @@ inline std::string UnescapeBridgeField(std::string_view input) {
 	}
 
 	return output;
+}
+
+inline std::wstring RebalanceSubtitleText(std::wstring_view input) {
+	std::wstring flattened;
+	flattened.reserve(input.size());
+
+	for (size_t i = 0; i < input.size(); ++i) {
+		if (input[i] != L'\r' && input[i] != L'\n') {
+			flattened.push_back(input[i]);
+			continue;
+		}
+
+		while (!flattened.empty() && std::iswspace(flattened.back()))
+			flattened.pop_back();
+		while (i + 1 < input.size() && std::iswspace(input[i + 1]))
+			++i;
+		if (!flattened.empty() && i + 1 < input.size())
+			flattened.push_back(L' ');
+	}
+
+	size_t bestBegin = std::wstring::npos;
+	size_t bestEnd = std::wstring::npos;
+	size_t bestDifference = (std::numeric_limits<size_t>::max)();
+	bool bestFirstLineLonger = false;
+
+	for (size_t begin = 0; begin < flattened.size();) {
+		if (!std::iswspace(flattened[begin])) {
+			++begin;
+			continue;
+		}
+
+		size_t end = begin + 1;
+		while (end < flattened.size() && std::iswspace(flattened[end]))
+			++end;
+
+		if (begin > 0 && end < flattened.size()) {
+			size_t const leftLength = begin;
+			size_t const rightLength = flattened.size() - end;
+			size_t const difference = leftLength > rightLength
+			? leftLength - rightLength
+			: rightLength - leftLength;
+			bool const firstLineLonger = leftLength >= rightLength;
+
+			if (difference < bestDifference
+				|| (difference == bestDifference && firstLineLonger && !bestFirstLineLonger)) {
+				bestBegin = begin;
+				bestEnd = end;
+				bestDifference = difference;
+				bestFirstLineLonger = firstLineLonger;
+			}
+		}
+
+		begin = end;
+	}
+
+	if (bestBegin == std::wstring::npos)
+		return std::wstring{ input };
+
+	flattened.replace(bestBegin, bestEnd - bestBegin, L"\r\n");
+	return flattened;
 }
 
 }

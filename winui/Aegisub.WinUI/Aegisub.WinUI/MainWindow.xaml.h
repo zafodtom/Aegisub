@@ -1,6 +1,7 @@
 #pragma once
 
 #include "MainWindow.g.h"
+#include "../../../src/winui_bridge_text.h"
 
 #include <algorithm>
 #include <cwctype>
@@ -531,7 +532,21 @@ namespace winrt::Aegisub_WinUI::implementation
         winrt::Windows::Foundation::IInspectable const&,
         winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
-        InsertLineBreakAtSelection();
+        auto const box = TargetTextBox();
+        std::wstring const original{ box.Text().c_str() };
+        auto const balanced = agi::winui::RebalanceSubtitleText(original);
+        if (balanced == original)
+        {
+            StatusBarText().Text(L"Zalomen\u00ED beze zm\u011Bny \u00B7 text je ji\u017E vyv\u00E1\u017Een\u00FD nebo nem\u00E1 vhodnou mezeru");
+            box.Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
+            return;
+        }
+
+        auto const lineBreak = balanced.find(L"\r\n");
+        box.Text(winrt::hstring{ balanced });
+        box.SelectionStart(static_cast<int32_t>(lineBreak + 2));
+        box.SelectionLength(0);
+        box.Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
     }
 
     inline void MainWindow::InsertLineBreakAtSelection()
