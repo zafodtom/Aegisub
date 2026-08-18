@@ -23,6 +23,42 @@ using namespace Microsoft::UI::Xaml::Controls;
 
 namespace
 {
+    struct SingleCharacterEdit
+    {
+        int kind{};
+        size_t position{};
+    };
+
+    SingleCharacterEdit ClassifySingleCharacterEdit(std::wstring_view before, std::wstring_view after)
+    {
+        int kind = 0;
+        if (after.size() == before.size() + 1)
+        {
+            kind = 1;
+        }
+        else if (before.size() == after.size() + 1)
+        {
+            kind = 2;
+        }
+        else
+        {
+            return {};
+        }
+
+        auto const& shorter = kind == 1 ? before : after;
+        auto const& longer = kind == 1 ? after : before;
+        size_t position = 0;
+        while (position < shorter.size() && shorter[position] == longer[position])
+        {
+            ++position;
+        }
+        if (shorter.substr(position) != longer.substr(position + 1))
+        {
+            return {};
+        }
+        return { kind, position };
+    }
+
     std::filesystem::path FindBridgeFrom(std::filesystem::path start)
     {
         if (start.empty())
@@ -343,19 +379,45 @@ namespace winrt::Aegisub_WinUI::implementation
 
         auto& row = m_rows[m_currentIndex];
         auto const newText = TargetTextBox().Text();
+        bool const applyingHistory = m_hasPendingHistoryText && newText == m_pendingHistoryText;
+        if (applyingHistory)
+        {
+            m_hasPendingHistoryText = false;
+            m_pendingHistoryText = L"";
+        }
         if (!row.historyInitialized)
         {
             row.savedTarget = row.target;
             row.historyInitialized = true;
         }
-        if (!m_applyingEditHistory && newText != row.target)
+        if (!applyingHistory && newText != row.target)
         {
-            row.undoHistory.push_back(row.target);
-            if (row.undoHistory.size() > 200)
+            std::wstring const before{ row.target.c_str() };
+            std::wstring const after{ newText.c_str() };
+            auto const edit = ClassifySingleCharacterEdit(before, after);
+            bool const continuesInsertion = edit.kind == 1
+                && row.editSequenceKind == 1
+                && edit.position == row.editSequencePosition;
+            bool const continuesDeletion = edit.kind == 2
+                && row.editSequenceKind == 2
+                && (edit.position == row.editSequencePosition
+                    || edit.position + 1 == row.editSequencePosition);
+
+            if (!continuesInsertion && !continuesDeletion)
             {
-                row.undoHistory.erase(row.undoHistory.begin());
+                row.undoHistory.push_back(row.target);
+                if (row.undoHistory.size() > 200)
+                {
+                    row.undoHistory.erase(row.undoHistory.begin());
+                }
             }
             row.redoHistory.clear();
+            row.editSequenceKind = edit.kind;
+            row.editSequencePosition = edit.position + (edit.kind == 1 ? 1 : 0);
+        }
+        else if (applyingHistory)
+        {
+            row.editSequenceKind = 0;
         }
 
         row.target = newText;
@@ -398,7 +460,8 @@ namespace winrt::Aegisub_WinUI::implementation
             return;
         }
 
-        auto const& row = m_rows[m_currentIndex];
+        auto& row = m_rows[m_currentIndex];
+        row.editSequenceKind = 0;
         m_loadingSelection = true;
 
         std::wstring header = L"Aktu\u00E1ln\u00ED titulek #" + std::to_wstring(row.number);
@@ -1244,6 +1307,7 @@ namespace winrt::Aegisub_WinUI::implementation
             m_rows[i].savedTarget = m_rows[i].target;
             m_rows[i].historyInitialized = true;
             m_rows[i].targetModified = false;
+            m_rows[i].editSequenceKind = 0;
             m_targetEntries[i].start = m_rows[i].start;
             m_targetEntries[i].end = m_rows[i].end;
             m_targetEntries[i].text = m_rows[i].target;

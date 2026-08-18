@@ -95,6 +95,8 @@ namespace winrt::Aegisub_WinUI::implementation
             std::vector<winrt::hstring> undoHistory;
             std::vector<winrt::hstring> redoHistory;
             bool historyInitialized{};
+            int editSequenceKind{};
+            size_t editSequencePosition{};
         };
 
         std::vector<SubtitleRowData> m_rows
@@ -121,7 +123,8 @@ namespace winrt::Aegisub_WinUI::implementation
         bool m_workflowHooksInstalled{ false };
         bool m_windowClosingHookInstalled{ false };
         bool m_hasUnsavedChanges{ false };
-        bool m_applyingEditHistory{ false };
+        bool m_hasPendingHistoryText{ false };
+        winrt::hstring m_pendingHistoryText;
 
         static constexpr size_t kMaxCpl = 42;
         static constexpr double kMaxCps = 20.0;
@@ -608,11 +611,12 @@ namespace winrt::Aegisub_WinUI::implementation
         destination.push_back(row.target);
         auto const nextText = source.back();
         source.pop_back();
+        row.editSequenceKind = 0;
 
-        m_applyingEditHistory = true;
+        m_pendingHistoryText = nextText;
+        m_hasPendingHistoryText = true;
         auto const box = TargetTextBox();
         box.Text(nextText);
-        m_applyingEditHistory = false;
         box.SelectionStart(static_cast<int32_t>(nextText.size()));
         box.SelectionLength(0);
         box.Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
