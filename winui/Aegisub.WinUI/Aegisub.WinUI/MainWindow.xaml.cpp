@@ -543,7 +543,13 @@ namespace winrt::Aegisub_WinUI::implementation
         }
 
         std::wstring tablePosition = std::to_wstring(m_rows.size());
-        tablePosition += L" \u0159\u00E1dk\u016F \u00B7 aktu\u00E1ln\u00ED #";
+        auto const issueCount = std::count_if(m_rows.begin(), m_rows.end(), [](auto const& item)
+        {
+            return !item.qaIssue.empty();
+        });
+        tablePosition += L" \u0159\u00E1dk\u016F \u00B7 probl\u00E9my ";
+        tablePosition += std::to_wstring(issueCount);
+        tablePosition += L" \u00B7 aktu\u00E1ln\u00ED #";
         tablePosition += std::to_wstring(row.number);
         TablePositionText().Text(hstring{ tablePosition });
 

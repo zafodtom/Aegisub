@@ -331,13 +331,20 @@ namespace winrt::Aegisub_WinUI::implementation
     inline void MainWindow::RefreshQaAll()
     {
         InitializeWorkflowStatuses();
+        size_t issueCount = 0;
         for (int32_t i = 0; i < static_cast<int32_t>(m_rows.size()); ++i)
         {
             auto& row = m_rows[i];
             row.qaIssue = EvaluateQaIssue(i);
+            if (!row.qaIssue.empty())
+                ++issueCount;
             row.status = row.qaIssue.empty() ? row.workflowStatus : winrt::hstring{ L"Probl\u00E9m" };
             UpdateTableRow(i);
         }
+
+        NextProblemButton().Content(winrt::box_value(winrt::hstring{
+            L"Dal\u0161\u00ED probl\u00E9m (" + std::to_wstring(issueCount) + L")" }));
+        NextProblemButton().IsEnabled(issueCount > 0);
     }
 
     inline void MainWindow::RefreshCurrentQaVisuals()

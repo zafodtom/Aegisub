@@ -62,6 +62,7 @@
                         Click="NextButton_Click" />
                     <Button Content="Schválit" MinHeight="34" Click="ApproveButton_Click" />
                     <Button
+                        x:Name="NextProblemButton"
                         Content="Další problém"
                         MinHeight="34"
                         ToolTipService.ToolTip="F8 další problém · Shift+F8 předchozí problém"
