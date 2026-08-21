@@ -59,6 +59,26 @@ namespace
         return { kind, position };
     }
 
+    size_t FindOrdinalIgnoreCase(std::wstring_view text, std::wstring_view query)
+    {
+        if (query.empty() || query.size() > text.size())
+            return std::wstring_view::npos;
+
+        for (size_t index = 0; index + query.size() <= text.size(); ++index)
+        {
+            if (CompareStringOrdinal(
+                text.data() + index,
+                static_cast<int>(query.size()),
+                query.data(),
+                static_cast<int>(query.size()),
+                TRUE) == CSTR_EQUAL)
+            {
+                return index;
+            }
+        }
+        return std::wstring_view::npos;
+    }
+
     std::filesystem::path FindBridgeFrom(std::filesystem::path start)
     {
         if (start.empty())
@@ -271,6 +291,7 @@ namespace winrt::Aegisub_WinUI::implementation
         RebuildSubtitleGrid();
         HookWindowClosing();
         LoadCurrentRow();
+        RefreshSearchSummary();
     }
 
     void MainWindow::PreviousButton_Click(
@@ -367,6 +388,44 @@ namespace winrt::Aegisub_WinUI::implementation
         OpenTargetFile();
     }
 
+    void MainWindow::SearchTextBox_TextChanged(
+        Windows::Foundation::IInspectable const&,
+        TextChangedEventArgs const&)
+    {
+        RefreshSearchSummary();
+    }
+
+    void MainWindow::SearchTextBox_KeyDown(
+        Windows::Foundation::IInspectable const&,
+        Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const& args)
+    {
+        if (args.Key() == Windows::System::VirtualKey::Enter)
+        {
+            args.Handled(true);
+            bool const shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+            MoveToSearchResult(shift ? -1 : 1);
+        }
+        else if (args.Key() == Windows::System::VirtualKey::Escape)
+        {
+            args.Handled(true);
+            TargetTextBox().Focus(FocusState::Programmatic);
+        }
+    }
+
+    void MainWindow::SearchPreviousButton_Click(
+        Windows::Foundation::IInspectable const&,
+        RoutedEventArgs const&)
+    {
+        MoveToSearchResult(-1);
+    }
+
+    void MainWindow::SearchNextButton_Click(
+        Windows::Foundation::IInspectable const&,
+        RoutedEventArgs const&)
+    {
+        MoveToSearchResult(1);
+    }
+
     void MainWindow::TargetTextBox_TextChanged(
         Windows::Foundation::IInspectable const&,
         TextChangedEventArgs const&)
@@ -433,6 +492,7 @@ namespace winrt::Aegisub_WinUI::implementation
         TargetStatusText().Text(row.targetModified ? L"Stav: upraveno" : L"Stav: ulo\u017Eeno");
         UpdateTableRow(m_currentIndex);
         UpdateMetrics();
+        RefreshSearchSummary();
         StatusBarText().Text(row.targetModified
             ? L"Neulo\u017Een\u00E1 zm\u011Bna v aktu\u00E1ln\u00EDm titulku"
             : L"Text odpov\u00EDd\u00E1 ulo\u017Een\u00E9 verzi");
@@ -1062,6 +1122,7 @@ namespace winrt::Aegisub_WinUI::implementation
         LoadCurrentRow();
         RefreshCurrentQaVisuals();
         RefreshProjectFileLabels();
+        RefreshSearchSummary();
         SetDirty(false);
     }
 
@@ -1116,6 +1177,72 @@ namespace winrt::Aegisub_WinUI::implementation
         if (!m_rows.empty() && m_currentIndex >= 0 && m_currentIndex < static_cast<int32_t>(m_rows.size()))
             summary += L" \u00B7 aktu\u00E1ln\u00ED #" + std::to_wstring(m_rows[m_currentIndex].number);
         TablePositionText().Text(hstring{ summary });
+    }
+
+    bool MainWindow::RowMatchesSearch(SubtitleRowData const& row, std::wstring_view query) const
+    {
+        return FindOrdinalIgnoreCase(std::wstring_view{ row.original.c_str(), row.original.size() }, query) != std::wstring_view::npos ||
+            FindOrdinalIgnoreCase(std::wstring_view{ row.target.c_str(), row.target.size() }, query) != std::wstring_view::npos;
+    }
+
+    void MainWindow::RefreshSearchSummary()
+    {
+        std::wstring const query{ SearchTextBox().Text().c_str() };
+        auto const matchCount = query.empty() ? 0 : std::count_if(m_rows.begin(), m_rows.end(), [this, &query](auto const& row)
+        {
+            return RowMatchesSearch(row, query);
+        });
+        bool const hasMatches = matchCount > 0;
+        SearchPreviousButton().IsEnabled(hasMatches);
+        SearchNextButton().IsEnabled(hasMatches);
+        SearchResultText().Text(query.empty()
+            ? hstring{}
+            : hstring{ std::to_wstring(matchCount) + (matchCount == 1 ? L" shoda" : L" shod") });
+    }
+
+    void MainWindow::MoveToSearchResult(int32_t direction)
+    {
+        std::wstring const query{ SearchTextBox().Text().c_str() };
+        if (query.empty())
+        {
+            SearchTextBox().Focus(FocusState::Programmatic);
+            return;
+        }
+        if (m_rows.empty() || direction == 0)
+            return;
+
+        auto const rowCount = static_cast<int32_t>(m_rows.size());
+        for (int32_t offset = 1; offset <= rowCount; ++offset)
+        {
+            auto index = (m_currentIndex + direction * offset) % rowCount;
+            if (index < 0)
+                index += rowCount;
+            if (!RowMatchesSearch(m_rows[index], query))
+                continue;
+
+            if (index != m_currentIndex)
+            {
+                StoreCurrentEditorSelection();
+                m_currentIndex = index;
+                LoadCurrentRow();
+                RefreshCurrentQaVisuals();
+            }
+
+            auto const target = std::wstring_view{ m_rows[index].target.c_str(), m_rows[index].target.size() };
+            auto const targetMatch = FindOrdinalIgnoreCase(target, query);
+            if (targetMatch != std::wstring_view::npos)
+            {
+                TargetTextBox().SelectionStart(static_cast<int32_t>(targetMatch));
+                TargetTextBox().SelectionLength(static_cast<int32_t>(query.size()));
+            }
+            TargetTextBox().Focus(FocusState::Programmatic);
+            StatusBarText().Text(hstring{
+                L"Hledání „" + query + L"“ · titulek #" + std::to_wstring(m_rows[index].number) });
+            return;
+        }
+
+        StatusBarText().Text(hstring{ L"Hledání „" + query + L"“ · žádná shoda" });
+        SearchTextBox().Focus(FocusState::Programmatic);
     }
 
     bool MainWindow::ReadSubtitleFile(

@@ -84,6 +84,22 @@ namespace winrt::Aegisub_WinUI::implementation
             winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
 
+        void SearchTextBox_TextChanged(
+            winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::Controls::TextChangedEventArgs const& args);
+
+        void SearchTextBox_KeyDown(
+            winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const& args);
+
+        void SearchPreviousButton_Click(
+            winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+
+        void SearchNextButton_Click(
+            winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+
     private:
         struct SubtitleEntry
         {
@@ -200,6 +216,9 @@ namespace winrt::Aegisub_WinUI::implementation
         void UpdateDirtyFromRows();
         void MoveToProblem(int32_t direction);
         void MoveToUntranslated(int32_t direction);
+        void MoveToSearchResult(int32_t direction);
+        void RefreshSearchSummary();
+        bool RowMatchesSearch(SubtitleRowData const& row, std::wstring_view query) const;
         bool IsTranslationEmpty(winrt::hstring const& text) const;
         double WorkflowTimestampSeconds(winrt::hstring const& value) const;
         winrt::Microsoft::UI::Xaml::Controls::Button FindWorkflowButton(
@@ -588,6 +607,17 @@ namespace winrt::Aegisub_WinUI::implementation
         {
             args.Handled(true);
             OpenProjectFiles();
+        }
+        else if (control && key == winrt::Windows::System::VirtualKey::F)
+        {
+            args.Handled(true);
+            SearchTextBox().Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
+            SearchTextBox().SelectAll();
+        }
+        else if (key == winrt::Windows::System::VirtualKey::F3)
+        {
+            args.Handled(true);
+            MoveToSearchResult(shift ? -1 : 1);
         }
         else if (key == winrt::Windows::System::VirtualKey::F7)
         {
