@@ -88,6 +88,10 @@ namespace winrt::Aegisub_WinUI::implementation
             winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
 
+        void NextReviewButton_Click(
+            winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+
         void SearchTextBox_TextChanged(
             winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::Controls::TextChangedEventArgs const& args);
@@ -209,7 +213,6 @@ namespace winrt::Aegisub_WinUI::implementation
             winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const& args);
         void InitializeWorkflowStatuses();
-        void SyncWorkflowStatusesFromDisplay();
         void RefreshQaAll();
         void RefreshProgressSummary();
         void RefreshCurrentQaVisuals();
@@ -223,14 +226,12 @@ namespace winrt::Aegisub_WinUI::implementation
         void UpdateDirtyFromRows();
         void MoveToProblem(int32_t direction);
         void MoveToUntranslated(int32_t direction);
+        void MoveToReview(int32_t direction);
         void MoveToSearchResult(int32_t direction);
         void RefreshSearchSummary();
         bool RowMatchesSearch(SubtitleRowData const& row, std::wstring_view query) const;
         bool IsTranslationEmpty(winrt::hstring const& text) const;
         double WorkflowTimestampSeconds(winrt::hstring const& value) const;
-        winrt::Microsoft::UI::Xaml::Controls::Button FindWorkflowButton(
-            winrt::Microsoft::UI::Xaml::DependencyObject const& root,
-            winrt::hstring const& content) const;
     };
 
     inline double MainWindow::WorkflowTimestampSeconds(winrt::hstring const& value) const
@@ -252,36 +253,6 @@ namespace winrt::Aegisub_WinUI::implementation
         }
     }
 
-    inline winrt::Microsoft::UI::Xaml::Controls::Button MainWindow::FindWorkflowButton(
-        winrt::Microsoft::UI::Xaml::DependencyObject const& root,
-        winrt::hstring const& content) const
-    {
-        using namespace winrt::Microsoft::UI::Xaml::Controls;
-        if (!root)
-            return nullptr;
-
-        if (auto const button = root.try_as<Button>())
-        {
-            try
-            {
-                if (winrt::unbox_value<winrt::hstring>(button.Content()) == content)
-                    return button;
-            }
-            catch (...)
-            {
-            }
-        }
-
-        auto const count = winrt::Microsoft::UI::Xaml::Media::VisualTreeHelper::GetChildrenCount(root);
-        for (int32_t i = 0; i < count; ++i)
-        {
-            auto const child = winrt::Microsoft::UI::Xaml::Media::VisualTreeHelper::GetChild(root, i);
-            if (auto const found = FindWorkflowButton(child, content))
-                return found;
-        }
-        return nullptr;
-    }
-
     inline void MainWindow::InitializeWorkflowStatuses()
     {
         for (auto& row : m_rows)
@@ -293,17 +264,6 @@ namespace winrt::Aegisub_WinUI::implementation
                 row.savedTarget = row.target;
                 row.historyInitialized = true;
             }
-        }
-    }
-
-    inline void MainWindow::SyncWorkflowStatusesFromDisplay()
-    {
-        for (auto& row : m_rows)
-        {
-            if (row.status != L"Probl\u00E9m" && !row.status.empty())
-                row.workflowStatus = row.status;
-            else if (row.workflowStatus.empty())
-                row.workflowStatus = L"P\u0159ipraveno";
         }
     }
 
@@ -628,6 +588,11 @@ namespace winrt::Aegisub_WinUI::implementation
             args.Handled(true);
             MoveToSearchResult(shift ? -1 : 1);
         }
+        else if (key == winrt::Windows::System::VirtualKey::F6)
+        {
+            args.Handled(true);
+            MoveToReview(shift ? -1 : 1);
+        }
         else if (key == winrt::Windows::System::VirtualKey::F7)
         {
             args.Handled(true);
@@ -673,16 +638,6 @@ namespace winrt::Aegisub_WinUI::implementation
         {
             RefreshCurrentQaVisuals();
         });
-
-        if (auto const approve = FindWorkflowButton(RootGrid(), L"Schv\u00E1lit"))
-        {
-            approve.Click([this](auto const&, auto const&)
-            {
-                SyncWorkflowStatusesFromDisplay();
-                RefreshQaAll();
-                RefreshCurrentQaVisuals();
-            });
-        }
 
         InitializeWorkflowStatuses();
         RefreshQaAll();
@@ -806,6 +761,44 @@ namespace winrt::Aegisub_WinUI::implementation
         winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
         MoveToUntranslated(1);
+    }
+
+    inline void MainWindow::NextReviewButton_Click(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        MoveToReview(1);
+    }
+
+    inline void MainWindow::MoveToReview(int32_t direction)
+    {
+        if (m_rows.empty() || direction == 0)
+            return;
+
+        auto const rowCount = static_cast<int32_t>(m_rows.size());
+        for (int32_t offset = 1; offset <= rowCount; ++offset)
+        {
+            auto index = (m_currentIndex + direction * offset) % rowCount;
+            if (index < 0)
+                index += rowCount;
+            auto const& row = m_rows[index];
+            if (row.workflowStatus == L"Schv\u00E1leno" && row.qaIssue.empty())
+                continue;
+
+            if (index != m_currentIndex)
+            {
+                StoreCurrentEditorSelection();
+                m_currentIndex = index;
+                LoadCurrentRow();
+                RefreshCurrentQaVisuals();
+            }
+            StatusBarText().Text(winrt::hstring{
+                L"Titulek ke kontrole #" + std::to_wstring(row.number) + L" \u00B7 F6" });
+            TargetTextBox().Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
+            return;
+        }
+
+        StatusBarText().Text(L"V\u0161echny titulky jsou schv\u00E1len\u00E9 a bez probl\u00E9m\u016F");
     }
 
     inline void MainWindow::MoveToUntranslated(int32_t direction)

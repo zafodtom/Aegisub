@@ -83,7 +83,18 @@
                         Content="Další ▶"
                         MinHeight="34"
                         Click="NextButton_Click" />
-                    <Button Content="Schválit" MinHeight="34" Click="ApproveButton_Click" />
+                    <Button
+                        x:Name="ApproveButton"
+                        Content="Schválit"
+                        MinHeight="34"
+                        ToolTipService.ToolTip="Schválit a přejít dál · Ctrl+Enter"
+                        Click="ApproveButton_Click" />
+                    <Button
+                        x:Name="NextReviewButton"
+                        Content="Další ke kontrole"
+                        MinHeight="34"
+                        ToolTipService.ToolTip="F6 další neschválený · Shift+F6 předchozí neschválený"
+                        Click="NextReviewButton_Click" />
                     <Button
                         x:Name="NextUntranslatedButton"
                         Content="Další nepřeložený"
@@ -483,6 +494,7 @@
                 <TextBlock Text="Ctrl+O/S → otevřít/uložit" FontSize="11" Opacity="0.5" />
                 <TextBlock Text="Ctrl+Shift+S → uložit jako" FontSize="11" Opacity="0.5" />
                 <TextBlock Text="F7 → nepřeložený" FontSize="11" Opacity="0.5" />
+                <TextBlock Text="F6 → ke kontrole" FontSize="11" Opacity="0.5" />
                 <TextBlock Text="Ctrl+F / F3 → hledat" FontSize="11" Opacity="0.5" />
             </StackPanel>
         </Grid>

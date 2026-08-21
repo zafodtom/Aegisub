@@ -399,38 +399,7 @@ namespace winrt::Aegisub_WinUI::implementation
         Windows::Foundation::IInspectable const&,
         RoutedEventArgs const&)
     {
-        if (m_rows.empty())
-        {
-            return;
-        }
-
-        auto& row = m_rows[m_currentIndex];
-        row.target = TargetTextBox().Text();
-        row.status = L"Schv\u00E1leno";
-        row.workflowStatus = row.status;
-        m_workflowStateDirty = true;
-        UpdateDirtyFromRows();
-        if (m_currentIndex < static_cast<int32_t>(m_targetEntries.size()))
-        {
-            m_targetEntries[m_currentIndex].text = row.target;
-        }
-
-        UpdateTableRow(m_currentIndex);
-        TargetInfoText().Text(hstring{ L"#" + std::to_wstring(row.number) + L" \u00B7 schv\u00E1leno" });
-        TargetStatusText().Text(L"Stav: schv\u00E1leno");
-        StatusBarText().Text(L"Titulek schv\u00E1len");
-
-        if (m_currentIndex < static_cast<int32_t>(m_rows.size()) - 1)
-        {
-            StoreCurrentEditorSelection();
-            ++m_currentIndex;
-            LoadCurrentRow();
-        }
-        else
-        {
-            UpdateSelectionVisuals();
-            UpdateMetrics();
-        }
+        CommitCurrentAndMoveNext(true);
     }
 
     void MainWindow::SaveButton_Click(
@@ -1394,14 +1363,23 @@ namespace winrt::Aegisub_WinUI::implementation
         {
             return !row.qaIssue.empty();
         });
+        auto const approvedCount = std::count_if(m_rows.begin(), m_rows.end(), [](auto const& row)
+        {
+            return row.workflowStatus == L"Schv\u00E1leno" && row.qaIssue.empty();
+        });
+        auto const reviewCount = m_rows.size() - static_cast<size_t>(approvedCount);
         auto const translatedCount = m_rows.size() - static_cast<size_t>(untranslatedCount);
 
         NextUntranslatedButton().Content(box_value(hstring{
             L"Dal\u0161\u00ED nep\u0159elo\u017Een\u00FD (" + std::to_wstring(untranslatedCount) + L")" }));
         NextUntranslatedButton().IsEnabled(untranslatedCount > 0);
+        NextReviewButton().Content(box_value(hstring{
+            L"Dal\u0161\u00ED ke kontrole (" + std::to_wstring(reviewCount) + L")" }));
+        NextReviewButton().IsEnabled(reviewCount > 0);
 
         std::wstring summary = std::to_wstring(translatedCount) + L"/" +
-            std::to_wstring(m_rows.size()) + L" p\u0159elo\u017Eeno \u00B7 probl\u00E9my " +
+            std::to_wstring(m_rows.size()) + L" p\u0159elo\u017Eeno \u00B7 " +
+            std::to_wstring(approvedCount) + L" schv\u00E1leno \u00B7 probl\u00E9my " +
             std::to_wstring(issueCount);
         if (!m_rows.empty() && m_currentIndex >= 0 && m_currentIndex < static_cast<int32_t>(m_rows.size()))
             summary += L" \u00B7 aktu\u00E1ln\u00ED #" + std::to_wstring(m_rows[m_currentIndex].number);
