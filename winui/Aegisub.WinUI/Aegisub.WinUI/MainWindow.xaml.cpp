@@ -399,6 +399,26 @@ namespace winrt::Aegisub_WinUI::implementation
         Windows::Foundation::IInspectable const&,
         RoutedEventArgs const&)
     {
+        if (m_rows.empty())
+            return;
+
+        auto& row = m_rows[m_currentIndex];
+        if (row.workflowStatus == L"Schv\u00E1leno")
+        {
+            row.workflowStatus = L"P\u0159ipraveno";
+            row.status = row.workflowStatus;
+            if (!row.targetModified)
+                row.savedWorkflowStatus = row.workflowStatus;
+            m_workflowStateDirty = true;
+            UpdateDirtyFromRows();
+            RefreshQaAll();
+            UpdateTableRow(m_currentIndex);
+            RefreshCurrentQaVisuals();
+            StatusBarText().Text(L"Titulek vr\u00E1cen ke kontrole");
+            TargetTextBox().Focus(FocusState::Programmatic);
+            return;
+        }
+
         CommitCurrentAndMoveNext(true);
     }
 
@@ -632,6 +652,7 @@ namespace winrt::Aegisub_WinUI::implementation
         std::wstring status = L"Stav: ";
         status += row.status.c_str();
         TargetStatusText().Text(hstring{ status });
+        RefreshApprovalAction();
 
         TranscriptCurrentTimeText().Text(row.start);
         TranscriptCurrentText().Text(row.original);
@@ -1387,6 +1408,24 @@ namespace winrt::Aegisub_WinUI::implementation
         if (!m_rows.empty() && m_currentIndex >= 0 && m_currentIndex < static_cast<int32_t>(m_rows.size()))
             summary += L" \u00B7 aktu\u00E1ln\u00ED #" + std::to_wstring(m_rows[m_currentIndex].number);
         TablePositionText().Text(hstring{ summary });
+    }
+
+    void MainWindow::RefreshApprovalAction()
+    {
+        if (m_rows.empty() || m_currentIndex < 0 || m_currentIndex >= static_cast<int32_t>(m_rows.size()))
+        {
+            ApproveButton().IsEnabled(false);
+            ApproveButton().Content(box_value(hstring{ L"Schv\u00E1lit" }));
+            return;
+        }
+
+        bool const approved = m_rows[m_currentIndex].workflowStatus == L"Schv\u00E1leno";
+        ApproveButton().IsEnabled(true);
+        ApproveButton().Content(box_value(hstring{
+            approved ? L"Vr\u00E1tit ke kontrole" : L"Schv\u00E1lit" }));
+        ToolTipService::SetToolTip(ApproveButton(), box_value(hstring{ approved
+            ? L"Zru\u0161it schv\u00E1len\u00ED aktu\u00E1ln\u00EDho titulku"
+            : L"Schv\u00E1lit a p\u0159ej\u00EDt d\u00E1l \u00B7 Ctrl+Enter" }));
     }
 
     bool MainWindow::RowMatchesSearch(SubtitleRowData const& row, std::wstring_view query) const

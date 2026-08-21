@@ -217,6 +217,7 @@ namespace winrt::Aegisub_WinUI::implementation
         void RefreshQaAll();
         void RefreshProgressSummary();
         void RefreshCurrentQaVisuals();
+        void RefreshApprovalAction();
         winrt::hstring EvaluateQaIssue(int32_t index) const;
         void CommitCurrentAndMoveNext(bool approve);
         void MoveCurrentBy(int32_t delta);
@@ -377,6 +378,7 @@ namespace winrt::Aegisub_WinUI::implementation
         }
         TargetInfoText().Text(winrt::hstring{ info });
         TargetStatusText().Text(winrt::hstring{ L"Stav: " + std::wstring(row.status.c_str()) });
+        RefreshApprovalAction();
 
         if (!row.qaIssue.empty())
         {
