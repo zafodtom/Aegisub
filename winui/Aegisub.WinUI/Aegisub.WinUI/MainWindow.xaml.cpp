@@ -154,6 +154,32 @@ namespace
         return statePath.parent_path() / L"Backups" / filename;
     }
 
+    std::wstring FormatFileWriteTime(std::filesystem::path const& path)
+    {
+        WIN32_FILE_ATTRIBUTE_DATA attributes{};
+        if (!GetFileAttributesExW(path.c_str(), GetFileExInfoStandard, &attributes))
+            return {};
+
+        FILETIME localFileTime{};
+        SYSTEMTIME localSystemTime{};
+        if (!FileTimeToLocalFileTime(&attributes.ftLastWriteTime, &localFileTime) ||
+            !FileTimeToSystemTime(&localFileTime, &localSystemTime))
+        {
+            return {};
+        }
+
+        wchar_t date[80]{};
+        wchar_t time[80]{};
+        if (!GetDateFormatEx(LOCALE_NAME_USER_DEFAULT, DATE_SHORTDATE, &localSystemTime,
+                nullptr, date, static_cast<int>(std::size(date)), nullptr) ||
+            !GetTimeFormatEx(LOCALE_NAME_USER_DEFAULT, TIME_NOSECONDS, &localSystemTime,
+                nullptr, time, static_cast<int>(std::size(time))))
+        {
+            return {};
+        }
+        return std::wstring{ date } + L" " + time;
+    }
+
     void CleanupWorkspaceBackups(
         std::filesystem::path const& directory,
         std::filesystem::path const& currentBackup)
@@ -530,6 +556,17 @@ namespace winrt::Aegisub_WinUI::implementation
             RefreshBackupAction();
             MessageBoxW(GetActiveWindow(), L"Pro aktu\u00E1ln\u00ED \u010Desk\u00FD soubor nebyla nalezena z\u00E1loha.",
                 L"Z\u00E1loha nen\u00ED k dispozici", MB_OK | MB_ICONINFORMATION);
+            return;
+        }
+
+        std::wstring confirmation = L"Opravdu chcete obnovit p\u0159edchoz\u00ED ulo\u017Eenou verzi?";
+        auto const backupTime = FormatFileWriteTime(backupPath);
+        if (!backupTime.empty())
+            confirmation += L"\n\nZ\u00E1loha: " + backupTime;
+        confirmation += L"\n\nSou\u010Dasn\u00E1 verze se zachov\u00E1 jako nov\u00E1 z\u00E1loha.";
+        if (MessageBoxW(GetActiveWindow(), confirmation.c_str(), L"Obnovit z\u00E1lohu?",
+                MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2) != IDYES)
+        {
             return;
         }
 
@@ -1548,12 +1585,29 @@ namespace winrt::Aegisub_WinUI::implementation
     void MainWindow::RefreshBackupAction()
     {
         bool available = false;
+        std::filesystem::path backupPath;
         if (!m_targetPath.empty())
         {
-            auto const backupPath = WorkspaceBackupPath(std::filesystem::path(m_targetPath.c_str()));
+            backupPath = WorkspaceBackupPath(std::filesystem::path(m_targetPath.c_str()));
             available = !backupPath.empty() && std::filesystem::exists(backupPath);
         }
-        RestoreBackupButton().IsEnabled(available);
+
+        auto const button = RestoreBackupButton();
+        button.IsEnabled(available);
+        if (available)
+        {
+            std::wstring tooltip = L"Obnovit p\u0159edchoz\u00ED ulo\u017Eenou verzi";
+            auto const backupTime = FormatFileWriteTime(backupPath);
+            if (!backupTime.empty())
+                tooltip += L" z " + backupTime;
+            tooltip += L"; sou\u010Dasn\u00E1 verze se zachov\u00E1 jako z\u00E1loha";
+            ToolTipService::SetToolTip(button, box_value(hstring{ tooltip }));
+        }
+        else
+        {
+            ToolTipService::SetToolTip(button, box_value(
+                L"Pro otev\u0159en\u00FD \u010Desk\u00FD soubor zat\u00EDm nen\u00ED dostupn\u00E1 z\u00E1loha"));
+        }
     }
 
     bool MainWindow::IsTranslationEmpty(hstring const& text) const
