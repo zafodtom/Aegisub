@@ -79,6 +79,37 @@ namespace
         return std::wstring_view::npos;
     }
 
+    bool PathsReferToSameFile(std::wstring_view first, std::wstring_view second)
+    {
+        if (first.empty() || second.empty())
+            return false;
+
+        std::error_code equivalentError;
+        if (std::filesystem::equivalent(
+            std::filesystem::path(first), std::filesystem::path(second), equivalentError))
+        {
+            return true;
+        }
+
+        std::error_code firstError;
+        std::error_code secondError;
+        auto const firstPath = std::filesystem::absolute(
+            std::filesystem::path(first), firstError).lexically_normal().wstring();
+        auto const secondPath = std::filesystem::absolute(
+            std::filesystem::path(second), secondError).lexically_normal().wstring();
+        return !firstError && !secondError && _wcsicmp(firstPath.c_str(), secondPath.c_str()) == 0;
+    }
+
+    void ShowSameSubtitleFileWarning()
+    {
+        MessageBoxW(
+            GetActiveWindow(),
+            L"Originál a český překlad musí být dva různé soubory.\n\n"
+            L"Zvolený soubor nebyl otevřen, aby nemohlo dojít k přepsání originálu.",
+            L"Stejný soubor nelze použít dvakrát",
+            MB_OK | MB_ICONWARNING);
+    }
+
     std::filesystem::path FindBridgeFrom(std::filesystem::path start)
     {
         if (start.empty())
@@ -1044,6 +1075,11 @@ namespace winrt::Aegisub_WinUI::implementation
         {
             return;
         }
+        if (PathsReferToSameFile(sourceFilename, targetFilename))
+        {
+            ShowSameSubtitleFileWarning();
+            return;
+        }
 
         std::vector<SubtitleEntry> targetEntries;
         if (!ReadSubtitleFile(targetFilename, targetEntries, errorMessage))
@@ -1067,6 +1103,11 @@ namespace winrt::Aegisub_WinUI::implementation
         std::wstring filename;
         if (!SelectSubtitleFile(L"Otev\u0159\u00EDt origin\u00E1ln\u00ED titulky", filename))
             return;
+        if (PathsReferToSameFile(filename, std::wstring_view{ m_targetPath.c_str(), m_targetPath.size() }))
+        {
+            ShowSameSubtitleFileWarning();
+            return;
+        }
 
         std::vector<SubtitleEntry> entries;
         std::wstring errorMessage;
@@ -1099,6 +1140,11 @@ namespace winrt::Aegisub_WinUI::implementation
         std::wstring filename;
         if (!SelectSubtitleFile(L"Otev\u0159\u00EDt p\u0159ipraven\u00E9 \u010Desk\u00E9 titulky", filename))
             return;
+        if (PathsReferToSameFile(filename, std::wstring_view{ m_sourcePath.c_str(), m_sourcePath.size() }))
+        {
+            ShowSameSubtitleFileWarning();
+            return;
+        }
 
         std::vector<SubtitleEntry> entries;
         std::wstring errorMessage;
@@ -1124,6 +1170,14 @@ namespace winrt::Aegisub_WinUI::implementation
         RefreshProjectFileLabels();
         RefreshSearchSummary();
         SetDirty(false);
+        if (!m_sourceEntries.empty() && !m_targetEntries.empty() &&
+            m_sourceEntries.size() != m_targetEntries.size())
+        {
+            StatusBarText().Text(hstring{
+                L"Pozor: originál " + std::to_wstring(m_sourceEntries.size()) +
+                L" titulků · čeština " + std::to_wstring(m_targetEntries.size()) +
+                L" · zkontrolujte párování podle času" });
+        }
     }
 
     void MainWindow::RefreshProjectFileLabels()
@@ -1482,19 +1536,11 @@ namespace winrt::Aegisub_WinUI::implementation
             return false;
         }
 
-        if (!m_sourcePath.empty())
+        if (PathsReferToSameFile(
+            std::wstring_view{ m_sourcePath.c_str(), m_sourcePath.size() }, savePath))
         {
-            std::error_code pathError;
-            auto const sourceAbsolute = std::filesystem::absolute(
-                std::filesystem::path(m_sourcePath.c_str()), pathError).lexically_normal().wstring();
-            pathError.clear();
-            auto const saveAbsolute = std::filesystem::absolute(
-                std::filesystem::path(savePath), pathError).lexically_normal().wstring();
-            if (!pathError && _wcsicmp(sourceAbsolute.c_str(), saveAbsolute.c_str()) == 0)
-            {
-                errorMessage = L"Český překlad nelze uložit přes soubor originálu. Zvolte jiný název souboru.";
-                return false;
-            }
+            errorMessage = L"Český překlad nelze uložit přes soubor originálu. Zvolte jiný název souboru.";
+            return false;
         }
 
         if (!m_targetEntries.empty() && m_rows.size() != m_targetEntries.size())
