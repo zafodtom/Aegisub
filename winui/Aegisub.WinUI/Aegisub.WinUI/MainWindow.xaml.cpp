@@ -154,6 +154,14 @@ namespace
         return statePath.parent_path() / L"Backups" / filename;
     }
 
+    std::filesystem::path WorkspaceDraftPath(hstring const& targetPath)
+    {
+        auto path = WorkspaceStatePath(targetPath);
+        if (!path.empty())
+            path.replace_extension(L".draft");
+        return path;
+    }
+
     std::wstring FormatFileWriteTime(std::filesystem::path const& path)
     {
         WIN32_FILE_ATTRIBUTE_DATA attributes{};
@@ -915,6 +923,7 @@ namespace winrt::Aegisub_WinUI::implementation
         }
 
         m_loadingSelection = false;
+        ScheduleWorkspaceDraftSave();
     }
 
     void MainWindow::UpdateMetrics()
@@ -1200,6 +1209,7 @@ namespace winrt::Aegisub_WinUI::implementation
         }
         if (result == IDNO)
         {
+            DeleteWorkspaceDraft();
             return true;
         }
 
@@ -1454,6 +1464,8 @@ namespace winrt::Aegisub_WinUI::implementation
     {
         BuildAlignedRows();
         LoadWorkspaceState();
+        m_forceSaveAsForRecoveredDraft = false;
+        bool const restoredDraft = LoadWorkspaceDraft();
         InitializeWorkflowStatuses();
         RefreshQaAll();
         RebuildSubtitleGrid();
@@ -1461,9 +1473,15 @@ namespace winrt::Aegisub_WinUI::implementation
         RefreshCurrentQaVisuals();
         RefreshProjectFileLabels();
         RefreshSearchSummary();
-        SetDirty(false);
-        m_hasTargetFileFingerprint = !m_targetPath.empty() && FileFingerprint(
-            std::filesystem::path(m_targetPath.c_str()), m_targetFileSize, m_targetFileTimestamp);
+        if (restoredDraft)
+            UpdateDirtyFromRows();
+        else
+            SetDirty(false);
+        if (!m_forceSaveAsForRecoveredDraft)
+        {
+            m_hasTargetFileFingerprint = !m_targetPath.empty() && FileFingerprint(
+                std::filesystem::path(m_targetPath.c_str()), m_targetFileSize, m_targetFileTimestamp);
+        }
         if (!m_targetPath.empty())
         {
             auto const backupPath = WorkspaceBackupPath(std::filesystem::path(m_targetPath.c_str()));
@@ -1478,6 +1496,8 @@ namespace winrt::Aegisub_WinUI::implementation
                 L" titulk\u016F \u00B7 \u010De\u0161tina " + std::to_wstring(m_targetEntries.size()) +
                 L" \u00B7 zkontrolujte p\u00E1rov\u00E1n\u00ED podle \u010Dasu" });
         }
+        if (restoredDraft)
+            StatusBarText().Text(L"Obnoven neulo\u017Een\u00FD pracovn\u00ED koncept");
     }
 
     void MainWindow::LoadWorkspaceState()
@@ -1595,6 +1615,217 @@ namespace winrt::Aegisub_WinUI::implementation
             return false;
         }
         return true;
+    }
+
+    bool MainWindow::LoadWorkspaceDraft()
+    {
+        auto const draftPath = WorkspaceDraftPath(m_targetPath);
+        if (draftPath.empty() || m_targetPath.empty())
+            return false;
+
+        std::ifstream stream(draftPath, std::ios::binary);
+        if (!stream)
+            return false;
+
+        std::string line;
+        if (!std::getline(stream, line) || line != "AEGISUB-WINUI-DRAFT\t1")
+            return false;
+        if (!std::getline(stream, line) || line.rfind("FILE\t", 0) != 0)
+            return false;
+
+        uintmax_t savedSize{};
+        int64_t savedTimestamp{};
+        auto const sizeSeparator = line.find('\t', 5);
+        try
+        {
+            if (sizeSeparator == std::string::npos)
+                return false;
+            savedSize = static_cast<uintmax_t>(std::stoull(line.substr(5, sizeSeparator - 5)));
+            savedTimestamp = std::stoll(line.substr(sizeSeparator + 1));
+        }
+        catch (...)
+        {
+            return false;
+        }
+
+        struct DraftRow
+        {
+            int32_t index{};
+            std::wstring status;
+            std::wstring target;
+        };
+        std::vector<DraftRow> draftRows;
+        int32_t restoredIndex = 0;
+        bool workflowDirty = false;
+        size_t savedRowCount = 0;
+        while (std::getline(stream, line))
+        {
+            if (!line.empty() && line.back() == '\r')
+                line.pop_back();
+            try
+            {
+                if (line.rfind("CURRENT\t", 0) == 0)
+                {
+                    restoredIndex = std::stoi(line.substr(8));
+                    continue;
+                }
+                if (line.rfind("WORKFLOW\t", 0) == 0)
+                {
+                    workflowDirty = line.substr(9) == "1";
+                    continue;
+                }
+                if (line.rfind("ROWS\t", 0) == 0)
+                {
+                    savedRowCount = static_cast<size_t>(std::stoull(line.substr(5)));
+                    continue;
+                }
+                if (line.rfind("ROW\t", 0) != 0)
+                    continue;
+                auto const indexSeparator = line.find('\t', 4);
+                auto const statusSeparator = indexSeparator == std::string::npos
+                    ? std::string::npos
+                    : line.find('\t', indexSeparator + 1);
+                if (indexSeparator == std::string::npos || statusSeparator == std::string::npos)
+                    continue;
+                DraftRow row;
+                row.index = std::stoi(line.substr(4, indexSeparator - 4));
+                row.status = to_hstring(UnescapeBridgeField(
+                    line.substr(indexSeparator + 1, statusSeparator - indexSeparator - 1))).c_str();
+                row.target = to_hstring(UnescapeBridgeField(line.substr(statusSeparator + 1))).c_str();
+                draftRows.push_back(std::move(row));
+            }
+            catch (...)
+            {
+            }
+        }
+
+        if (savedRowCount != m_rows.size() || draftRows.size() != m_rows.size())
+            return false;
+
+        uintmax_t currentSize{};
+        int64_t currentTimestamp{};
+        bool const sameFileVersion = FileFingerprint(
+            std::filesystem::path(m_targetPath.c_str()), currentSize, currentTimestamp) &&
+            currentSize == savedSize && currentTimestamp == savedTimestamp;
+        auto const message = sameFileVersion
+            ? L"Byl nalezen neulo\u017Een\u00FD pracovn\u00ED koncept. Chcete jej obnovit?"
+            : L"Byl nalezen koncept ze star\u0161\u00ED verze souboru. Chcete jej obnovit?\n\n"
+              L"Kv\u016Fli bezpe\u010Dnosti jej bude mo\u017En\u00E9 ulo\u017Eit pouze pod jin\u00FDm n\u00E1zvem.";
+        if (MessageBoxW(GetActiveWindow(), message, L"Obnovit pracovn\u00ED koncept?",
+                MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON1) != IDYES)
+        {
+            DeleteWorkspaceDraft();
+            return false;
+        }
+
+        for (auto const& draft : draftRows)
+        {
+            if (draft.index < 0 || draft.index >= static_cast<int32_t>(m_rows.size()))
+                return false;
+            auto& row = m_rows[draft.index];
+            row.target = hstring{ draft.target };
+            row.targetModified = !agi::winui::EquivalentEditorText(
+                row.target.c_str(), row.savedTarget.c_str());
+            row.workflowStatus = hstring{ draft.status };
+            row.status = row.targetModified ? hstring{ L"Upraveno" } : row.workflowStatus;
+            row.historyInitialized = true;
+            if (draft.index < static_cast<int32_t>(m_targetEntries.size()))
+                m_targetEntries[draft.index].text = row.target;
+        }
+        m_workflowStateDirty = workflowDirty;
+        m_currentIndex = m_rows.empty()
+            ? 0
+            : (std::max)(0, (std::min)(static_cast<int32_t>(m_rows.size()) - 1, restoredIndex));
+        m_forceSaveAsForRecoveredDraft = !sameFileVersion;
+        if (m_forceSaveAsForRecoveredDraft)
+        {
+            m_hasTargetFileFingerprint = true;
+            m_targetFileSize = savedSize;
+            m_targetFileTimestamp = savedTimestamp;
+        }
+        return true;
+    }
+
+    bool MainWindow::SaveWorkspaceDraft()
+    {
+        if (!m_hasUnsavedChanges)
+        {
+            DeleteWorkspaceDraft();
+            return true;
+        }
+
+        auto const draftPath = WorkspaceDraftPath(m_targetPath);
+        if (draftPath.empty() || m_targetPath.empty() || !m_hasTargetFileFingerprint)
+            return false;
+
+        std::error_code error;
+        std::filesystem::create_directories(draftPath.parent_path(), error);
+        if (error)
+            return false;
+
+        auto tempPath = draftPath;
+        tempPath += L".tmp-" + std::to_wstring(GetCurrentProcessId());
+        std::filesystem::remove(tempPath, error);
+        {
+            std::ofstream stream(tempPath, std::ios::binary | std::ios::trunc);
+            if (!stream)
+                return false;
+            stream << "AEGISUB-WINUI-DRAFT\t1\n";
+            stream << "FILE\t" << m_targetFileSize << '\t' << m_targetFileTimestamp << '\n';
+            stream << "ROWS\t" << m_rows.size() << '\n';
+            stream << "CURRENT\t" << m_currentIndex << '\n';
+            stream << "WORKFLOW\t" << (m_workflowStateDirty ? 1 : 0) << '\n';
+            for (size_t index = 0; index < m_rows.size(); ++index)
+            {
+                auto const& row = m_rows[index];
+                auto const& status = row.workflowStatus.empty() ? row.status : row.workflowStatus;
+                stream << "ROW\t" << index << '\t'
+                    << EscapeBridgeField(to_string(status)) << '\t'
+                    << EscapeBridgeField(to_string(row.target)) << '\n';
+            }
+            if (!stream)
+                return false;
+        }
+
+        if (!MoveFileExW(tempPath.c_str(), draftPath.c_str(),
+            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+        {
+            std::filesystem::remove(tempPath, error);
+            return false;
+        }
+        return true;
+    }
+
+    void MainWindow::DeleteWorkspaceDraft()
+    {
+        if (m_workspaceDraftTimer)
+            m_workspaceDraftTimer.Stop();
+        auto const draftPath = WorkspaceDraftPath(m_targetPath);
+        if (draftPath.empty())
+            return;
+        std::error_code error;
+        std::filesystem::remove(draftPath, error);
+    }
+
+    void MainWindow::ScheduleWorkspaceDraftSave()
+    {
+        if (!m_initialized || m_targetPath.empty())
+            return;
+        if (!m_workspaceDraftTimer)
+        {
+            auto const queue = DispatcherQueue();
+            if (!queue)
+                return;
+            m_workspaceDraftTimer = queue.CreateTimer();
+            m_workspaceDraftTimer.Interval(std::chrono::seconds(1));
+            m_workspaceDraftTimer.IsRepeating(false);
+            m_workspaceDraftTimer.Tick([this](auto const&, auto const&)
+            {
+                SaveWorkspaceDraft();
+            });
+        }
+        m_workspaceDraftTimer.Stop();
+        m_workspaceDraftTimer.Start();
     }
 
     void MainWindow::RefreshProjectFileLabels()
@@ -2001,6 +2232,7 @@ namespace winrt::Aegisub_WinUI::implementation
     {
         m_lastSaveCreatedBackup = false;
         m_lastSaveDetectedExternalChange = false;
+        auto const previousDraftPath = WorkspaceDraftPath(m_targetPath);
         auto const savePath = destinationPath.empty() ? std::wstring{ m_targetPath.c_str() } : destinationPath;
         auto const templatePath = m_targetPath.empty()
             ? std::wstring{ m_sourcePath.c_str() }
@@ -2020,18 +2252,20 @@ namespace winrt::Aegisub_WinUI::implementation
             return false;
         }
 
-        if (m_hasTargetFileFingerprint && !m_targetPath.empty() &&
+        if ((m_hasTargetFileFingerprint || m_forceSaveAsForRecoveredDraft) && !m_targetPath.empty() &&
             PathsReferToSameFile(
                 std::wstring_view{ m_targetPath.c_str(), m_targetPath.size() }, savePath))
         {
             uintmax_t currentSize{};
             int64_t currentTimestamp{};
-            if (!FileFingerprint(targetPath, currentSize, currentTimestamp) ||
+            if (m_forceSaveAsForRecoveredDraft ||
+                !FileFingerprint(targetPath, currentSize, currentTimestamp) ||
                 currentSize != m_targetFileSize || currentTimestamp != m_targetFileTimestamp)
             {
                 m_lastSaveDetectedExternalChange = true;
-                errorMessage = L"Otev\u0159en\u00FD \u010Desk\u00FD soubor od posledn\u00EDho na\u010Dten\u00ED zm\u011Bnila jin\u00E1 aplikace. "
-                    L"Aegisub jej proto nep\u0159epsal.";
+                errorMessage = m_forceSaveAsForRecoveredDraft
+                    ? L"Obnoven\u00FD koncept poch\u00E1z\u00ED ze star\u0161\u00ED verze \u010Desk\u00E9ho souboru. Aegisub jej proto nep\u0159epsal."
+                    : L"Otev\u0159en\u00FD \u010Desk\u00FD soubor od posledn\u00EDho na\u010Dten\u00ED zm\u011Bnila jin\u00E1 aplikace. Aegisub jej proto nep\u0159epsal.";
                 return false;
             }
         }
@@ -2175,11 +2409,16 @@ namespace winrt::Aegisub_WinUI::implementation
             m_targetEntries[i].rawText = savedRaw;
         }
 
+        if (m_workspaceDraftTimer)
+            m_workspaceDraftTimer.Stop();
+        std::filesystem::remove(previousDraftPath, fileError);
         m_targetPath = hstring{ savePath };
+        m_forceSaveAsForRecoveredDraft = false;
         m_hasTargetFileFingerprint = FileFingerprint(
             targetPath, m_targetFileSize, m_targetFileTimestamp);
         RefreshProjectFileLabels();
         SaveWorkspaceState();
+        DeleteWorkspaceDraft();
         m_workflowStateDirty = false;
         SetDirty(false);
 

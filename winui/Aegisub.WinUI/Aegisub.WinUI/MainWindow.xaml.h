@@ -178,9 +178,11 @@ namespace winrt::Aegisub_WinUI::implementation
         bool m_workflowStateDirty{ false };
         bool m_lastSaveCreatedBackup{ false };
         bool m_lastSaveDetectedExternalChange{ false };
+        bool m_forceSaveAsForRecoveredDraft{ false };
         bool m_hasTargetFileFingerprint{ false };
         uintmax_t m_targetFileSize{};
         int64_t m_targetFileTimestamp{};
+        winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer m_workspaceDraftTimer{ nullptr };
         bool m_hasPendingHistoryText{ false };
         winrt::hstring m_pendingHistoryText;
 
@@ -204,6 +206,10 @@ namespace winrt::Aegisub_WinUI::implementation
         void RefreshLoadedProject();
         void LoadWorkspaceState();
         bool SaveWorkspaceState();
+        bool LoadWorkspaceDraft();
+        bool SaveWorkspaceDraft();
+        void DeleteWorkspaceDraft();
+        void ScheduleWorkspaceDraftSave();
         void RefreshProjectFileLabels();
         void RefreshBackupAction();
         void SetDirty(bool dirty);
@@ -779,6 +785,7 @@ namespace winrt::Aegisub_WinUI::implementation
         {
             return row.targetModified;
         }));
+        ScheduleWorkspaceDraftSave();
     }
 
     inline void MainWindow::NextProblemButton_Click(
