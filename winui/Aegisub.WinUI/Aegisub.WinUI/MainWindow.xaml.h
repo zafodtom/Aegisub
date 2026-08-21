@@ -44,6 +44,10 @@ namespace winrt::Aegisub_WinUI::implementation
             winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
 
+        void SaveAsButton_Click(
+            winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+
         void OpenBothButton_Click(
             winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
@@ -159,15 +163,17 @@ namespace winrt::Aegisub_WinUI::implementation
         void OpenSourceFile();
         void OpenTargetFile();
         void RefreshLoadedProject();
+        void RefreshProjectFileLabels();
         void SetDirty(bool dirty);
         bool ConfirmSaveBefore(std::wstring const& action);
         bool SelectSubtitleFile(std::wstring const& title, std::wstring& filename) const;
+        bool SelectSubtitleSaveFile(std::wstring& filename) const;
         bool ReadSubtitleFile(
             std::wstring const& filename,
             std::vector<SubtitleEntry>& entries,
             std::wstring& errorMessage) const;
         void BuildAlignedRows();
-        bool SaveTargetSubtitleFile(std::wstring& errorMessage);
+        bool SaveTargetSubtitleFile(std::wstring& errorMessage, std::wstring const& destinationPath = {});
 
         void TargetTextBox_WorkflowKeyDown(
             winrt::Windows::Foundation::IInspectable const& sender,
@@ -183,6 +189,7 @@ namespace winrt::Aegisub_WinUI::implementation
         void CommitCurrentAndMoveNext(bool approve);
         void MoveCurrentBy(int32_t delta);
         void SaveFromShortcut();
+        void SaveAsFromShortcut();
         void InsertLineBreakAtSelection();
         void ApplyEditHistory(bool redo);
         void UpdateDirtyFromRows();
@@ -442,6 +449,12 @@ namespace winrt::Aegisub_WinUI::implementation
         if (m_rows.empty())
             return;
 
+        if (m_targetPath.empty())
+        {
+            SaveAsFromShortcut();
+            return;
+        }
+
         auto& row = m_rows[m_currentIndex];
         row.target = TargetTextBox().Text();
         if (m_currentIndex < static_cast<int32_t>(m_targetEntries.size()))
@@ -457,6 +470,32 @@ namespace winrt::Aegisub_WinUI::implementation
 
         auto const targetName = std::filesystem::path(m_targetPath.c_str()).filename().wstring();
         StatusBarText().Text(winrt::hstring{ L"\u010Ce\u0161tina ulo\u017Eena \u00B7 " + targetName + L" \u00B7 Ctrl+S" });
+    }
+
+    inline void MainWindow::SaveAsFromShortcut()
+    {
+        if (m_rows.empty())
+            return;
+
+        std::wstring destination;
+        if (!SelectSubtitleSaveFile(destination))
+            return;
+
+        auto& row = m_rows[m_currentIndex];
+        row.target = TargetTextBox().Text();
+        if (m_currentIndex < static_cast<int32_t>(m_targetEntries.size()))
+            m_targetEntries[m_currentIndex].text = row.target;
+
+        std::wstring errorMessage;
+        if (!SaveTargetSubtitleFile(errorMessage, destination))
+        {
+            StatusBarText().Text(L"Ulo\u017Een\u00ED \u010Desk\u00FDch titulk\u016F se nezda\u0159ilo");
+            MessageBoxW(GetActiveWindow(), errorMessage.c_str(), L"Aegisub Translation Workspace", MB_OK | MB_ICONERROR);
+            return;
+        }
+
+        auto const targetName = std::filesystem::path(m_targetPath.c_str()).filename().wstring();
+        StatusBarText().Text(winrt::hstring{ L"\u010Ce\u0161tina ulo\u017Eena jako \u00B7 " + targetName });
     }
 
     inline void MainWindow::TargetTextBox_WorkflowKeyDown(
@@ -492,7 +531,10 @@ namespace winrt::Aegisub_WinUI::implementation
         if (control && key == winrt::Windows::System::VirtualKey::S)
         {
             args.Handled(true);
-            SaveFromShortcut();
+            if (shift)
+                SaveAsFromShortcut();
+            else
+                SaveFromShortcut();
             return;
         }
         if (control && key == winrt::Windows::System::VirtualKey::Z)
@@ -529,7 +571,10 @@ namespace winrt::Aegisub_WinUI::implementation
         else if (control && key == winrt::Windows::System::VirtualKey::S)
         {
             args.Handled(true);
-            SaveFromShortcut();
+            if (shift)
+                SaveAsFromShortcut();
+            else
+                SaveFromShortcut();
         }
         else if (control && key == winrt::Windows::System::VirtualKey::O)
         {

@@ -336,34 +336,14 @@ namespace winrt::Aegisub_WinUI::implementation
         Windows::Foundation::IInspectable const&,
         RoutedEventArgs const&)
     {
-        if (m_rows.empty())
-        {
-            return;
-        }
+        SaveFromShortcut();
+    }
 
-        auto& row = m_rows[m_currentIndex];
-        row.target = TargetTextBox().Text();
-        if (m_currentIndex < static_cast<int32_t>(m_targetEntries.size()))
-        {
-            m_targetEntries[m_currentIndex].text = row.target;
-        }
-        UpdateTableRow(m_currentIndex);
-        UpdateMetrics();
-
-        std::wstring errorMessage;
-        if (!SaveTargetSubtitleFile(errorMessage))
-        {
-            StatusBarText().Text(L"Ulo\u017Een\u00ED \u010Desk\u00FDch titulk\u016F se nezda\u0159ilo");
-            MessageBoxW(
-                GetActiveWindow(),
-                errorMessage.c_str(),
-                L"Aegisub Translation Workspace",
-                MB_OK | MB_ICONERROR);
-            return;
-        }
-
-        auto const targetName = std::filesystem::path(m_targetPath.c_str()).filename().wstring();
-        StatusBarText().Text(hstring{ L"\u010Ce\u0161tina ulo\u017Eena p\u0159es Aegisub core \u00B7 " + targetName });
+    void MainWindow::SaveAsButton_Click(
+        Windows::Foundation::IInspectable const&,
+        RoutedEventArgs const&)
+    {
+        SaveAsFromShortcut();
     }
 
     void MainWindow::OpenBothButton_Click(
@@ -884,8 +864,12 @@ namespace winrt::Aegisub_WinUI::implementation
             return true;
         }
 
+        std::wstring destination;
+        if (m_targetPath.empty() && !SelectSubtitleSaveFile(destination))
+            return false;
+
         std::wstring errorMessage;
-        if (SaveTargetSubtitleFile(errorMessage))
+        if (SaveTargetSubtitleFile(errorMessage, destination))
         {
             return true;
         }
@@ -937,6 +921,47 @@ namespace winrt::Aegisub_WinUI::implementation
         {
             return false;
         }
+
+        filename = buffer;
+        return true;
+    }
+
+    bool MainWindow::SelectSubtitleSaveFile(std::wstring& filename) const
+    {
+        wchar_t buffer[32768]{};
+        std::wstring suggestedName;
+        if (!m_targetPath.empty())
+        {
+            suggestedName = std::filesystem::path(m_targetPath.c_str()).filename().wstring();
+        }
+        else if (!m_sourcePath.empty())
+        {
+            auto source = std::filesystem::path(m_sourcePath.c_str());
+            suggestedName = source.stem().wstring() + L".cs" + source.extension().wstring();
+        }
+        if (!suggestedName.empty())
+        {
+            wcsncpy_s(buffer, suggestedName.c_str(), _TRUNCATE);
+        }
+
+        wchar_t const filter[] =
+            L"Titulky SubRip (*.srt)\0*.srt\0"
+            L"Titulky Advanced SubStation Alpha (*.ass)\0*.ass\0"
+            L"Titulky SubStation Alpha (*.ssa)\0*.ssa\0"
+            L"V\u0161echny soubory (*.*)\0*.*\0\0";
+
+        OPENFILENAMEW dialog{};
+        dialog.lStructSize = sizeof(dialog);
+        dialog.hwndOwner = GetActiveWindow();
+        dialog.lpstrFilter = filter;
+        dialog.lpstrFile = buffer;
+        dialog.nMaxFile = static_cast<DWORD>(std::size(buffer));
+        dialog.lpstrTitle = L"Ulo\u017Eit \u010Desk\u00E9 titulky jako";
+        dialog.lpstrDefExt = L"srt";
+        dialog.Flags = OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR | OFN_OVERWRITEPROMPT;
+
+        if (!GetSaveFileNameW(&dialog))
+            return false;
 
         filename = buffer;
         return true;
@@ -1045,7 +1070,28 @@ namespace winrt::Aegisub_WinUI::implementation
         RebuildSubtitleGrid();
         LoadCurrentRow();
         RefreshCurrentQaVisuals();
+        RefreshProjectFileLabels();
         SetDirty(false);
+    }
+
+    void MainWindow::RefreshProjectFileLabels()
+    {
+        auto update = [](TextBlock const& label, hstring const& path, wchar_t const* emptyText)
+        {
+            if (path.empty())
+            {
+                label.Text(emptyText);
+                ToolTipService::SetToolTip(label, nullptr);
+                return;
+            }
+
+            auto const filename = std::filesystem::path(path.c_str()).filename().wstring();
+            label.Text(hstring{ filename });
+            ToolTipService::SetToolTip(label, box_value(path));
+        };
+
+        update(OriginalFileText(), m_sourcePath, L"Soubor nen\u00ED na\u010Dten");
+        update(TargetFileText(), m_targetPath, L"Nov\u00FD p\u0159eklad \u00B7 zat\u00EDm neulo\u017Een");
     }
 
     bool MainWindow::ReadSubtitleFile(
@@ -1273,15 +1319,34 @@ namespace winrt::Aegisub_WinUI::implementation
         m_currentIndex = 0;
     }
 
-    bool MainWindow::SaveTargetSubtitleFile(std::wstring& errorMessage)
+    bool MainWindow::SaveTargetSubtitleFile(std::wstring& errorMessage, std::wstring const& destinationPath)
     {
-        if (m_targetPath.empty() || m_targetEntries.empty())
+        auto const savePath = destinationPath.empty() ? std::wstring{ m_targetPath.c_str() } : destinationPath;
+        auto const templatePath = m_targetPath.empty()
+            ? std::wstring{ m_sourcePath.c_str() }
+            : std::wstring{ m_targetPath.c_str() };
+        if (savePath.empty() || templatePath.empty() || m_rows.empty())
         {
-            errorMessage = L"Nejd\u0159\u00EDve na\u010Dt\u011Bte p\u0159ipraven\u00E9 \u010Desk\u00E9 titulky pomoc\u00ED Otev\u0159\u00EDt projekt.";
+            errorMessage = L"Nejd\u0159\u00EDve na\u010Dt\u011Bte origin\u00E1ln\u00ED nebo p\u0159ipraven\u00E9 \u010Desk\u00E9 titulky.";
             return false;
         }
 
-        if (m_rows.size() != m_targetEntries.size())
+        if (!m_sourcePath.empty())
+        {
+            std::error_code pathError;
+            auto const sourceAbsolute = std::filesystem::absolute(
+                std::filesystem::path(m_sourcePath.c_str()), pathError).lexically_normal().wstring();
+            pathError.clear();
+            auto const saveAbsolute = std::filesystem::absolute(
+                std::filesystem::path(savePath), pathError).lexically_normal().wstring();
+            if (!pathError && _wcsicmp(sourceAbsolute.c_str(), saveAbsolute.c_str()) == 0)
+            {
+                errorMessage = L"Český překlad nelze uložit přes soubor originálu. Zvolte jiný název souboru.";
+                return false;
+            }
+        }
+
+        if (!m_targetEntries.empty() && m_rows.size() != m_targetEntries.size())
         {
             errorMessage = L"Po\u010Det pracovn\u00EDch \u0159\u00E1dk\u016F neodpov\u00EDd\u00E1 \u010Desk\u00E9mu souboru.";
             return false;
@@ -1294,7 +1359,7 @@ namespace winrt::Aegisub_WinUI::implementation
             return false;
         }
 
-        auto const targetPath = std::filesystem::path(m_targetPath.c_str());
+        auto const targetPath = std::filesystem::path(savePath);
         auto updateFile = std::filesystem::temp_directory_path();
         updateFile /= L"aegisub-winui-write-" + std::to_wstring(GetCurrentProcessId()) + L"-" + std::to_wstring(GetTickCount64()) + L".tsv";
 
@@ -1326,7 +1391,7 @@ namespace winrt::Aegisub_WinUI::implementation
         }
 
         std::wstring commandLine = L"\"" + bridge.wstring() + L"\" --write \"" +
-            targetPath.wstring() + L"\" \"" + updateFile.wstring() + L"\" \"" + tempOutput.wstring() + L"\"";
+            templatePath + L"\" \"" + updateFile.wstring() + L"\" \"" + tempOutput.wstring() + L"\"";
 
         DWORD exitCode = 0;
         if (!RunProcess(commandLine, exitCode))
@@ -1364,6 +1429,10 @@ namespace winrt::Aegisub_WinUI::implementation
             return false;
         }
 
+        if (m_targetEntries.empty())
+        {
+            m_targetEntries = m_sourceEntries;
+        }
         for (size_t i = 0; i < m_rows.size(); ++i)
         {
             auto savedRaw = m_rows[i].targetModified ? m_rows[i].target : m_rows[i].rawTarget;
@@ -1378,6 +1447,8 @@ namespace winrt::Aegisub_WinUI::implementation
             m_targetEntries[i].rawText = savedRaw;
         }
 
+        m_targetPath = hstring{ savePath };
+        RefreshProjectFileLabels();
         SetDirty(false);
 
         return true;
