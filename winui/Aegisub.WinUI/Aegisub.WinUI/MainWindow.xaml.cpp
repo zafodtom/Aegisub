@@ -257,6 +257,76 @@ namespace
         }
     }
 
+    void CleanupWorkspaceDrafts(
+        std::filesystem::path const& directory,
+        std::filesystem::path const& currentDraft)
+    {
+        if (directory.filename() != L"TranslationWorkspace" ||
+            directory.parent_path().filename() != L"Aegisub")
+        {
+            return;
+        }
+
+        struct DraftFile
+        {
+            std::filesystem::path path;
+            std::filesystem::file_time_type writeTime;
+        };
+        std::vector<DraftFile> drafts;
+        auto const now = std::filesystem::file_time_type::clock::now();
+        auto const draftMaxAge = std::chrono::hours(24 * 30);
+        auto const tempMaxAge = std::chrono::hours(24);
+        std::error_code error;
+
+        std::filesystem::directory_iterator iterator(directory, error);
+        std::filesystem::directory_iterator end;
+        while (!error && iterator != end)
+        {
+            auto const entry = *iterator;
+            iterator.increment(error);
+            std::error_code entryError;
+            if (!entry.is_regular_file(entryError) || entryError)
+                continue;
+
+            auto const writeTime = entry.last_write_time(entryError);
+            if (entryError)
+                continue;
+            auto const filename = entry.path().filename().wstring();
+            if (entry.path().extension() == L".draft")
+            {
+                if (entry.path() != currentDraft && now - writeTime > draftMaxAge)
+                    std::filesystem::remove(entry.path(), entryError);
+                else
+                    drafts.push_back({ entry.path(), writeTime });
+            }
+            else if (filename.find(L".draft.tmp-") != std::wstring::npos &&
+                now - writeTime > tempMaxAge)
+            {
+                std::filesystem::remove(entry.path(), entryError);
+            }
+        }
+
+        std::sort(drafts.begin(), drafts.end(), [](auto const& first, auto const& second)
+        {
+            return first.writeTime > second.writeTime;
+        });
+        constexpr size_t maximumDraftCount = 30;
+        bool const containsCurrent = std::any_of(drafts.begin(), drafts.end(), [&](auto const& draft)
+        {
+            return draft.path == currentDraft;
+        });
+        size_t const maximumOtherDrafts = maximumDraftCount - (containsCurrent ? 1 : 0);
+        size_t keptOtherDrafts = 0;
+        for (auto const& draft : drafts)
+        {
+            if (draft.path == currentDraft)
+                continue;
+            if (keptOtherDrafts++ < maximumOtherDrafts)
+                continue;
+            std::filesystem::remove(draft.path, error);
+        }
+    }
+
     bool FileFingerprint(std::filesystem::path const& path, uintmax_t& size, int64_t& timestamp)
     {
         std::error_code error;
@@ -1487,6 +1557,9 @@ namespace winrt::Aegisub_WinUI::implementation
             auto const backupPath = WorkspaceBackupPath(std::filesystem::path(m_targetPath.c_str()));
             if (!backupPath.empty())
                 CleanupWorkspaceBackups(backupPath.parent_path(), {});
+            auto const draftPath = WorkspaceDraftPath(m_targetPath);
+            if (!draftPath.empty())
+                CleanupWorkspaceDrafts(draftPath.parent_path(), draftPath);
         }
         if (!m_sourceEntries.empty() && !m_targetEntries.empty() &&
             m_sourceEntries.size() != m_targetEntries.size())
