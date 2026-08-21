@@ -1213,12 +1213,46 @@ namespace winrt::Aegisub_WinUI::implementation
             return true;
         }
 
+        if (m_lastSaveDetectedExternalChange)
+            return OfferSaveAsForExternalChange(errorMessage);
+
         MessageBoxW(
             GetActiveWindow(),
             errorMessage.c_str(),
             L"Ulo\u017Een\u00ED se nezda\u0159ilo",
             MB_OK | MB_ICONERROR);
         return false;
+    }
+
+    bool MainWindow::OfferSaveAsForExternalChange(std::wstring const& errorMessage)
+    {
+        auto message = errorMessage +
+            L"\n\nChcete svou rozpracovanou verzi ulo\u017Eit pod jin\u00FDm n\u00E1zvem?";
+        if (MessageBoxW(GetActiveWindow(), message.c_str(), L"Soubor se mezit\u00EDm zm\u011Bnil",
+                MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON1) != IDYES)
+        {
+            return false;
+        }
+
+        std::wstring destination;
+        if (!SelectSubtitleSaveFile(destination))
+            return false;
+
+        std::wstring saveError;
+        if (!SaveTargetSubtitleFile(saveError, destination))
+        {
+            MessageBoxW(GetActiveWindow(), saveError.c_str(), L"Ulo\u017Een\u00ED se nezda\u0159ilo",
+                MB_OK | MB_ICONERROR);
+            return false;
+        }
+
+        auto const targetName = std::filesystem::path(m_targetPath.c_str()).filename().wstring();
+        auto const backupInfo = m_lastSaveCreatedBackup
+            ? std::wstring{ L" \u00B7 z\u00E1loha v LocalAppData" }
+            : std::wstring{};
+        StatusBarText().Text(hstring{
+            L"Rozpracovan\u00E1 verze ulo\u017Eena jako \u00B7 " + targetName + backupInfo });
+        return true;
     }
 
     void MainWindow::HookWindowClosing()
@@ -1428,6 +1462,8 @@ namespace winrt::Aegisub_WinUI::implementation
         RefreshProjectFileLabels();
         RefreshSearchSummary();
         SetDirty(false);
+        m_hasTargetFileFingerprint = !m_targetPath.empty() && FileFingerprint(
+            std::filesystem::path(m_targetPath.c_str()), m_targetFileSize, m_targetFileTimestamp);
         if (!m_targetPath.empty())
         {
             auto const backupPath = WorkspaceBackupPath(std::filesystem::path(m_targetPath.c_str()));
@@ -1964,6 +2000,7 @@ namespace winrt::Aegisub_WinUI::implementation
     bool MainWindow::SaveTargetSubtitleFile(std::wstring& errorMessage, std::wstring const& destinationPath)
     {
         m_lastSaveCreatedBackup = false;
+        m_lastSaveDetectedExternalChange = false;
         auto const savePath = destinationPath.empty() ? std::wstring{ m_targetPath.c_str() } : destinationPath;
         auto const templatePath = m_targetPath.empty()
             ? std::wstring{ m_sourcePath.c_str() }
@@ -1974,11 +2011,29 @@ namespace winrt::Aegisub_WinUI::implementation
             return false;
         }
 
+        auto const targetPath = std::filesystem::path(savePath);
+
         if (PathsReferToSameFile(
             std::wstring_view{ m_sourcePath.c_str(), m_sourcePath.size() }, savePath))
         {
             errorMessage = L"\u010Cesk\u00FD p\u0159eklad nelze ulo\u017Eit p\u0159es soubor origin\u00E1lu. Zvolte jin\u00FD n\u00E1zev souboru.";
             return false;
+        }
+
+        if (m_hasTargetFileFingerprint && !m_targetPath.empty() &&
+            PathsReferToSameFile(
+                std::wstring_view{ m_targetPath.c_str(), m_targetPath.size() }, savePath))
+        {
+            uintmax_t currentSize{};
+            int64_t currentTimestamp{};
+            if (!FileFingerprint(targetPath, currentSize, currentTimestamp) ||
+                currentSize != m_targetFileSize || currentTimestamp != m_targetFileTimestamp)
+            {
+                m_lastSaveDetectedExternalChange = true;
+                errorMessage = L"Otev\u0159en\u00FD \u010Desk\u00FD soubor od posledn\u00EDho na\u010Dten\u00ED zm\u011Bnila jin\u00E1 aplikace. "
+                    L"Aegisub jej proto nep\u0159epsal.";
+                return false;
+            }
         }
 
         if (!m_targetEntries.empty() && m_rows.size() != m_targetEntries.size())
@@ -1994,7 +2049,6 @@ namespace winrt::Aegisub_WinUI::implementation
             return false;
         }
 
-        auto const targetPath = std::filesystem::path(savePath);
         auto updateFile = std::filesystem::temp_directory_path();
         updateFile /= L"aegisub-winui-write-" + std::to_wstring(GetCurrentProcessId()) + L"-" + std::to_wstring(GetTickCount64()) + L".tsv";
 
@@ -2122,6 +2176,8 @@ namespace winrt::Aegisub_WinUI::implementation
         }
 
         m_targetPath = hstring{ savePath };
+        m_hasTargetFileFingerprint = FileFingerprint(
+            targetPath, m_targetFileSize, m_targetFileTimestamp);
         RefreshProjectFileLabels();
         SaveWorkspaceState();
         m_workflowStateDirty = false;

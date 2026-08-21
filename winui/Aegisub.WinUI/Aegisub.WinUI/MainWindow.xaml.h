@@ -177,6 +177,10 @@ namespace winrt::Aegisub_WinUI::implementation
         bool m_hasUnsavedChanges{ false };
         bool m_workflowStateDirty{ false };
         bool m_lastSaveCreatedBackup{ false };
+        bool m_lastSaveDetectedExternalChange{ false };
+        bool m_hasTargetFileFingerprint{ false };
+        uintmax_t m_targetFileSize{};
+        int64_t m_targetFileTimestamp{};
         bool m_hasPendingHistoryText{ false };
         winrt::hstring m_pendingHistoryText;
 
@@ -204,6 +208,7 @@ namespace winrt::Aegisub_WinUI::implementation
         void RefreshBackupAction();
         void SetDirty(bool dirty);
         bool ConfirmSaveBefore(std::wstring const& action);
+        bool OfferSaveAsForExternalChange(std::wstring const& errorMessage);
         bool SelectSubtitleFile(std::wstring const& title, std::wstring& filename) const;
         bool SelectSubtitleSaveFile(std::wstring& filename) const;
         bool ReadSubtitleFile(
@@ -473,6 +478,11 @@ namespace winrt::Aegisub_WinUI::implementation
         if (!SaveTargetSubtitleFile(errorMessage))
         {
             StatusBarText().Text(L"Ulo\u017Een\u00ED \u010Desk\u00FDch titulk\u016F se nezda\u0159ilo");
+            if (m_lastSaveDetectedExternalChange)
+            {
+                OfferSaveAsForExternalChange(errorMessage);
+                return;
+            }
             MessageBoxW(GetActiveWindow(), errorMessage.c_str(), L"Aegisub Translation Workspace", MB_OK | MB_ICONERROR);
             return;
         }
@@ -501,6 +511,11 @@ namespace winrt::Aegisub_WinUI::implementation
         if (!SaveTargetSubtitleFile(errorMessage, destination))
         {
             StatusBarText().Text(L"Ulo\u017Een\u00ED \u010Desk\u00FDch titulk\u016F se nezda\u0159ilo");
+            if (m_lastSaveDetectedExternalChange)
+            {
+                OfferSaveAsForExternalChange(errorMessage);
+                return;
+            }
             MessageBoxW(GetActiveWindow(), errorMessage.c_str(), L"Aegisub Translation Workspace", MB_OK | MB_ICONERROR);
             return;
         }
