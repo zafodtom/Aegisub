@@ -5,6 +5,7 @@
 #endif
 
 #include <algorithm>
+#include <chrono>
 #include <commdlg.h>
 #include <filesystem>
 #include <fstream>
@@ -151,6 +152,75 @@ namespace
 
         auto filename = statePath.stem().wstring() + L"-" + targetPath.filename().wstring() + L".bak";
         return statePath.parent_path() / L"Backups" / filename;
+    }
+
+    void CleanupWorkspaceBackups(
+        std::filesystem::path const& directory,
+        std::filesystem::path const& currentBackup)
+    {
+        if (directory.filename() != L"Backups" ||
+            directory.parent_path().filename() != L"TranslationWorkspace")
+        {
+            return;
+        }
+
+        struct BackupFile
+        {
+            std::filesystem::path path;
+            std::filesystem::file_time_type writeTime;
+        };
+        std::vector<BackupFile> backups;
+        auto const now = std::filesystem::file_time_type::clock::now();
+        auto const backupMaxAge = std::chrono::hours(24 * 30);
+        auto const tempMaxAge = std::chrono::hours(24);
+        std::error_code error;
+
+        std::filesystem::directory_iterator iterator(directory, error);
+        std::filesystem::directory_iterator end;
+        while (!error && iterator != end)
+        {
+            auto const entry = *iterator;
+            iterator.increment(error);
+            std::error_code entryError;
+            if (!entry.is_regular_file(entryError) || entryError)
+                continue;
+
+            auto const writeTime = entry.last_write_time(entryError);
+            if (entryError)
+                continue;
+            auto const filename = entry.path().filename().wstring();
+            if (entry.path().extension() == L".bak")
+            {
+                if (entry.path() != currentBackup && now - writeTime > backupMaxAge)
+                    std::filesystem::remove(entry.path(), entryError);
+                else
+                    backups.push_back({ entry.path(), writeTime });
+            }
+            else if (filename.find(L".bak.tmp-") != std::wstring::npos && now - writeTime > tempMaxAge)
+            {
+                std::filesystem::remove(entry.path(), entryError);
+            }
+        }
+
+        std::sort(backups.begin(), backups.end(), [](auto const& first, auto const& second)
+        {
+            return first.writeTime > second.writeTime;
+        });
+        constexpr size_t maximumBackupCount = 30;
+        bool const containsCurrent = std::any_of(backups.begin(), backups.end(), [&](auto const& backup)
+        {
+            return backup.path == currentBackup;
+        });
+        size_t const maximumOtherBackups = maximumBackupCount - (containsCurrent ? 1 : 0);
+        size_t keptOtherBackups = 0;
+        for (auto const& backup : backups)
+        {
+            if (backup.path == currentBackup)
+                continue;
+            if (keptOtherBackups++ < maximumOtherBackups)
+                continue;
+            std::filesystem::remove(backup.path, error);
+        }
     }
 
     bool FileFingerprint(std::filesystem::path const& path, uintmax_t& size, int64_t& timestamp)
@@ -1231,6 +1301,12 @@ namespace winrt::Aegisub_WinUI::implementation
         RefreshProjectFileLabels();
         RefreshSearchSummary();
         SetDirty(false);
+        if (!m_targetPath.empty())
+        {
+            auto const backupPath = WorkspaceBackupPath(std::filesystem::path(m_targetPath.c_str()));
+            if (!backupPath.empty())
+                CleanupWorkspaceBackups(backupPath.parent_path(), {});
+        }
         if (!m_sourceEntries.empty() && !m_targetEntries.empty() &&
             m_sourceEntries.size() != m_targetEntries.size())
         {
@@ -1857,6 +1933,7 @@ namespace winrt::Aegisub_WinUI::implementation
                 return false;
             }
             m_lastSaveCreatedBackup = true;
+            CleanupWorkspaceBackups(backupPath.parent_path(), backupPath);
         }
 
         if (!MoveFileExW(

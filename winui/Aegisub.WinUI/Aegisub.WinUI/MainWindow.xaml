@@ -66,12 +66,12 @@
                     <Button
                         Content="Uložit"
                         MinHeight="34"
-                        ToolTipService.ToolTip="Uložit české titulky a vytvořit zálohu v LocalAppData · Ctrl+S"
+                        ToolTipService.ToolTip="Uložit a zálohovat v LocalAppData · zálohy 30 dní, nejvýše 30 · Ctrl+S"
                         Click="SaveButton_Click" />
                     <Button
                         Content="Uložit jako…"
                         MinHeight="34"
-                        ToolTipService.ToolTip="Uložit české titulky do nového souboru; existující soubor se zazálohuje v LocalAppData · Ctrl+Shift+S"
+                        ToolTipService.ToolTip="Uložit jako a zálohovat v LocalAppData · zálohy 30 dní, nejvýše 30 · Ctrl+Shift+S"
                         Click="SaveAsButton_Click" />
                     <Button
                         x:Name="PreviousButton"
