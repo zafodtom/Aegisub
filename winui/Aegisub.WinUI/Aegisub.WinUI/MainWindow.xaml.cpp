@@ -104,9 +104,9 @@ namespace
     {
         MessageBoxW(
             GetActiveWindow(),
-            L"Originál a český překlad musí být dva různé soubory.\n\n"
-            L"Zvolený soubor nebyl otevřen, aby nemohlo dojít k přepsání originálu.",
-            L"Stejný soubor nelze použít dvakrát",
+            L"Origin\u00E1l a \u010Desk\u00FD p\u0159eklad mus\u00ED b\u00FDt dva r\u016Fzn\u00E9 soubory.\n\n"
+            L"Zvolen\u00FD soubor nebyl otev\u0159en, aby nemohlo doj\u00EDt k p\u0159eps\u00E1n\u00ED origin\u00E1lu.",
+            L"Stejn\u00FD soubor nelze pou\u017E\u00EDt dvakr\u00E1t",
             MB_OK | MB_ICONWARNING);
     }
 
@@ -1174,9 +1174,9 @@ namespace winrt::Aegisub_WinUI::implementation
             m_sourceEntries.size() != m_targetEntries.size())
         {
             StatusBarText().Text(hstring{
-                L"Pozor: originál " + std::to_wstring(m_sourceEntries.size()) +
-                L" titulků · čeština " + std::to_wstring(m_targetEntries.size()) +
-                L" · zkontrolujte párování podle času" });
+                L"Pozor: origin\u00E1l " + std::to_wstring(m_sourceEntries.size()) +
+                L" titulk\u016F \u00B7 \u010De\u0161tina " + std::to_wstring(m_targetEntries.size()) +
+                L" \u00B7 zkontrolujte p\u00E1rov\u00E1n\u00ED podle \u010Dasu" });
         }
     }
 
@@ -1291,11 +1291,11 @@ namespace winrt::Aegisub_WinUI::implementation
             }
             TargetTextBox().Focus(FocusState::Programmatic);
             StatusBarText().Text(hstring{
-                L"Hledání „" + query + L"“ · titulek #" + std::to_wstring(m_rows[index].number) });
+                L"Hled\u00E1n\u00ED \u201E" + query + L"\u201C \u00B7 titulek #" + std::to_wstring(m_rows[index].number) });
             return;
         }
 
-        StatusBarText().Text(hstring{ L"Hledání „" + query + L"“ · žádná shoda" });
+        StatusBarText().Text(hstring{ L"Hled\u00E1n\u00ED \u201E" + query + L"\u201C \u00B7 \u017E\u00E1dn\u00E1 shoda" });
         SearchTextBox().Focus(FocusState::Programmatic);
     }
 
@@ -1539,7 +1539,7 @@ namespace winrt::Aegisub_WinUI::implementation
         if (PathsReferToSameFile(
             std::wstring_view{ m_sourcePath.c_str(), m_sourcePath.size() }, savePath))
         {
-            errorMessage = L"Český překlad nelze uložit přes soubor originálu. Zvolte jiný název souboru.";
+            errorMessage = L"\u010Cesk\u00FD p\u0159eklad nelze ulo\u017Eit p\u0159es soubor origin\u00E1lu. Zvolte jin\u00FD n\u00E1zev souboru.";
             return false;
         }
 

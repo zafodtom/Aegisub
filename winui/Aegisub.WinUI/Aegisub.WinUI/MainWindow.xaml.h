@@ -715,14 +715,14 @@ namespace winrt::Aegisub_WinUI::implementation
         auto const& original = m_rows[m_currentIndex].original;
         if (original.empty())
         {
-            StatusBarText().Text(L"Aktuální titulek nemá spárovaný originální text");
+            StatusBarText().Text(L"Aktu\u00E1ln\u00ED titulek nem\u00E1 sp\u00E1rovan\u00FD origin\u00E1ln\u00ED text");
             return;
         }
 
         auto const box = TargetTextBox();
         if (box.Text() == original)
         {
-            StatusBarText().Text(L"Český text již odpovídá originálu");
+            StatusBarText().Text(L"\u010Cesk\u00FD text ji\u017E odpov\u00EDd\u00E1 origin\u00E1lu");
             box.Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
             return;
         }
@@ -731,7 +731,7 @@ namespace winrt::Aegisub_WinUI::implementation
         box.SelectionStart(static_cast<int32_t>(original.size()));
         box.SelectionLength(0);
         box.Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
-        StatusBarText().Text(L"Originální text převzat · Ctrl+Z vrátí předchozí překlad");
+        StatusBarText().Text(L"Origin\u00E1ln\u00ED text p\u0159evzat \u00B7 Ctrl+Z vr\u00E1t\u00ED p\u0159edchoz\u00ED p\u0159eklad");
     }
 
     inline void MainWindow::InsertLineBreakAtSelection()
