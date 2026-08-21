@@ -520,6 +520,11 @@ namespace winrt::Aegisub_WinUI::implementation
             args.Handled(true);
             SaveFromShortcut();
         }
+        else if (control && key == winrt::Windows::System::VirtualKey::O)
+        {
+            args.Handled(true);
+            OpenProjectFiles();
+        }
         else if (key == winrt::Windows::System::VirtualKey::F8)
         {
             args.Handled(true);
