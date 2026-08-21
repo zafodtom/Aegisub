@@ -44,6 +44,18 @@ namespace winrt::Aegisub_WinUI::implementation
             winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
 
+        void OpenBothButton_Click(
+            winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+
+        void OpenSourceButton_Click(
+            winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+
+        void OpenTargetButton_Click(
+            winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+
         void TargetTextBox_TextChanged(
             winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::Controls::TextChangedEventArgs const& args);
@@ -142,9 +154,11 @@ namespace winrt::Aegisub_WinUI::implementation
 
         void InitializeDynamicSubtitleGrid();
         void RebuildSubtitleGrid();
-        void HookOpenProjectButton();
         void HookWindowClosing();
         void OpenProjectFiles();
+        void OpenSourceFile();
+        void OpenTargetFile();
+        void RefreshLoadedProject();
         void SetDirty(bool dirty);
         bool ConfirmSaveBefore(std::wstring const& action);
         bool SelectSubtitleFile(std::wstring const& title, std::wstring& filename) const;
@@ -154,9 +168,6 @@ namespace winrt::Aegisub_WinUI::implementation
             std::wstring& errorMessage) const;
         void BuildAlignedRows();
         bool SaveTargetSubtitleFile(std::wstring& errorMessage);
-
-        winrt::Microsoft::UI::Xaml::Controls::Button FindOpenProjectButton(
-            winrt::Microsoft::UI::Xaml::DependencyObject const& root) const;
 
         void TargetTextBox_WorkflowKeyDown(
             winrt::Windows::Foundation::IInspectable const& sender,

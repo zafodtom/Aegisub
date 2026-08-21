@@ -49,9 +49,20 @@
                     Spacing="8"
                     VerticalAlignment="Center">
                     <Button
-                        Content="Otevřít projekt"
+                        Content="Otevřít oba…"
                         MinHeight="34"
-                        ToolTipService.ToolTip="Otevřít projekt · Ctrl+O" />
+                        ToolTipService.ToolTip="Otevřít originál i češtinu · Ctrl+O"
+                        Click="OpenBothButton_Click" />
+                    <Button
+                        Content="Originál…"
+                        MinHeight="34"
+                        ToolTipService.ToolTip="Otevřít pouze originální titulky"
+                        Click="OpenSourceButton_Click" />
+                    <Button
+                        Content="Čeština…"
+                        MinHeight="34"
+                        ToolTipService.ToolTip="Otevřít pouze české titulky"
+                        Click="OpenTargetButton_Click" />
                     <Button Content="Uložit" MinHeight="34" Click="SaveButton_Click" />
                     <Button
                         x:Name="PreviousButton"

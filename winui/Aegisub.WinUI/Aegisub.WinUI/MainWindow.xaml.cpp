@@ -269,7 +269,6 @@ namespace winrt::Aegisub_WinUI::implementation
         m_initialized = true;
         InitializeDynamicSubtitleGrid();
         RebuildSubtitleGrid();
-        HookOpenProjectButton();
         HookWindowClosing();
         LoadCurrentRow();
     }
@@ -365,6 +364,27 @@ namespace winrt::Aegisub_WinUI::implementation
 
         auto const targetName = std::filesystem::path(m_targetPath.c_str()).filename().wstring();
         StatusBarText().Text(hstring{ L"\u010Ce\u0161tina ulo\u017Eena p\u0159es Aegisub core \u00B7 " + targetName });
+    }
+
+    void MainWindow::OpenBothButton_Click(
+        Windows::Foundation::IInspectable const&,
+        RoutedEventArgs const&)
+    {
+        OpenProjectFiles();
+    }
+
+    void MainWindow::OpenSourceButton_Click(
+        Windows::Foundation::IInspectable const&,
+        RoutedEventArgs const&)
+    {
+        OpenSourceFile();
+    }
+
+    void MainWindow::OpenTargetButton_Click(
+        Windows::Foundation::IInspectable const&,
+        RoutedEventArgs const&)
+    {
+        OpenTargetFile();
     }
 
     void MainWindow::TargetTextBox_TextChanged(
@@ -832,56 +852,6 @@ namespace winrt::Aegisub_WinUI::implementation
         UpdateSelectionVisuals();
     }
 
-    Microsoft::UI::Xaml::Controls::Button MainWindow::FindOpenProjectButton(
-        Microsoft::UI::Xaml::DependencyObject const& root) const
-    {
-        if (!root)
-        {
-            return nullptr;
-        }
-
-        if (auto const button = root.try_as<Button>())
-        {
-            try
-            {
-                if (unbox_value<hstring>(button.Content()) == L"Otev\u0159\u00EDt projekt")
-                {
-                    return button;
-                }
-            }
-            catch (...)
-            {
-            }
-        }
-
-        auto const childCount = Microsoft::UI::Xaml::Media::VisualTreeHelper::GetChildrenCount(root);
-        for (int32_t i = 0; i < childCount; ++i)
-        {
-            auto const child = Microsoft::UI::Xaml::Media::VisualTreeHelper::GetChild(root, i);
-            if (auto const found = FindOpenProjectButton(child))
-            {
-                return found;
-            }
-        }
-
-        return nullptr;
-    }
-
-    void MainWindow::HookOpenProjectButton()
-    {
-        auto const button = FindOpenProjectButton(RootGrid());
-        if (!button)
-        {
-            StatusBarText().Text(L"Tla\u010D\u00EDtko Otev\u0159\u00EDt projekt nebylo nalezeno");
-            return;
-        }
-
-        button.Click([this](auto const&, auto const&)
-        {
-            OpenProjectFiles();
-        });
-    }
-
     void MainWindow::SetDirty(bool dirty)
     {
         m_hasUnsavedChanges = dirty;
@@ -996,19 +966,6 @@ namespace winrt::Aegisub_WinUI::implementation
         std::wstring targetFilename;
         if (!SelectSubtitleFile(L"Otev\u0159\u00EDt p\u0159ipraven\u00E9 \u010Desk\u00E9 titulky", targetFilename))
         {
-            // Loading only a source track is a supported workflow. Commit it
-            // only after the target picker has been deliberately dismissed.
-            m_sourceEntries = std::move(sourceEntries);
-            m_sourcePath = hstring{ sourceFilename };
-            m_targetEntries.clear();
-            m_targetPath = L"";
-            BuildAlignedRows();
-            InitializeWorkflowStatuses();
-            RefreshQaAll();
-            RebuildSubtitleGrid();
-            LoadCurrentRow();
-            RefreshCurrentQaVisuals();
-            SetDirty(false);
             return;
         }
 
@@ -1023,6 +980,65 @@ namespace winrt::Aegisub_WinUI::implementation
         m_sourcePath = hstring{ sourceFilename };
         m_targetEntries = std::move(targetEntries);
         m_targetPath = hstring{ targetFilename };
+        RefreshLoadedProject();
+    }
+
+    void MainWindow::OpenSourceFile()
+    {
+        if (!ConfirmSaveBefore(L"otev\u0159en\u00EDm jin\u00E9ho origin\u00E1lu"))
+            return;
+
+        std::wstring filename;
+        if (!SelectSubtitleFile(L"Otev\u0159\u00EDt origin\u00E1ln\u00ED titulky", filename))
+            return;
+
+        std::vector<SubtitleEntry> entries;
+        std::wstring errorMessage;
+        if (!ReadSubtitleFile(filename, entries, errorMessage))
+        {
+            MessageBoxW(GetActiveWindow(), errorMessage.c_str(), L"Aegisub Translation Workspace", MB_OK | MB_ICONERROR);
+            return;
+        }
+
+        std::vector<SubtitleEntry> refreshedTargetEntries;
+        if (!m_targetPath.empty()
+            && !ReadSubtitleFile(m_targetPath.c_str(), refreshedTargetEntries, errorMessage))
+        {
+            MessageBoxW(GetActiveWindow(), errorMessage.c_str(), L"Aegisub Translation Workspace", MB_OK | MB_ICONERROR);
+            return;
+        }
+
+        m_sourceEntries = std::move(entries);
+        m_sourcePath = hstring{ filename };
+        if (!m_targetPath.empty())
+            m_targetEntries = std::move(refreshedTargetEntries);
+        RefreshLoadedProject();
+    }
+
+    void MainWindow::OpenTargetFile()
+    {
+        if (!ConfirmSaveBefore(L"otev\u0159en\u00EDm jin\u00E9ho \u010Desk\u00E9ho p\u0159ekladu"))
+            return;
+
+        std::wstring filename;
+        if (!SelectSubtitleFile(L"Otev\u0159\u00EDt p\u0159ipraven\u00E9 \u010Desk\u00E9 titulky", filename))
+            return;
+
+        std::vector<SubtitleEntry> entries;
+        std::wstring errorMessage;
+        if (!ReadSubtitleFile(filename, entries, errorMessage))
+        {
+            MessageBoxW(GetActiveWindow(), errorMessage.c_str(), L"Aegisub Translation Workspace", MB_OK | MB_ICONERROR);
+            return;
+        }
+
+        m_targetEntries = std::move(entries);
+        m_targetPath = hstring{ filename };
+        RefreshLoadedProject();
+    }
+
+    void MainWindow::RefreshLoadedProject()
+    {
         BuildAlignedRows();
         InitializeWorkflowStatuses();
         RefreshQaAll();
