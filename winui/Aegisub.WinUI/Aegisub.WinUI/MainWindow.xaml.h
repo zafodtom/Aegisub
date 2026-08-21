@@ -76,6 +76,10 @@ namespace winrt::Aegisub_WinUI::implementation
             winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
 
+        void CopyOriginalButton_Click(
+            winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+
         void NextProblemButton_Click(
             winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
@@ -699,6 +703,35 @@ namespace winrt::Aegisub_WinUI::implementation
         box.SelectionStart(static_cast<int32_t>(lineBreak + 2));
         box.SelectionLength(0);
         box.Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
+    }
+
+    inline void MainWindow::CopyOriginalButton_Click(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        if (m_rows.empty())
+            return;
+
+        auto const& original = m_rows[m_currentIndex].original;
+        if (original.empty())
+        {
+            StatusBarText().Text(L"Aktuální titulek nemá spárovaný originální text");
+            return;
+        }
+
+        auto const box = TargetTextBox();
+        if (box.Text() == original)
+        {
+            StatusBarText().Text(L"Český text již odpovídá originálu");
+            box.Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
+            return;
+        }
+
+        box.Text(original);
+        box.SelectionStart(static_cast<int32_t>(original.size()));
+        box.SelectionLength(0);
+        box.Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
+        StatusBarText().Text(L"Originální text převzat · Ctrl+Z vrátí předchozí překlad");
     }
 
     inline void MainWindow::InsertLineBreakAtSelection()

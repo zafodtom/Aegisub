@@ -234,6 +234,7 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <TextBlock
                             x:Name="TargetCplText"
@@ -250,6 +251,14 @@
                             VerticalAlignment="Center" />
                         <Button
                             Grid.Column="3"
+                            Content="Převzít originál"
+                            Padding="8,2"
+                            MinHeight="26"
+                            FontSize="11"
+                            ToolTipService.ToolTip="Nahradit český text originálem · změnu lze vrátit přes Ctrl+Z"
+                            Click="CopyOriginalButton_Click" />
+                        <Button
+                            Grid.Column="4"
                             Content="Zalomit řádek"
                             Padding="8,2"
                             MinHeight="26"
@@ -257,7 +266,7 @@
                             Click="InsertLineBreakButton_Click" />
                         <TextBlock
                             x:Name="TargetStatusText"
-                            Grid.Column="4"
+                            Grid.Column="5"
                             Text="Stav: Upraveno"
                             FontSize="12"
                             Opacity="0.62"
