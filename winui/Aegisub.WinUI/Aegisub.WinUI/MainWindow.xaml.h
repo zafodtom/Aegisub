@@ -136,6 +136,7 @@ namespace winrt::Aegisub_WinUI::implementation
             winrt::hstring workflowStatus;
             winrt::hstring qaIssue;
             winrt::hstring savedTarget;
+            winrt::hstring savedWorkflowStatus;
             std::vector<winrt::hstring> undoHistory;
             std::vector<winrt::hstring> redoHistory;
             bool historyInitialized{};
@@ -259,6 +260,8 @@ namespace winrt::Aegisub_WinUI::implementation
         {
             if (row.workflowStatus.empty())
                 row.workflowStatus = row.status.empty() ? winrt::hstring{ L"P\u0159ipraveno" } : row.status;
+            if (row.savedWorkflowStatus.empty())
+                row.savedWorkflowStatus = row.workflowStatus;
             if (!row.historyInitialized)
             {
                 row.savedTarget = row.target;
@@ -414,6 +417,8 @@ namespace winrt::Aegisub_WinUI::implementation
         {
             row.workflowStatus = L"Schv\u00E1leno";
             row.status = row.workflowStatus;
+            if (!row.targetModified)
+                row.savedWorkflowStatus = row.workflowStatus;
             m_workflowStateDirty = true;
             UpdateDirtyFromRows();
         }

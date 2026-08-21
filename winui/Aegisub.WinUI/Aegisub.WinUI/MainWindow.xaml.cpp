@@ -536,16 +536,18 @@ namespace winrt::Aegisub_WinUI::implementation
 
         row.target = newText;
         row.targetModified = !agi::winui::EquivalentEditorText(row.target.c_str(), row.savedTarget.c_str());
-        row.status = row.targetModified ? L"Upraveno" : L"Ulo\u017Eeno";
+        row.status = row.targetModified
+            ? hstring{ L"Upraveno" }
+            : (row.savedWorkflowStatus.empty() ? hstring{ L"Ulo\u017Eeno" } : row.savedWorkflowStatus);
         UpdateDirtyFromRows();
         if (m_currentIndex < static_cast<int32_t>(m_targetEntries.size()))
         {
             m_targetEntries[m_currentIndex].text = row.target;
         }
 
-        TargetInfoText().Text(hstring{ L"#" + std::to_wstring(row.number) +
-            (row.targetModified ? L" \u00B7 upraven\u00FD p\u0159eklad" : L" \u00B7 ulo\u017Een\u00E1 verze") });
-        TargetStatusText().Text(row.targetModified ? L"Stav: upraveno" : L"Stav: ulo\u017Eeno");
+        TargetInfoText().Text(hstring{ L"#" + std::to_wstring(row.number) + L" \u00B7 " +
+            std::wstring(row.status.c_str()) });
+        TargetStatusText().Text(hstring{ L"Stav: " + std::wstring(row.status.c_str()) });
         UpdateTableRow(m_currentIndex);
         UpdateMetrics();
         RefreshSearchSummary();
@@ -1267,6 +1269,7 @@ namespace winrt::Aegisub_WinUI::implementation
                     continue;
                 m_rows[index].workflowStatus = to_hstring(UnescapeBridgeField(line.substr(separator + 1)));
                 m_rows[index].status = m_rows[index].workflowStatus;
+                m_rows[index].savedWorkflowStatus = m_rows[index].workflowStatus;
             }
             catch (...)
             {
@@ -1788,6 +1791,7 @@ namespace winrt::Aegisub_WinUI::implementation
             auto savedRaw = m_rows[i].targetModified ? m_rows[i].target : m_rows[i].rawTarget;
             m_rows[i].rawTarget = savedRaw;
             m_rows[i].savedTarget = m_rows[i].target;
+            m_rows[i].savedWorkflowStatus = m_rows[i].workflowStatus;
             m_rows[i].historyInitialized = true;
             m_rows[i].targetModified = false;
             m_rows[i].editSequenceKind = 0;
