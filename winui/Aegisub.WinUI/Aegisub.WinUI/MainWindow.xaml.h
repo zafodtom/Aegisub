@@ -48,6 +48,10 @@ namespace winrt::Aegisub_WinUI::implementation
             winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
 
+        void RestoreBackupButton_Click(
+            winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+
         void OpenBothButton_Click(
             winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
@@ -197,6 +201,7 @@ namespace winrt::Aegisub_WinUI::implementation
         void LoadWorkspaceState();
         bool SaveWorkspaceState();
         void RefreshProjectFileLabels();
+        void RefreshBackupAction();
         void SetDirty(bool dirty);
         bool ConfirmSaveBefore(std::wstring const& action);
         bool SelectSubtitleFile(std::wstring const& title, std::wstring& filename) const;

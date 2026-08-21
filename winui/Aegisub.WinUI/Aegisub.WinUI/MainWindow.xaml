@@ -74,6 +74,13 @@
                         ToolTipService.ToolTip="Uložit jako a zálohovat v LocalAppData · zálohy 30 dní, nejvýše 30 · Ctrl+Shift+S"
                         Click="SaveAsButton_Click" />
                     <Button
+                        x:Name="RestoreBackupButton"
+                        Content="Obnovit zálohu"
+                        MinHeight="34"
+                        IsEnabled="False"
+                        ToolTipService.ToolTip="Obnovit předchozí uloženou verzi; současná verze se zachová jako záloha"
+                        Click="RestoreBackupButton_Click" />
+                    <Button
                         x:Name="PreviousButton"
                         Content="◀ Předchozí"
                         MinHeight="34"

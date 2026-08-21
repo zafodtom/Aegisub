@@ -516,6 +516,96 @@ namespace winrt::Aegisub_WinUI::implementation
         SaveAsFromShortcut();
     }
 
+    void MainWindow::RestoreBackupButton_Click(
+        Windows::Foundation::IInspectable const&,
+        RoutedEventArgs const&)
+    {
+        if (m_targetPath.empty() || !ConfirmSaveBefore(L"obnoven\u00EDm z\u00E1lohy"))
+            return;
+
+        auto const targetPath = std::filesystem::path(m_targetPath.c_str());
+        auto const backupPath = WorkspaceBackupPath(targetPath);
+        if (backupPath.empty() || !std::filesystem::exists(backupPath))
+        {
+            RefreshBackupAction();
+            MessageBoxW(GetActiveWindow(), L"Pro aktu\u00E1ln\u00ED \u010Desk\u00FD soubor nebyla nalezena z\u00E1loha.",
+                L"Z\u00E1loha nen\u00ED k dispozici", MB_OK | MB_ICONINFORMATION);
+            return;
+        }
+
+        auto validationPath = std::filesystem::temp_directory_path() /
+            (L"aegisub-winui-restore-" + std::to_wstring(GetCurrentProcessId()) + L"-" +
+                std::to_wstring(GetTickCount64()) + targetPath.extension().wstring());
+        std::error_code fileError;
+        std::filesystem::remove(validationPath, fileError);
+        if (!CopyFileW(backupPath.c_str(), validationPath.c_str(), FALSE))
+        {
+            MessageBoxW(GetActiveWindow(), L"Z\u00E1lohu se nepoda\u0159ilo p\u0159ipravit ke kontrole.",
+                L"Obnova se nezda\u0159ila", MB_OK | MB_ICONERROR);
+            return;
+        }
+
+        std::vector<SubtitleEntry> restoredEntries;
+        std::wstring errorMessage;
+        bool const validBackup = ReadSubtitleFile(validationPath.wstring(), restoredEntries, errorMessage);
+        std::filesystem::remove(validationPath, fileError);
+        if (!validBackup)
+        {
+            MessageBoxW(GetActiveWindow(), errorMessage.c_str(), L"Z\u00E1loha nen\u00ED platn\u00FD soubor titulk\u016F",
+                MB_OK | MB_ICONERROR);
+            return;
+        }
+
+        auto currentTemp = backupPath;
+        currentTemp += L".current-" + std::to_wstring(GetCurrentProcessId()) + L"-" + std::to_wstring(GetTickCount64());
+        auto restoredTemp = targetPath.parent_path() /
+            (targetPath.filename().wstring() + L".restore-" + std::to_wstring(GetCurrentProcessId()) + L".tmp");
+        std::filesystem::remove(currentTemp, fileError);
+        std::filesystem::remove(restoredTemp, fileError);
+        if (!CopyFileW(targetPath.c_str(), currentTemp.c_str(), FALSE) ||
+            !CopyFileW(backupPath.c_str(), restoredTemp.c_str(), FALSE))
+        {
+            std::filesystem::remove(currentTemp, fileError);
+            std::filesystem::remove(restoredTemp, fileError);
+            MessageBoxW(GetActiveWindow(), L"Nepoda\u0159ilo se bezpe\u010Dn\u011B p\u0159ipravit v\u00FDm\u011Bnu soubor\u016F. P\u016Fvodn\u00ED soubor nebyl zm\u011Bn\u011Bn.",
+                L"Obnova se nezda\u0159ila", MB_OK | MB_ICONERROR);
+            return;
+        }
+
+        if (!MoveFileExW(restoredTemp.c_str(), targetPath.c_str(),
+            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+        {
+            std::filesystem::remove(currentTemp, fileError);
+            std::filesystem::remove(restoredTemp, fileError);
+            MessageBoxW(GetActiveWindow(), L"Z\u00E1lohu se nepoda\u0159ilo obnovit. P\u016Fvodn\u00ED soubor nebyl zm\u011Bn\u011Bn.",
+                L"Obnova se nezda\u0159ila", MB_OK | MB_ICONERROR);
+            return;
+        }
+        if (!MoveFileExW(currentTemp.c_str(), backupPath.c_str(),
+            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+        {
+            std::filesystem::remove(restoredTemp, fileError);
+            if (CopyFileW(currentTemp.c_str(), targetPath.c_str(), FALSE))
+            {
+                std::filesystem::remove(currentTemp, fileError);
+                MessageBoxW(GetActiveWindow(), L"Nepoda\u0159ilo se zachovat sou\u010Dasnou verzi jako novou z\u00E1lohu. Obnova byla bezpe\u010Dn\u011B vr\u00E1cena zp\u011Bt.",
+                    L"Obnova se nezda\u0159ila", MB_OK | MB_ICONERROR);
+            }
+            else
+            {
+                std::wstring message = L"Obnoven\u00E1 verze je nyn\u00ED otev\u0159en\u00E1. P\u016Fvodn\u00ED verzi se nepoda\u0159ilo vr\u00E1tit, ale jej\u00ED bezpe\u010Dn\u00E1 kopie z\u016Fstala zde:\n\n";
+                message += currentTemp.wstring();
+                MessageBoxW(GetActiveWindow(), message.c_str(), L"Obnova vy\u017Eaduje pozornost", MB_OK | MB_ICONWARNING);
+            }
+            return;
+        }
+
+        std::filesystem::last_write_time(backupPath, std::filesystem::file_time_type::clock::now(), fileError);
+        m_targetEntries = std::move(restoredEntries);
+        RefreshLoadedProject();
+        StatusBarText().Text(L"P\u0159edchoz\u00ED verze obnovena \u00B7 p\u016Fvodn\u00ED verze je nyn\u00ED z\u00E1loha");
+    }
+
     void MainWindow::OpenBothButton_Click(
         Windows::Foundation::IInspectable const&,
         RoutedEventArgs const&)
@@ -1452,6 +1542,18 @@ namespace winrt::Aegisub_WinUI::implementation
 
         update(OriginalFileText(), m_sourcePath, L"Soubor nen\u00ED na\u010Dten");
         update(TargetFileText(), m_targetPath, L"Nov\u00FD p\u0159eklad \u00B7 zat\u00EDm neulo\u017Een");
+        RefreshBackupAction();
+    }
+
+    void MainWindow::RefreshBackupAction()
+    {
+        bool available = false;
+        if (!m_targetPath.empty())
+        {
+            auto const backupPath = WorkspaceBackupPath(std::filesystem::path(m_targetPath.c_str()));
+            available = !backupPath.empty() && std::filesystem::exists(backupPath);
+        }
+        RestoreBackupButton().IsEnabled(available);
     }
 
     bool MainWindow::IsTranslationEmpty(hstring const& text) const
