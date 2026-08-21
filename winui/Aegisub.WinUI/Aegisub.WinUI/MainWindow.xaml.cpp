@@ -1894,7 +1894,26 @@ namespace winrt::Aegisub_WinUI::implementation
             m_workspaceDraftTimer.IsRepeating(false);
             m_workspaceDraftTimer.Tick([this](auto const&, auto const&)
             {
-                SaveWorkspaceDraft();
+                bool const hadUnsavedChanges = m_hasUnsavedChanges;
+                if (!SaveWorkspaceDraft())
+                {
+                    if (hadUnsavedChanges)
+                    {
+                        StatusBarText().Text(
+                            L"Pozor: pracovn\u00ED koncept se nepoda\u0159ilo ulo\u017Eit \u00B7 pou\u017Eijte Ctrl+S");
+                    }
+                    return;
+                }
+                if (!hadUnsavedChanges)
+                    return;
+
+                auto const draftTime = FormatFileWriteTime(WorkspaceDraftPath(m_targetPath));
+                std::wstring status = L"Neulo\u017Een\u00E9 zm\u011Bny \u00B7 pracovn\u00ED koncept bezpe\u010Dn\u011B ulo\u017Een";
+                if (!draftTime.empty())
+                    status += L" \u00B7 " + draftTime;
+                if (m_forceSaveAsForRecoveredDraft)
+                    status += L" \u00B7 bude nutn\u00E9 Ulo\u017Eit jako";
+                StatusBarText().Text(hstring{ status });
             });
         }
         m_workspaceDraftTimer.Stop();
