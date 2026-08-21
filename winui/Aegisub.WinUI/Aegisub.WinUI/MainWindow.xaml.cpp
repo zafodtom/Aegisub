@@ -517,11 +517,18 @@ namespace winrt::Aegisub_WinUI::implementation
 
         auto& row = m_rows[m_currentIndex];
         auto const newText = TargetTextBox().Text();
-        bool const applyingHistory = m_hasPendingHistoryText && newText == m_pendingHistoryText;
+        bool const applyingHistory = m_hasPendingHistoryText &&
+            agi::winui::EquivalentEditorText(newText.c_str(), m_pendingHistoryText.c_str());
         if (applyingHistory)
         {
             m_hasPendingHistoryText = false;
             m_pendingHistoryText = L"";
+        }
+        if (agi::winui::EquivalentEditorText(newText.c_str(), row.target.c_str()))
+        {
+            if (applyingHistory)
+                row.editSequenceKind = 0;
+            return;
         }
         if (!row.historyInitialized)
         {
@@ -559,7 +566,7 @@ namespace winrt::Aegisub_WinUI::implementation
         }
 
         row.target = newText;
-        row.targetModified = row.target != row.savedTarget;
+        row.targetModified = !agi::winui::EquivalentEditorText(row.target.c_str(), row.savedTarget.c_str());
         row.status = row.targetModified ? L"Upraveno" : L"Ulo\u017Eeno";
         UpdateDirtyFromRows();
         if (m_currentIndex < static_cast<int32_t>(m_targetEntries.size()))

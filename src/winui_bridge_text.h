@@ -95,6 +95,26 @@ inline std::string UnescapeBridgeField(std::string_view input) {
 	return output;
 }
 
+inline bool EquivalentEditorText(std::wstring_view first, std::wstring_view second) {
+	size_t firstIndex = 0;
+	size_t secondIndex = 0;
+	auto nextCharacter = [](std::wstring_view text, size_t& index) {
+		wchar_t character = text[index++];
+		if (character == L'\r') {
+			if (index < text.size() && text[index] == L'\n')
+				++index;
+			return L'\n';
+		}
+		return character;
+	};
+
+	while (firstIndex < first.size() && secondIndex < second.size()) {
+		if (nextCharacter(first, firstIndex) != nextCharacter(second, secondIndex))
+			return false;
+	}
+	return firstIndex == first.size() && secondIndex == second.size();
+}
+
 inline std::wstring RebalanceSubtitleText(std::wstring_view input) {
 	std::wstring flattened;
 	flattened.reserve(input.size());

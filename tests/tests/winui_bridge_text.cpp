@@ -25,6 +25,12 @@ TEST(winui_bridge_text, unknown_and_trailing_escapes_are_preserved) {
 	EXPECT_EQ("\\q\\", UnescapeBridgeField("\\q\\"));
 }
 
+TEST(winui_bridge_text, editor_text_comparison_ignores_newline_representation) {
+	EXPECT_TRUE(EquivalentEditorText(L"prvn\u00ED\ndruh\u00FD", L"prvn\u00ED\r\ndruh\u00FD"));
+	EXPECT_TRUE(EquivalentEditorText(L"prvn\u00ED\rdruh\u00FD", L"prvn\u00ED\ndruh\u00FD"));
+	EXPECT_FALSE(EquivalentEditorText(L"prvn\u00ED\ndruh\u00FD", L"prvn\u00ED\nt\u0159et\u00ED"));
+}
+
 TEST(winui_bridge_text, balances_a_subtitle_at_the_nearest_word_boundary) {
 	EXPECT_EQ(L"Jedna dva\r\nt\u0159i \u010Dty\u0159i", RebalanceSubtitleText(L"Jedna dva t\u0159i \u010Dty\u0159i"));
 }
