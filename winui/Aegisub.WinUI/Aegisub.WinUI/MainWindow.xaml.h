@@ -80,6 +80,10 @@ namespace winrt::Aegisub_WinUI::implementation
             winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
 
+        void NextUntranslatedButton_Click(
+            winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+
     private:
         struct SubtitleEntry
         {
@@ -184,6 +188,7 @@ namespace winrt::Aegisub_WinUI::implementation
         void InitializeWorkflowStatuses();
         void SyncWorkflowStatusesFromDisplay();
         void RefreshQaAll();
+        void RefreshProgressSummary();
         void RefreshCurrentQaVisuals();
         winrt::hstring EvaluateQaIssue(int32_t index) const;
         void CommitCurrentAndMoveNext(bool approve);
@@ -194,6 +199,8 @@ namespace winrt::Aegisub_WinUI::implementation
         void ApplyEditHistory(bool redo);
         void UpdateDirtyFromRows();
         void MoveToProblem(int32_t direction);
+        void MoveToUntranslated(int32_t direction);
+        bool IsTranslationEmpty(winrt::hstring const& text) const;
         double WorkflowTimestampSeconds(winrt::hstring const& value) const;
         winrt::Microsoft::UI::Xaml::Controls::Button FindWorkflowButton(
             winrt::Microsoft::UI::Xaml::DependencyObject const& root,
@@ -363,6 +370,7 @@ namespace winrt::Aegisub_WinUI::implementation
         NextProblemButton().Content(winrt::box_value(winrt::hstring{
             L"Dal\u0161\u00ED probl\u00E9m (" + std::to_wstring(issueCount) + L")" }));
         NextProblemButton().IsEnabled(issueCount > 0);
+        RefreshProgressSummary();
     }
 
     inline void MainWindow::RefreshCurrentQaVisuals()
@@ -581,6 +589,11 @@ namespace winrt::Aegisub_WinUI::implementation
             args.Handled(true);
             OpenProjectFiles();
         }
+        else if (key == winrt::Windows::System::VirtualKey::F7)
+        {
+            args.Handled(true);
+            MoveToUntranslated(shift ? -1 : 1);
+        }
         else if (key == winrt::Windows::System::VirtualKey::F8)
         {
             args.Handled(true);
@@ -718,6 +731,43 @@ namespace winrt::Aegisub_WinUI::implementation
         winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
         MoveToProblem(1);
+    }
+
+    inline void MainWindow::NextUntranslatedButton_Click(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        MoveToUntranslated(1);
+    }
+
+    inline void MainWindow::MoveToUntranslated(int32_t direction)
+    {
+        if (m_rows.empty() || direction == 0)
+            return;
+
+        auto const rowCount = static_cast<int32_t>(m_rows.size());
+        for (int32_t offset = 1; offset <= rowCount; ++offset)
+        {
+            auto index = (m_currentIndex + direction * offset) % rowCount;
+            if (index < 0)
+                index += rowCount;
+            if (!IsTranslationEmpty(m_rows[index].target))
+                continue;
+
+            if (index != m_currentIndex)
+            {
+                StoreCurrentEditorSelection();
+                m_currentIndex = index;
+                LoadCurrentRow();
+                RefreshCurrentQaVisuals();
+            }
+            StatusBarText().Text(winrt::hstring{
+                L"Nep\u0159elo\u017Een\u00FD titulek #" + std::to_wstring(m_rows[index].number) + L" \u00B7 F7" });
+            TargetTextBox().Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
+            return;
+        }
+
+        StatusBarText().Text(L"V\u0161echny titulky obsahuj\u00ED p\u0159eklad");
     }
 
     inline void MainWindow::MoveToProblem(int32_t direction)

@@ -85,6 +85,12 @@
                         Click="NextButton_Click" />
                     <Button Content="Schválit" MinHeight="34" Click="ApproveButton_Click" />
                     <Button
+                        x:Name="NextUntranslatedButton"
+                        Content="Další nepřeložený"
+                        MinHeight="34"
+                        ToolTipService.ToolTip="F7 další nepřeložený · Shift+F7 předchozí nepřeložený"
+                        Click="NextUntranslatedButton_Click" />
+                    <Button
                         x:Name="NextProblemButton"
                         Content="Další problém"
                         MinHeight="34"
@@ -430,6 +436,7 @@
                 <TextBlock Text="Ctrl+Z/Y → zpět/znovu" FontSize="11" Opacity="0.5" />
                 <TextBlock Text="Ctrl+O/S → otevřít/uložit" FontSize="11" Opacity="0.5" />
                 <TextBlock Text="Ctrl+Shift+S → uložit jako" FontSize="11" Opacity="0.5" />
+                <TextBlock Text="F7 → nepřeložený" FontSize="11" Opacity="0.5" />
             </StackPanel>
         </Grid>
     </Grid>

@@ -542,16 +542,7 @@ namespace winrt::Aegisub_WinUI::implementation
             TranscriptNextBlock().Visibility(Visibility::Collapsed);
         }
 
-        std::wstring tablePosition = std::to_wstring(m_rows.size());
-        auto const issueCount = std::count_if(m_rows.begin(), m_rows.end(), [](auto const& item)
-        {
-            return !item.qaIssue.empty();
-        });
-        tablePosition += L" \u0159\u00E1dk\u016F \u00B7 probl\u00E9my ";
-        tablePosition += std::to_wstring(issueCount);
-        tablePosition += L" \u00B7 aktu\u00E1ln\u00ED #";
-        tablePosition += std::to_wstring(row.number);
-        TablePositionText().Text(hstring{ tablePosition });
+        RefreshProgressSummary();
 
         PreviousButton().IsEnabled(m_currentIndex > 0);
         NextButton().IsEnabled(m_currentIndex < static_cast<int32_t>(m_rows.size()) - 1);
@@ -1092,6 +1083,39 @@ namespace winrt::Aegisub_WinUI::implementation
 
         update(OriginalFileText(), m_sourcePath, L"Soubor nen\u00ED na\u010Dten");
         update(TargetFileText(), m_targetPath, L"Nov\u00FD p\u0159eklad \u00B7 zat\u00EDm neulo\u017Een");
+    }
+
+    bool MainWindow::IsTranslationEmpty(hstring const& text) const
+    {
+        std::wstring const value{ text.c_str() };
+        return value.empty() || std::all_of(value.begin(), value.end(), [](wchar_t character)
+        {
+            return std::iswspace(character) != 0;
+        });
+    }
+
+    void MainWindow::RefreshProgressSummary()
+    {
+        auto const untranslatedCount = std::count_if(m_rows.begin(), m_rows.end(), [this](auto const& row)
+        {
+            return IsTranslationEmpty(row.target);
+        });
+        auto const issueCount = std::count_if(m_rows.begin(), m_rows.end(), [](auto const& row)
+        {
+            return !row.qaIssue.empty();
+        });
+        auto const translatedCount = m_rows.size() - static_cast<size_t>(untranslatedCount);
+
+        NextUntranslatedButton().Content(box_value(hstring{
+            L"Dal\u0161\u00ED nep\u0159elo\u017Een\u00FD (" + std::to_wstring(untranslatedCount) + L")" }));
+        NextUntranslatedButton().IsEnabled(untranslatedCount > 0);
+
+        std::wstring summary = std::to_wstring(translatedCount) + L"/" +
+            std::to_wstring(m_rows.size()) + L" p\u0159elo\u017Eeno \u00B7 probl\u00E9my " +
+            std::to_wstring(issueCount);
+        if (!m_rows.empty() && m_currentIndex >= 0 && m_currentIndex < static_cast<int32_t>(m_rows.size()))
+            summary += L" \u00B7 aktu\u00E1ln\u00ED #" + std::to_wstring(m_rows[m_currentIndex].number);
+        TablePositionText().Text(hstring{ summary });
     }
 
     bool MainWindow::ReadSubtitleFile(
