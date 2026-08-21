@@ -166,6 +166,7 @@ namespace winrt::Aegisub_WinUI::implementation
         bool m_workflowHooksInstalled{ false };
         bool m_windowClosingHookInstalled{ false };
         bool m_hasUnsavedChanges{ false };
+        bool m_workflowStateDirty{ false };
         bool m_hasPendingHistoryText{ false };
         winrt::hstring m_pendingHistoryText;
 
@@ -187,6 +188,8 @@ namespace winrt::Aegisub_WinUI::implementation
         void OpenSourceFile();
         void OpenTargetFile();
         void RefreshLoadedProject();
+        void LoadWorkspaceState();
+        bool SaveWorkspaceState();
         void RefreshProjectFileLabels();
         void SetDirty(bool dirty);
         bool ConfirmSaveBefore(std::wstring const& action);
@@ -451,6 +454,8 @@ namespace winrt::Aegisub_WinUI::implementation
         {
             row.workflowStatus = L"Schv\u00E1leno";
             row.status = row.workflowStatus;
+            m_workflowStateDirty = true;
+            UpdateDirtyFromRows();
         }
         else if (row.targetModified)
         {
@@ -783,7 +788,7 @@ namespace winrt::Aegisub_WinUI::implementation
 
     inline void MainWindow::UpdateDirtyFromRows()
     {
-        SetDirty(std::any_of(m_rows.begin(), m_rows.end(), [](auto const& row)
+        SetDirty(m_workflowStateDirty || std::any_of(m_rows.begin(), m_rows.end(), [](auto const& row)
         {
             return row.targetModified;
         }));

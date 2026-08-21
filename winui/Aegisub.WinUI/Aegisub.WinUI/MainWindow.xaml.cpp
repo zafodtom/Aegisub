@@ -110,6 +110,52 @@ namespace
             MB_OK | MB_ICONWARNING);
     }
 
+    std::filesystem::path WorkspaceStatePath(hstring const& targetPath)
+    {
+        if (targetPath.empty())
+            return {};
+
+        auto const required = GetEnvironmentVariableW(L"LOCALAPPDATA", nullptr, 0);
+        if (required == 0)
+            return {};
+        std::vector<wchar_t> localAppData(required);
+        if (GetEnvironmentVariableW(L"LOCALAPPDATA", localAppData.data(), required) == 0)
+            return {};
+
+        std::error_code pathError;
+        auto normalized = std::filesystem::absolute(
+            std::filesystem::path(targetPath.c_str()), pathError).lexically_normal().wstring();
+        if (pathError)
+            return {};
+        if (!normalized.empty())
+            CharLowerBuffW(normalized.data(), static_cast<DWORD>(normalized.size()));
+
+        uint64_t hash = 1469598103934665603ULL;
+        for (wchar_t character : normalized)
+        {
+            hash ^= static_cast<uint16_t>(character);
+            hash *= 1099511628211ULL;
+        }
+
+        std::wostringstream filename;
+        filename << std::hex << std::setfill(L'0') << std::setw(16) << hash << L".state";
+        return std::filesystem::path(localAppData.data()) /
+            L"Aegisub" / L"TranslationWorkspace" / filename.str();
+    }
+
+    bool FileFingerprint(std::filesystem::path const& path, uintmax_t& size, int64_t& timestamp)
+    {
+        std::error_code error;
+        size = std::filesystem::file_size(path, error);
+        if (error)
+            return false;
+        auto const writeTime = std::filesystem::last_write_time(path, error);
+        if (error)
+            return false;
+        timestamp = static_cast<int64_t>(writeTime.time_since_epoch().count());
+        return true;
+    }
+
     std::filesystem::path FindBridgeFrom(std::filesystem::path start)
     {
         if (start.empty())
@@ -361,6 +407,9 @@ namespace winrt::Aegisub_WinUI::implementation
         auto& row = m_rows[m_currentIndex];
         row.target = TargetTextBox().Text();
         row.status = L"Schv\u00E1leno";
+        row.workflowStatus = row.status;
+        m_workflowStateDirty = true;
+        UpdateDirtyFromRows();
         if (m_currentIndex < static_cast<int32_t>(m_targetEntries.size()))
         {
             m_targetEntries[m_currentIndex].text = row.target;
@@ -926,6 +975,8 @@ namespace winrt::Aegisub_WinUI::implementation
     {
         if (!m_hasUnsavedChanges)
         {
+            if (!m_targetPath.empty())
+                SaveWorkspaceState();
             return true;
         }
 
@@ -1162,6 +1213,7 @@ namespace winrt::Aegisub_WinUI::implementation
     void MainWindow::RefreshLoadedProject()
     {
         BuildAlignedRows();
+        LoadWorkspaceState();
         InitializeWorkflowStatuses();
         RefreshQaAll();
         RebuildSubtitleGrid();
@@ -1178,6 +1230,122 @@ namespace winrt::Aegisub_WinUI::implementation
                 L" titulk\u016F \u00B7 \u010De\u0161tina " + std::to_wstring(m_targetEntries.size()) +
                 L" \u00B7 zkontrolujte p\u00E1rov\u00E1n\u00ED podle \u010Dasu" });
         }
+    }
+
+    void MainWindow::LoadWorkspaceState()
+    {
+        m_workflowStateDirty = false;
+        auto const statePath = WorkspaceStatePath(m_targetPath);
+        if (statePath.empty() || m_targetPath.empty())
+            return;
+
+        uintmax_t currentSize{};
+        int64_t currentTimestamp{};
+        if (!FileFingerprint(std::filesystem::path(m_targetPath.c_str()), currentSize, currentTimestamp))
+            return;
+
+        std::ifstream stream(statePath, std::ios::binary);
+        if (!stream)
+            return;
+
+        std::string line;
+        if (!std::getline(stream, line) || line != "AEGISUB-WINUI-STATE\t1")
+            return;
+        if (!std::getline(stream, line) || line.rfind("FILE\t", 0) != 0)
+            return;
+
+        auto const sizeSeparator = line.find('\t', 5);
+        if (sizeSeparator == std::string::npos)
+            return;
+        try
+        {
+            auto const savedSize = static_cast<uintmax_t>(std::stoull(line.substr(5, sizeSeparator - 5)));
+            auto const savedTimestamp = std::stoll(line.substr(sizeSeparator + 1));
+            if (savedSize != currentSize || savedTimestamp != currentTimestamp)
+                return;
+        }
+        catch (...)
+        {
+            return;
+        }
+
+        int32_t restoredIndex = 0;
+        while (std::getline(stream, line))
+        {
+            if (!line.empty() && line.back() == '\r')
+                line.pop_back();
+            try
+            {
+                if (line.rfind("CURRENT\t", 0) == 0)
+                {
+                    restoredIndex = std::stoi(line.substr(8));
+                    continue;
+                }
+                if (line.rfind("ROW\t", 0) != 0)
+                    continue;
+                auto const separator = line.find('\t', 4);
+                if (separator == std::string::npos)
+                    continue;
+                auto const index = std::stoi(line.substr(4, separator - 4));
+                if (index < 0 || index >= static_cast<int32_t>(m_rows.size()))
+                    continue;
+                m_rows[index].workflowStatus = to_hstring(UnescapeBridgeField(line.substr(separator + 1)));
+                m_rows[index].status = m_rows[index].workflowStatus;
+            }
+            catch (...)
+            {
+            }
+        }
+
+        if (!m_rows.empty())
+            m_currentIndex = (std::max)(0, (std::min)(static_cast<int32_t>(m_rows.size()) - 1, restoredIndex));
+    }
+
+    bool MainWindow::SaveWorkspaceState()
+    {
+        auto const statePath = WorkspaceStatePath(m_targetPath);
+        if (statePath.empty() || m_targetPath.empty())
+            return false;
+
+        uintmax_t fileSize{};
+        int64_t fileTimestamp{};
+        if (!FileFingerprint(std::filesystem::path(m_targetPath.c_str()), fileSize, fileTimestamp))
+            return false;
+
+        std::error_code error;
+        std::filesystem::create_directories(statePath.parent_path(), error);
+        if (error)
+            return false;
+
+        auto tempPath = statePath;
+        tempPath += L".tmp-" + std::to_wstring(GetCurrentProcessId());
+        std::filesystem::remove(tempPath, error);
+        {
+            std::ofstream stream(tempPath, std::ios::binary | std::ios::trunc);
+            if (!stream)
+                return false;
+            stream << "AEGISUB-WINUI-STATE\t1\n";
+            stream << "FILE\t" << fileSize << '\t' << fileTimestamp << '\n';
+            stream << "CURRENT\t" << m_currentIndex << '\n';
+            for (size_t index = 0; index < m_rows.size(); ++index)
+            {
+                auto const& status = m_rows[index].workflowStatus.empty()
+                    ? m_rows[index].status
+                    : m_rows[index].workflowStatus;
+                stream << "ROW\t" << index << '\t'
+                    << EscapeBridgeField(to_string(status)) << '\n';
+            }
+            if (!stream)
+                return false;
+        }
+
+        if (!MoveFileExW(tempPath.c_str(), statePath.c_str(),
+            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+        {
+            std::filesystem::remove(tempPath, error);
+            return false;
+        }
+        return true;
     }
 
     void MainWindow::RefreshProjectFileLabels()
@@ -1646,6 +1814,8 @@ namespace winrt::Aegisub_WinUI::implementation
 
         m_targetPath = hstring{ savePath };
         RefreshProjectFileLabels();
+        SaveWorkspaceState();
+        m_workflowStateDirty = false;
         SetDirty(false);
 
         return true;
