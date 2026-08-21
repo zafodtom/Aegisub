@@ -172,6 +172,7 @@ namespace winrt::Aegisub_WinUI::implementation
         bool m_windowClosingHookInstalled{ false };
         bool m_hasUnsavedChanges{ false };
         bool m_workflowStateDirty{ false };
+        bool m_lastSaveCreatedBackup{ false };
         bool m_hasPendingHistoryText{ false };
         winrt::hstring m_pendingHistoryText;
 
@@ -472,7 +473,9 @@ namespace winrt::Aegisub_WinUI::implementation
         }
 
         auto const targetName = std::filesystem::path(m_targetPath.c_str()).filename().wstring();
-        StatusBarText().Text(winrt::hstring{ L"\u010Ce\u0161tina ulo\u017Eena \u00B7 " + targetName + L" \u00B7 Ctrl+S" });
+        auto const backupInfo = m_lastSaveCreatedBackup ? std::wstring{ L" \u00B7 z\u00E1loha .bak" } : std::wstring{};
+        StatusBarText().Text(winrt::hstring{
+            L"\u010Ce\u0161tina ulo\u017Eena \u00B7 " + targetName + backupInfo + L" \u00B7 Ctrl+S" });
     }
 
     inline void MainWindow::SaveAsFromShortcut()
@@ -498,7 +501,9 @@ namespace winrt::Aegisub_WinUI::implementation
         }
 
         auto const targetName = std::filesystem::path(m_targetPath.c_str()).filename().wstring();
-        StatusBarText().Text(winrt::hstring{ L"\u010Ce\u0161tina ulo\u017Eena jako \u00B7 " + targetName });
+        auto const backupInfo = m_lastSaveCreatedBackup ? std::wstring{ L" \u00B7 z\u00E1loha .bak" } : std::wstring{};
+        StatusBarText().Text(winrt::hstring{
+            L"\u010Ce\u0161tina ulo\u017Eena jako \u00B7 " + targetName + backupInfo });
     }
 
     inline void MainWindow::TargetTextBox_WorkflowKeyDown(

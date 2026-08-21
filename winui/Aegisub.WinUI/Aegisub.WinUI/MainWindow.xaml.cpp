@@ -1721,6 +1721,7 @@ namespace winrt::Aegisub_WinUI::implementation
 
     bool MainWindow::SaveTargetSubtitleFile(std::wstring& errorMessage, std::wstring const& destinationPath)
     {
+        m_lastSaveCreatedBackup = false;
         auto const savePath = destinationPath.empty() ? std::wstring{ m_targetPath.c_str() } : destinationPath;
         auto const templatePath = m_targetPath.empty()
             ? std::wstring{ m_sourcePath.c_str() }
@@ -1809,6 +1810,28 @@ namespace winrt::Aegisub_WinUI::implementation
         {
             errorMessage = L"Aegisub bridge nevytvo\u0159il ulo\u017Een\u00FD soubor.";
             return false;
+        }
+
+        if (std::filesystem::exists(targetPath))
+        {
+            auto backupPath = targetPath;
+            backupPath += L".bak";
+            auto backupTemp = backupPath;
+            backupTemp += L".tmp-" + std::to_wstring(GetCurrentProcessId()) +
+                L"-" + std::to_wstring(GetTickCount64());
+            std::filesystem::remove(backupTemp, fileError);
+
+            if (!CopyFileW(targetPath.c_str(), backupTemp.c_str(), FALSE) ||
+                !MoveFileExW(backupTemp.c_str(), backupPath.c_str(),
+                    MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+            {
+                std::filesystem::remove(backupTemp, fileError);
+                std::filesystem::remove(tempOutput, fileError);
+                errorMessage = L"Nepoda\u0159ilo se vytvo\u0159it bezpe\u010Dnostn\u00ED z\u00E1lohu .bak. "
+                    L"P\u016Fvodn\u00ED \u010Desk\u00FD soubor nebyl zm\u011Bn\u011Bn.";
+                return false;
+            }
+            m_lastSaveCreatedBackup = true;
         }
 
         if (!MoveFileExW(
