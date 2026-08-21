@@ -473,7 +473,7 @@ namespace winrt::Aegisub_WinUI::implementation
         }
 
         auto const targetName = std::filesystem::path(m_targetPath.c_str()).filename().wstring();
-        auto const backupInfo = m_lastSaveCreatedBackup ? std::wstring{ L" \u00B7 z\u00E1loha .bak" } : std::wstring{};
+        auto const backupInfo = m_lastSaveCreatedBackup ? std::wstring{ L" \u00B7 z\u00E1loha v LocalAppData" } : std::wstring{};
         StatusBarText().Text(winrt::hstring{
             L"\u010Ce\u0161tina ulo\u017Eena \u00B7 " + targetName + backupInfo + L" \u00B7 Ctrl+S" });
     }
@@ -501,7 +501,7 @@ namespace winrt::Aegisub_WinUI::implementation
         }
 
         auto const targetName = std::filesystem::path(m_targetPath.c_str()).filename().wstring();
-        auto const backupInfo = m_lastSaveCreatedBackup ? std::wstring{ L" \u00B7 z\u00E1loha .bak" } : std::wstring{};
+        auto const backupInfo = m_lastSaveCreatedBackup ? std::wstring{ L" \u00B7 z\u00E1loha v LocalAppData" } : std::wstring{};
         StatusBarText().Text(winrt::hstring{
             L"\u010Ce\u0161tina ulo\u017Eena jako \u00B7 " + targetName + backupInfo });
     }

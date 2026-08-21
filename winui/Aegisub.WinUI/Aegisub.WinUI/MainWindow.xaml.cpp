@@ -143,6 +143,16 @@ namespace
             L"Aegisub" / L"TranslationWorkspace" / filename.str();
     }
 
+    std::filesystem::path WorkspaceBackupPath(std::filesystem::path const& targetPath)
+    {
+        auto const statePath = WorkspaceStatePath(hstring{ targetPath.wstring() });
+        if (statePath.empty())
+            return {};
+
+        auto filename = statePath.stem().wstring() + L"-" + targetPath.filename().wstring() + L".bak";
+        return statePath.parent_path() / L"Backups" / filename;
+    }
+
     bool FileFingerprint(std::filesystem::path const& path, uintmax_t& size, int64_t& timestamp)
     {
         std::error_code error;
@@ -1814,8 +1824,23 @@ namespace winrt::Aegisub_WinUI::implementation
 
         if (std::filesystem::exists(targetPath))
         {
-            auto backupPath = targetPath;
-            backupPath += L".bak";
+            auto const backupPath = WorkspaceBackupPath(targetPath);
+            if (backupPath.empty())
+            {
+                std::filesystem::remove(tempOutput, fileError);
+                errorMessage = L"Nepoda\u0159ilo se zjistit syst\u00E9mov\u00FD adres\u00E1\u0159 pro bezpe\u010Dnostn\u00ED z\u00E1lohu. "
+                    L"P\u016Fvodn\u00ED \u010Desk\u00FD soubor nebyl zm\u011Bn\u011Bn.";
+                return false;
+            }
+            fileError.clear();
+            std::filesystem::create_directories(backupPath.parent_path(), fileError);
+            if (fileError)
+            {
+                std::filesystem::remove(tempOutput, fileError);
+                errorMessage = L"Nepoda\u0159ilo se p\u0159ipravit syst\u00E9mov\u00FD adres\u00E1\u0159 pro bezpe\u010Dnostn\u00ED z\u00E1lohu. "
+                    L"P\u016Fvodn\u00ED \u010Desk\u00FD soubor nebyl zm\u011Bn\u011Bn.";
+                return false;
+            }
             auto backupTemp = backupPath;
             backupTemp += L".tmp-" + std::to_wstring(GetCurrentProcessId()) +
                 L"-" + std::to_wstring(GetTickCount64());
@@ -1827,7 +1852,7 @@ namespace winrt::Aegisub_WinUI::implementation
             {
                 std::filesystem::remove(backupTemp, fileError);
                 std::filesystem::remove(tempOutput, fileError);
-                errorMessage = L"Nepoda\u0159ilo se vytvo\u0159it bezpe\u010Dnostn\u00ED z\u00E1lohu .bak. "
+                errorMessage = L"Nepoda\u0159ilo se vytvo\u0159it bezpe\u010Dnostn\u00ED z\u00E1lohu v LocalAppData. "
                     L"P\u016Fvodn\u00ED \u010Desk\u00FD soubor nebyl zm\u011Bn\u011Bn.";
                 return false;
             }
