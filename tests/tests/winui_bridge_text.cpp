@@ -46,3 +46,71 @@ TEST(winui_bridge_text, prefers_a_longer_first_line_when_splits_are_equally_bala
 TEST(winui_bridge_text, leaves_a_single_word_unchanged) {
 	EXPECT_EQ(L"Nep\u0159eru\u0161iteln\u00E9", RebalanceSubtitleText(L"Nep\u0159eru\u0161iteln\u00E9"));
 }
+
+TEST(winui_workflow, overlap_quality_uses_the_shorter_subtitle) {
+	EXPECT_DOUBLE_EQ(1.0, SubtitleOverlapQuality(10.0, 14.0, 11.0, 13.0));
+	EXPECT_DOUBLE_EQ(0.0, SubtitleOverlapQuality(10.0, 11.0, 12.0, 13.0));
+	EXPECT_TRUE(ShouldPairSubtitles(0.35));
+	EXPECT_FALSE(ShouldPairSubtitles(0.34));
+}
+
+TEST(winui_workflow, quality_detects_timing_text_and_formatting_problems) {
+	auto const facts = AnalyzeSubtitleQuality(L"  {\\i1P\u0159\u00EDli\u0161  rychl\u00FD text", 2.0, 2.5, 2.4, 12, 10.0);
+	EXPECT_TRUE(facts.too_short);
+	EXPECT_TRUE(facts.line_too_long);
+	EXPECT_TRUE(facts.too_fast);
+	EXPECT_TRUE(facts.edge_whitespace);
+	EXPECT_TRUE(facts.repeated_spaces);
+	EXPECT_TRUE(facts.unbalanced_braces);
+	EXPECT_TRUE(facts.overlaps_next);
+}
+
+TEST(winui_workflow, quality_accepts_a_clean_subtitle) {
+	auto const facts = AnalyzeSubtitleQuality(L"Kr\u00E1tk\u00FD text", 2.0, 4.0, 4.2);
+	EXPECT_FALSE(facts.empty);
+	EXPECT_FALSE(facts.invalid_interval);
+	EXPECT_FALSE(facts.too_short);
+	EXPECT_FALSE(facts.too_fast);
+	EXPECT_FALSE(facts.unbalanced_braces);
+	EXPECT_FALSE(facts.overlaps_next);
+}
+
+TEST(winui_workflow, recovery_retention_protects_current_and_limits_old_files) {
+	EXPECT_TRUE(ShouldKeepRecoveryArtifact(true, 24 * 365, 99));
+	EXPECT_TRUE(ShouldKeepRecoveryArtifact(false, 24, 0));
+	EXPECT_FALSE(ShouldKeepRecoveryArtifact(false, 24 * 31, 0));
+	EXPECT_FALSE(ShouldKeepRecoveryArtifact(false, 24, 30));
+}
+
+TEST(winui_workflow, recovery_draft_round_trip_preserves_all_rows) {
+	RecoveryDraft input;
+	input.file_size = 12345;
+	input.file_timestamp = -987654321;
+	input.row_count = 2;
+	input.current_index = 1;
+	input.workflow_dirty = true;
+	input.rows = {
+		{ 0, "P\xC5\x99ipraveno", "Prvn\xC3\xAD\n\xC5\x99\xC3\xA1" "dek" },
+		{ 1, "Schv\xC3\xA1leno", "Text\tse\\znaky" },
+	};
+	RecoveryDraft output;
+	ASSERT_TRUE(ParseRecoveryDraft(SerializeRecoveryDraft(input), output));
+	EXPECT_EQ(input.file_size, output.file_size);
+	EXPECT_EQ(input.file_timestamp, output.file_timestamp);
+	EXPECT_EQ(input.current_index, output.current_index);
+	EXPECT_TRUE(output.workflow_dirty);
+	ASSERT_EQ(2U, output.rows.size());
+	EXPECT_EQ(input.rows[0].target, output.rows[0].target);
+	EXPECT_EQ(input.rows[1].status, output.rows[1].status);
+}
+
+TEST(winui_workflow, recovery_draft_rejects_truncated_data) {
+	RecoveryDraft draft;
+	EXPECT_FALSE(ParseRecoveryDraft("AEGISUB-WINUI-DRAFT\t1\nFILE\t12", draft));
+}
+
+TEST(winui_workflow, recovery_draft_rejects_missing_sections) {
+	RecoveryDraft draft;
+	EXPECT_FALSE(ParseRecoveryDraft(
+		"AEGISUB-WINUI-DRAFT\t1\nFILE\t12\t34\nROWS\t0\n", draft));
+}

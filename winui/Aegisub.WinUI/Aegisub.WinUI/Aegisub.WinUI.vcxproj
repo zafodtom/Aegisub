@@ -182,6 +182,11 @@
   -->
   <ItemGroup>
     <None Include="packages.config" />
+    <Content Include="..\..\..\build\src\aegisub-winui-bridge.exe" Condition="Exists('..\..\..\build\src\aegisub-winui-bridge.exe')">
+      <Link>aegisub-winui-bridge.exe</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <DeploymentContent>true</DeploymentContent>
+    </Content>
   </ItemGroup>
   <PropertyGroup Condition="'$(DisableHasPackageAndPublishMenuAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
     <HasPackageAndPublishMenu>true</HasPackageAndPublishMenu>

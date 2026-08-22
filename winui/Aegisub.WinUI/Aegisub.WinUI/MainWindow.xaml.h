@@ -64,6 +64,22 @@ namespace winrt::Aegisub_WinUI::implementation
             winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
 
+        void OpenRecentProjectButton_Click(
+            winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+
+        void RecoveryOverviewButton_Click(
+            winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+
+        void OpenRecoveryFolderButton_Click(
+            winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+
+        void DeleteRecoveryFilesButton_Click(
+            winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+
         void TargetTextBox_TextChanged(
             winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::Controls::TextChangedEventArgs const& args);
@@ -139,6 +155,7 @@ namespace winrt::Aegisub_WinUI::implementation
             bool targetModified{};
             winrt::hstring workflowStatus;
             winrt::hstring qaIssue;
+            double sourceMatchQuality{};
             winrt::hstring savedTarget;
             winrt::hstring savedWorkflowStatus;
             std::vector<winrt::hstring> undoHistory;
@@ -174,6 +191,7 @@ namespace winrt::Aegisub_WinUI::implementation
         bool m_initialized{ false };
         bool m_workflowHooksInstalled{ false };
         bool m_windowClosingHookInstalled{ false };
+        bool m_externalChangeAcknowledged{ false };
         bool m_hasUnsavedChanges{ false };
         bool m_workflowStateDirty{ false };
         bool m_lastSaveCreatedBackup{ false };
@@ -183,6 +201,7 @@ namespace winrt::Aegisub_WinUI::implementation
         uintmax_t m_targetFileSize{};
         int64_t m_targetFileTimestamp{};
         winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer m_workspaceDraftTimer{ nullptr };
+        winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer m_externalChangeTimer{ nullptr };
         bool m_hasPendingHistoryText{ false };
         winrt::hstring m_pendingHistoryText;
 
@@ -200,9 +219,15 @@ namespace winrt::Aegisub_WinUI::implementation
         void InitializeDynamicSubtitleGrid();
         void RebuildSubtitleGrid();
         void HookWindowClosing();
+        void StartExternalChangeMonitoring();
+        void CheckForExternalTargetChange();
         void OpenProjectFiles();
         void OpenSourceFile();
         void OpenTargetFile();
+        void OpenRecentProject();
+        bool LoadRecentProjectPaths(std::wstring& source, std::wstring& target) const;
+        void SaveRecentProjectPaths() const;
+        void RefreshRecentProjectAction();
         void RefreshLoadedProject();
         void LoadWorkspaceState();
         bool SaveWorkspaceState();
@@ -313,49 +338,40 @@ namespace winrt::Aegisub_WinUI::implementation
         if (row.sourceStart.empty())
             addIssue(L"bez \u010Dasov\u00E9ho p\u00E1ru s origin\u00E1lem");
 
-        if (row.duration <= 0.0)
-            addIssue(L"neplatn\u00E1 d\u00E9lka");
+        if (!row.sourceStart.empty() && row.sourceMatchQuality > 0.0 && row.sourceMatchQuality < 0.35)
+            addIssue(L"nejist\u00E9 \u010Dasov\u00E9 p\u00E1rov\u00E1n\u00ED");
 
-        size_t lineCount = 1;
-        size_t currentLineLength = 0;
-        size_t maxLineLength = 0;
-        size_t characterCount = 0;
-        for (wchar_t c : text)
-        {
-            if (c == L'\r')
-                continue;
-            if (c == L'\n')
-            {
-                ++lineCount;
-                maxLineLength = (std::max)(maxLineLength, currentLineLength);
-                currentLineLength = 0;
-                continue;
-            }
-            ++currentLineLength;
-            ++characterCount;
-        }
-        maxLineLength = (std::max)(maxLineLength, currentLineLength);
+        double const start = WorkflowTimestampSeconds(row.start);
+        double const end = WorkflowTimestampSeconds(row.end);
+        double const nextStart = index + 1 < static_cast<int32_t>(m_rows.size())
+            ? WorkflowTimestampSeconds(m_rows[index + 1].start)
+            : -1.0;
+        auto const facts = agi::winui::AnalyzeSubtitleQuality(
+            text, start, end, nextStart, kMaxCpl, kMaxCps);
 
-        if (lineCount > 2)
+        if (facts.invalid_interval)
+            addIssue(L"neplatn\u00FD \u010Dasov\u00FD interval");
+        else if (facts.too_short)
+            addIssue(L"zobrazen\u00ED krat\u0161\u00ED ne\u017E 0,7 s");
+        if (facts.too_many_lines)
             addIssue(L"v\u00EDce ne\u017E 2 \u0159\u00E1dky");
-        if (maxLineLength > kMaxCpl)
-            addIssue(L"CPL " + std::to_wstring(maxLineLength) + L" > " + std::to_wstring(kMaxCpl));
+        if (facts.line_too_long)
+            addIssue(L"CPL " + std::to_wstring(facts.max_line_length) + L" > " + std::to_wstring(kMaxCpl));
 
-        double const cps = row.duration > 0.0 ? static_cast<double>(characterCount) / row.duration : 0.0;
-        if (cps > kMaxCps)
+        if (facts.too_fast)
         {
             std::wostringstream stream;
-            stream << L"CPS " << std::fixed << std::setprecision(1) << cps << L" > " << kMaxCps;
+            stream << L"CPS " << std::fixed << std::setprecision(1) << facts.cps << L" > " << kMaxCps;
             addIssue(stream.str());
         }
-
-        if (index + 1 < static_cast<int32_t>(m_rows.size()))
-        {
-            double const currentEnd = WorkflowTimestampSeconds(row.end);
-            double const nextStart = WorkflowTimestampSeconds(m_rows[index + 1].start);
-            if (currentEnd > nextStart + 0.0005)
-                addIssue(L"p\u0159ekryv s n\u00E1sleduj\u00EDc\u00EDm titulkem");
-        }
+        if (facts.edge_whitespace)
+            addIssue(L"mezera na za\u010D\u00E1tku nebo konci");
+        if (facts.repeated_spaces)
+            addIssue(L"opakovan\u00E9 mezery");
+        if (facts.unbalanced_braces)
+            addIssue(L"nevyv\u00E1\u017Een\u00E9 slo\u017Een\u00E9 z\u00E1vorky");
+        if (facts.overlaps_next)
+            addIssue(L"p\u0159ekryv s n\u00E1sleduj\u00EDc\u00EDm titulkem");
 
         return winrt::hstring{ issues };
     }

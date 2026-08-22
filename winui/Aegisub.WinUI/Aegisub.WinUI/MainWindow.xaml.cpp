@@ -12,11 +12,13 @@
 #include <iomanip>
 #include <iterator>
 #include <limits>
+#include <shellapi.h>
 #include <sstream>
 #include <string>
 #include <vector>
 
 #pragma comment(lib, "Comdlg32.lib")
+#pragma comment(lib, "Shell32.lib")
 
 using namespace winrt;
 using namespace Microsoft::UI::Xaml;
@@ -162,6 +164,18 @@ namespace
         return path;
     }
 
+    std::filesystem::path WorkspaceRecentProjectPath()
+    {
+        auto const required = GetEnvironmentVariableW(L"LOCALAPPDATA", nullptr, 0);
+        if (required == 0)
+            return {};
+        std::vector<wchar_t> localAppData(required);
+        if (GetEnvironmentVariableW(L"LOCALAPPDATA", localAppData.data(), required) == 0)
+            return {};
+        return std::filesystem::path(localAppData.data()) /
+            L"Aegisub" / L"TranslationWorkspace" / L"last-project.tsv";
+    }
+
     std::wstring FormatFileWriteTime(std::filesystem::path const& path)
     {
         WIN32_FILE_ATTRIBUTE_DATA attributes{};
@@ -205,7 +219,6 @@ namespace
         };
         std::vector<BackupFile> backups;
         auto const now = std::filesystem::file_time_type::clock::now();
-        auto const backupMaxAge = std::chrono::hours(24 * 30);
         auto const tempMaxAge = std::chrono::hours(24);
         std::error_code error;
 
@@ -225,10 +238,7 @@ namespace
             auto const filename = entry.path().filename().wstring();
             if (entry.path().extension() == L".bak")
             {
-                if (entry.path() != currentBackup && now - writeTime > backupMaxAge)
-                    std::filesystem::remove(entry.path(), entryError);
-                else
-                    backups.push_back({ entry.path(), writeTime });
+                backups.push_back({ entry.path(), writeTime });
             }
             else if (filename.find(L".bak.tmp-") != std::wstring::npos && now - writeTime > tempMaxAge)
             {
@@ -240,20 +250,15 @@ namespace
         {
             return first.writeTime > second.writeTime;
         });
-        constexpr size_t maximumBackupCount = 30;
-        bool const containsCurrent = std::any_of(backups.begin(), backups.end(), [&](auto const& backup)
-        {
-            return backup.path == currentBackup;
-        });
-        size_t const maximumOtherBackups = maximumBackupCount - (containsCurrent ? 1 : 0);
-        size_t keptOtherBackups = 0;
+        size_t otherRank = 0;
         for (auto const& backup : backups)
         {
-            if (backup.path == currentBackup)
-                continue;
-            if (keptOtherBackups++ < maximumOtherBackups)
-                continue;
-            std::filesystem::remove(backup.path, error);
+            bool const current = backup.path == currentBackup;
+            auto const ageHours = std::chrono::duration_cast<std::chrono::hours>(
+                now - backup.writeTime).count();
+            auto const rank = current ? size_t{} : otherRank++;
+            if (!agi::winui::ShouldKeepRecoveryArtifact(current, ageHours, rank))
+                std::filesystem::remove(backup.path, error);
         }
     }
 
@@ -274,7 +279,6 @@ namespace
         };
         std::vector<DraftFile> drafts;
         auto const now = std::filesystem::file_time_type::clock::now();
-        auto const draftMaxAge = std::chrono::hours(24 * 30);
         auto const tempMaxAge = std::chrono::hours(24);
         std::error_code error;
 
@@ -294,10 +298,7 @@ namespace
             auto const filename = entry.path().filename().wstring();
             if (entry.path().extension() == L".draft")
             {
-                if (entry.path() != currentDraft && now - writeTime > draftMaxAge)
-                    std::filesystem::remove(entry.path(), entryError);
-                else
-                    drafts.push_back({ entry.path(), writeTime });
+                drafts.push_back({ entry.path(), writeTime });
             }
             else if (filename.find(L".draft.tmp-") != std::wstring::npos &&
                 now - writeTime > tempMaxAge)
@@ -310,20 +311,15 @@ namespace
         {
             return first.writeTime > second.writeTime;
         });
-        constexpr size_t maximumDraftCount = 30;
-        bool const containsCurrent = std::any_of(drafts.begin(), drafts.end(), [&](auto const& draft)
-        {
-            return draft.path == currentDraft;
-        });
-        size_t const maximumOtherDrafts = maximumDraftCount - (containsCurrent ? 1 : 0);
-        size_t keptOtherDrafts = 0;
+        size_t otherRank = 0;
         for (auto const& draft : drafts)
         {
-            if (draft.path == currentDraft)
-                continue;
-            if (keptOtherDrafts++ < maximumOtherDrafts)
-                continue;
-            std::filesystem::remove(draft.path, error);
+            bool const current = draft.path == currentDraft;
+            auto const ageHours = std::chrono::duration_cast<std::chrono::hours>(
+                now - draft.writeTime).count();
+            auto const rank = current ? size_t{} : otherRank++;
+            if (!agi::winui::ShouldKeepRecoveryArtifact(current, ageHours, rank))
+                std::filesystem::remove(draft.path, error);
         }
     }
 
@@ -376,6 +372,10 @@ namespace
         wchar_t modulePath[MAX_PATH]{};
         if (GetModuleFileNameW(nullptr, modulePath, static_cast<DWORD>(std::size(modulePath))) != 0)
         {
+            auto const adjacent = std::filesystem::path(modulePath).parent_path() /
+                L"aegisub-winui-bridge.exe";
+            if (std::filesystem::exists(adjacent))
+                return adjacent;
             if (auto const bridge = FindBridgeFrom(std::filesystem::path(modulePath)); !bridge.empty())
             {
                 return bridge;
@@ -551,6 +551,8 @@ namespace winrt::Aegisub_WinUI::implementation
         InitializeDynamicSubtitleGrid();
         RebuildSubtitleGrid();
         HookWindowClosing();
+        StartExternalChangeMonitoring();
+        RefreshRecentProjectAction();
         LoadCurrentRow();
         RefreshSearchSummary();
     }
@@ -740,6 +742,86 @@ namespace winrt::Aegisub_WinUI::implementation
         RoutedEventArgs const&)
     {
         OpenTargetFile();
+    }
+
+    void MainWindow::OpenRecentProjectButton_Click(
+        Windows::Foundation::IInspectable const&,
+        RoutedEventArgs const&)
+    {
+        OpenRecentProject();
+    }
+
+    void MainWindow::RecoveryOverviewButton_Click(
+        Windows::Foundation::IInspectable const&,
+        RoutedEventArgs const&)
+    {
+        if (m_targetPath.empty())
+        {
+            MessageBoxW(GetActiveWindow(), L"Nejd\u0159\u00EDve otev\u0159ete \u010Desk\u00FD soubor titulk\u016F.",
+                L"Obnovovac\u00ED data", MB_OK | MB_ICONINFORMATION);
+            return;
+        }
+
+        auto describe = [](std::filesystem::path const& path, wchar_t const* missing)
+        {
+            std::error_code error;
+            if (path.empty() || !std::filesystem::exists(path, error))
+                return std::wstring{ missing };
+            auto const size = std::filesystem::file_size(path, error);
+            std::wstring result = path.filename().wstring() + L"\n  " + FormatFileWriteTime(path);
+            if (!error)
+                result += L" \u00B7 " + std::to_wstring(size) + L" B";
+            result += L"\n  " + path.wstring();
+            return result;
+        };
+
+        auto const targetPath = std::filesystem::path(m_targetPath.c_str());
+        std::wstring message = L"Z\u00E1loha:\n" +
+            describe(WorkspaceBackupPath(targetPath), L"nen\u00ED k dispozici") +
+            L"\n\nPracovn\u00ED koncept:\n" +
+            describe(WorkspaceDraftPath(m_targetPath), L"nen\u00ED k dispozici");
+        MessageBoxW(GetActiveWindow(), message.c_str(), L"P\u0159ehled obnovovac\u00EDch dat",
+            MB_OK | MB_ICONINFORMATION);
+    }
+
+    void MainWindow::OpenRecoveryFolderButton_Click(
+        Windows::Foundation::IInspectable const&,
+        RoutedEventArgs const&)
+    {
+        auto const recentPath = WorkspaceRecentProjectPath();
+        if (recentPath.empty())
+            return;
+        std::error_code error;
+        std::filesystem::create_directories(recentPath.parent_path() / L"Backups", error);
+        auto const folder = recentPath.parent_path();
+        if (reinterpret_cast<INT_PTR>(ShellExecuteW(
+                GetActiveWindow(), L"open", folder.c_str(), nullptr, nullptr, SW_SHOWNORMAL)) <= 32)
+        {
+            MessageBoxW(GetActiveWindow(), L"Syst\u00E9movou slo\u017Eku obnovy se nepoda\u0159ilo otev\u0159\u00EDt.",
+                L"Obnovovac\u00ED data", MB_OK | MB_ICONERROR);
+        }
+    }
+
+    void MainWindow::DeleteRecoveryFilesButton_Click(
+        Windows::Foundation::IInspectable const&,
+        RoutedEventArgs const&)
+    {
+        if (m_targetPath.empty())
+            return;
+        if (MessageBoxW(GetActiveWindow(),
+                L"Odstranit z\u00E1lohu a pracovn\u00ED koncept aktu\u00E1ln\u00EDho \u010Desk\u00E9ho souboru?\n\n"
+                L"Ulo\u017Een\u00E9 titulky z\u016Fstanou beze zm\u011Bny.",
+                L"Odstranit obnovovac\u00ED data?", MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2) != IDYES)
+        {
+            return;
+        }
+        std::error_code error;
+        std::filesystem::remove(WorkspaceBackupPath(std::filesystem::path(m_targetPath.c_str())), error);
+        DeleteWorkspaceDraft();
+        RefreshBackupAction();
+        StatusBarText().Text(L"Obnovovac\u00ED data aktu\u00E1ln\u00EDho souboru odstran\u011Bna");
+        if (m_hasUnsavedChanges)
+            ScheduleWorkspaceDraftSave();
     }
 
     void MainWindow::SearchTextBox_TextChanged(
@@ -1354,6 +1436,182 @@ namespace winrt::Aegisub_WinUI::implementation
         });
     }
 
+    void MainWindow::StartExternalChangeMonitoring()
+    {
+        if (m_externalChangeTimer)
+            return;
+        auto const queue = DispatcherQueue();
+        if (!queue)
+            return;
+        m_externalChangeTimer = queue.CreateTimer();
+        m_externalChangeTimer.Interval(std::chrono::seconds(3));
+        m_externalChangeTimer.IsRepeating(true);
+        m_externalChangeTimer.Tick([this](auto const&, auto const&)
+        {
+            CheckForExternalTargetChange();
+        });
+        m_externalChangeTimer.Start();
+    }
+
+    void MainWindow::CheckForExternalTargetChange()
+    {
+        if (m_targetPath.empty() || !m_hasTargetFileFingerprint || m_externalChangeAcknowledged)
+            return;
+        uintmax_t currentSize{};
+        int64_t currentTimestamp{};
+        auto const targetPath = std::filesystem::path(m_targetPath.c_str());
+        if (FileFingerprint(targetPath, currentSize, currentTimestamp) &&
+            currentSize == m_targetFileSize && currentTimestamp == m_targetFileTimestamp)
+        {
+            return;
+        }
+
+        m_externalChangeAcknowledged = true;
+        auto const result = MessageBoxW(GetActiveWindow(),
+            L"Otev\u0159en\u00FD \u010Desk\u00FD soubor zm\u011Bnila jin\u00E1 aplikace.\n\n"
+            L"Ano = na\u010D\u00EDst zm\u011Bn\u011Bn\u00FD soubor\n"
+            L"Ne = ulo\u017Eit rozpracovanou verzi pod jin\u00FDm n\u00E1zvem\n"
+            L"Storno = pokra\u010Dovat bez na\u010Dten\u00ED",
+            L"Soubor se mezit\u00EDm zm\u011Bnil", MB_YESNOCANCEL | MB_ICONWARNING | MB_DEFBUTTON3);
+        if (result == IDYES)
+        {
+            if (m_hasUnsavedChanges && MessageBoxW(GetActiveWindow(),
+                    L"Na\u010Dten\u00ED extern\u00ED verze zahod\u00ED aktu\u00E1ln\u00ED neulo\u017Een\u00E9 zm\u011Bny. Pokra\u010Dovat?",
+                    L"Zahodit neulo\u017Een\u00E9 zm\u011Bny?", MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2) != IDYES)
+            {
+                m_forceSaveAsForRecoveredDraft = true;
+                StatusBarText().Text(L"Extern\u00ED zm\u011Bna nen\u00ED na\u010Dtena \u00B7 pou\u017Eijte Ulo\u017Eit jako");
+                return;
+            }
+
+            std::vector<SubtitleEntry> entries;
+            std::wstring errorMessage;
+            if (!ReadSubtitleFile(m_targetPath.c_str(), entries, errorMessage))
+            {
+                MessageBoxW(GetActiveWindow(), errorMessage.c_str(), L"Extern\u00ED zm\u011Bnu nelze na\u010D\u00EDst",
+                    MB_OK | MB_ICONERROR);
+                m_forceSaveAsForRecoveredDraft = true;
+                return;
+            }
+            DeleteWorkspaceDraft();
+            m_targetEntries = std::move(entries);
+            RefreshLoadedProject();
+            StatusBarText().Text(L"Extern\u011B zm\u011Bn\u011Bn\u00FD \u010Desk\u00FD soubor byl znovu na\u010Dten");
+            return;
+        }
+
+        m_forceSaveAsForRecoveredDraft = true;
+        if (result == IDNO)
+        {
+            SaveAsFromShortcut();
+            return;
+        }
+        StatusBarText().Text(L"Pokra\u010Dujete nad star\u0161\u00ED verz\u00ED \u00B7 dal\u0161\u00ED ulo\u017Een\u00ED mus\u00ED b\u00FDt Ulo\u017Eit jako");
+    }
+
+    bool MainWindow::LoadRecentProjectPaths(std::wstring& source, std::wstring& target) const
+    {
+        source.clear();
+        target.clear();
+        auto const path = WorkspaceRecentProjectPath();
+        std::ifstream stream(path, std::ios::binary);
+        if (!stream)
+            return false;
+
+        std::string line;
+        if (!std::getline(stream, line) || line != "AEGISUB-WINUI-RECENT\t1")
+            return false;
+        while (std::getline(stream, line))
+        {
+            if (!line.empty() && line.back() == '\r')
+                line.pop_back();
+            if (line.rfind("SOURCE\t", 0) == 0)
+                source = ToWide(UnescapeBridgeField(line.substr(7)));
+            else if (line.rfind("TARGET\t", 0) == 0)
+                target = ToWide(UnescapeBridgeField(line.substr(7)));
+        }
+        return !source.empty() && !target.empty() &&
+            std::filesystem::exists(source) && std::filesystem::exists(target) &&
+            !PathsReferToSameFile(source, target);
+    }
+
+    void MainWindow::SaveRecentProjectPaths() const
+    {
+        if (m_sourcePath.empty() || m_targetPath.empty())
+            return;
+        auto const path = WorkspaceRecentProjectPath();
+        if (path.empty())
+            return;
+        std::error_code error;
+        std::filesystem::create_directories(path.parent_path(), error);
+        if (error)
+            return;
+        auto tempPath = path;
+        tempPath += L".tmp-" + std::to_wstring(GetCurrentProcessId());
+        std::filesystem::remove(tempPath, error);
+        {
+            std::ofstream stream(tempPath, std::ios::binary | std::ios::trunc);
+            if (!stream)
+                return;
+            stream << "AEGISUB-WINUI-RECENT\t1\n";
+            stream << "SOURCE\t" << EscapeBridgeField(to_string(m_sourcePath)) << '\n';
+            stream << "TARGET\t" << EscapeBridgeField(to_string(m_targetPath)) << '\n';
+            if (!stream)
+                return;
+        }
+        if (!MoveFileExW(tempPath.c_str(), path.c_str(),
+            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+        {
+            std::filesystem::remove(tempPath, error);
+        }
+    }
+
+    void MainWindow::RefreshRecentProjectAction()
+    {
+        std::wstring source;
+        std::wstring target;
+        bool const available = LoadRecentProjectPaths(source, target);
+        RecentProjectMenuItem().IsEnabled(available);
+        if (available)
+        {
+            ToolTipService::SetToolTip(RecentProjectMenuItem(), box_value(hstring{
+                std::filesystem::path(source).filename().wstring() + L" + " +
+                std::filesystem::path(target).filename().wstring() }));
+        }
+    }
+
+    void MainWindow::OpenRecentProject()
+    {
+        std::wstring sourceFilename;
+        std::wstring targetFilename;
+        if (!LoadRecentProjectPaths(sourceFilename, targetFilename))
+        {
+            RefreshRecentProjectAction();
+            MessageBoxW(GetActiveWindow(), L"Naposledy pou\u017Eit\u00E9 soubory ji\u017E nejsou dostupn\u00E9.",
+                L"Posledn\u00ED projekt", MB_OK | MB_ICONINFORMATION);
+            return;
+        }
+        if (!ConfirmSaveBefore(L"otev\u0159en\u00EDm posledn\u00EDho projektu"))
+            return;
+
+        std::vector<SubtitleEntry> sourceEntries;
+        std::vector<SubtitleEntry> targetEntries;
+        std::wstring errorMessage;
+        if (!ReadSubtitleFile(sourceFilename, sourceEntries, errorMessage) ||
+            !ReadSubtitleFile(targetFilename, targetEntries, errorMessage))
+        {
+            MessageBoxW(GetActiveWindow(), errorMessage.c_str(), L"Posledn\u00ED projekt nelze otev\u0159\u00EDt",
+                MB_OK | MB_ICONERROR);
+            RefreshRecentProjectAction();
+            return;
+        }
+        m_sourceEntries = std::move(sourceEntries);
+        m_targetEntries = std::move(targetEntries);
+        m_sourcePath = hstring{ sourceFilename };
+        m_targetPath = hstring{ targetFilename };
+        RefreshLoadedProject();
+    }
+
     bool MainWindow::SelectSubtitleFile(std::wstring const& title, std::wstring& filename) const
     {
         wchar_t buffer[32768]{};
@@ -1532,6 +1790,7 @@ namespace winrt::Aegisub_WinUI::implementation
 
     void MainWindow::RefreshLoadedProject()
     {
+        m_externalChangeAcknowledged = false;
         BuildAlignedRows();
         LoadWorkspaceState();
         m_forceSaveAsForRecoveredDraft = false;
@@ -1571,6 +1830,8 @@ namespace winrt::Aegisub_WinUI::implementation
         }
         if (restoredDraft)
             StatusBarText().Text(L"Obnoven neulo\u017Een\u00FD pracovn\u00ED koncept");
+        SaveRecentProjectPaths();
+        RefreshRecentProjectAction();
     }
 
     void MainWindow::LoadWorkspaceState()
@@ -1700,86 +1961,18 @@ namespace winrt::Aegisub_WinUI::implementation
         if (!stream)
             return false;
 
-        std::string line;
-        if (!std::getline(stream, line) || line != "AEGISUB-WINUI-DRAFT\t1")
-            return false;
-        if (!std::getline(stream, line) || line.rfind("FILE\t", 0) != 0)
-            return false;
-
-        uintmax_t savedSize{};
-        int64_t savedTimestamp{};
-        auto const sizeSeparator = line.find('\t', 5);
-        try
-        {
-            if (sizeSeparator == std::string::npos)
-                return false;
-            savedSize = static_cast<uintmax_t>(std::stoull(line.substr(5, sizeSeparator - 5)));
-            savedTimestamp = std::stoll(line.substr(sizeSeparator + 1));
-        }
-        catch (...)
-        {
-            return false;
-        }
-
-        struct DraftRow
-        {
-            int32_t index{};
-            std::wstring status;
-            std::wstring target;
-        };
-        std::vector<DraftRow> draftRows;
-        int32_t restoredIndex = 0;
-        bool workflowDirty = false;
-        size_t savedRowCount = 0;
-        while (std::getline(stream, line))
-        {
-            if (!line.empty() && line.back() == '\r')
-                line.pop_back();
-            try
-            {
-                if (line.rfind("CURRENT\t", 0) == 0)
-                {
-                    restoredIndex = std::stoi(line.substr(8));
-                    continue;
-                }
-                if (line.rfind("WORKFLOW\t", 0) == 0)
-                {
-                    workflowDirty = line.substr(9) == "1";
-                    continue;
-                }
-                if (line.rfind("ROWS\t", 0) == 0)
-                {
-                    savedRowCount = static_cast<size_t>(std::stoull(line.substr(5)));
-                    continue;
-                }
-                if (line.rfind("ROW\t", 0) != 0)
-                    continue;
-                auto const indexSeparator = line.find('\t', 4);
-                auto const statusSeparator = indexSeparator == std::string::npos
-                    ? std::string::npos
-                    : line.find('\t', indexSeparator + 1);
-                if (indexSeparator == std::string::npos || statusSeparator == std::string::npos)
-                    continue;
-                DraftRow row;
-                row.index = std::stoi(line.substr(4, indexSeparator - 4));
-                row.status = to_hstring(UnescapeBridgeField(
-                    line.substr(indexSeparator + 1, statusSeparator - indexSeparator - 1))).c_str();
-                row.target = to_hstring(UnescapeBridgeField(line.substr(statusSeparator + 1))).c_str();
-                draftRows.push_back(std::move(row));
-            }
-            catch (...)
-            {
-            }
-        }
-
-        if (savedRowCount != m_rows.size() || draftRows.size() != m_rows.size())
+        std::string const serialized{
+            std::istreambuf_iterator<char>{ stream }, std::istreambuf_iterator<char>{} };
+        agi::winui::RecoveryDraft savedDraft;
+        if (!agi::winui::ParseRecoveryDraft(serialized, savedDraft) ||
+            savedDraft.row_count != m_rows.size())
             return false;
 
         uintmax_t currentSize{};
         int64_t currentTimestamp{};
         bool const sameFileVersion = FileFingerprint(
             std::filesystem::path(m_targetPath.c_str()), currentSize, currentTimestamp) &&
-            currentSize == savedSize && currentTimestamp == savedTimestamp;
+            currentSize == savedDraft.file_size && currentTimestamp == savedDraft.file_timestamp;
         auto const message = sameFileVersion
             ? L"Byl nalezen neulo\u017Een\u00FD pracovn\u00ED koncept. Chcete jej obnovit?"
             : L"Byl nalezen koncept ze star\u0161\u00ED verze souboru. Chcete jej obnovit?\n\n"
@@ -1791,30 +1984,30 @@ namespace winrt::Aegisub_WinUI::implementation
             return false;
         }
 
-        for (auto const& draft : draftRows)
+        for (auto const& draft : savedDraft.rows)
         {
-            if (draft.index < 0 || draft.index >= static_cast<int32_t>(m_rows.size()))
+            if (draft.index >= m_rows.size())
                 return false;
             auto& row = m_rows[draft.index];
-            row.target = hstring{ draft.target };
+            row.target = to_hstring(draft.target);
             row.targetModified = !agi::winui::EquivalentEditorText(
                 row.target.c_str(), row.savedTarget.c_str());
-            row.workflowStatus = hstring{ draft.status };
+            row.workflowStatus = to_hstring(draft.status);
             row.status = row.targetModified ? hstring{ L"Upraveno" } : row.workflowStatus;
             row.historyInitialized = true;
             if (draft.index < static_cast<int32_t>(m_targetEntries.size()))
                 m_targetEntries[draft.index].text = row.target;
         }
-        m_workflowStateDirty = workflowDirty;
+        m_workflowStateDirty = savedDraft.workflow_dirty;
         m_currentIndex = m_rows.empty()
             ? 0
-            : (std::max)(0, (std::min)(static_cast<int32_t>(m_rows.size()) - 1, restoredIndex));
+            : (std::max)(0, (std::min)(static_cast<int32_t>(m_rows.size()) - 1, savedDraft.current_index));
         m_forceSaveAsForRecoveredDraft = !sameFileVersion;
         if (m_forceSaveAsForRecoveredDraft)
         {
             m_hasTargetFileFingerprint = true;
-            m_targetFileSize = savedSize;
-            m_targetFileTimestamp = savedTimestamp;
+            m_targetFileSize = savedDraft.file_size;
+            m_targetFileTimestamp = savedDraft.file_timestamp;
         }
         return true;
     }
@@ -1839,23 +2032,24 @@ namespace winrt::Aegisub_WinUI::implementation
         auto tempPath = draftPath;
         tempPath += L".tmp-" + std::to_wstring(GetCurrentProcessId());
         std::filesystem::remove(tempPath, error);
+        agi::winui::RecoveryDraft draft;
+        draft.file_size = m_targetFileSize;
+        draft.file_timestamp = m_targetFileTimestamp;
+        draft.row_count = m_rows.size();
+        draft.current_index = m_currentIndex;
+        draft.workflow_dirty = m_workflowStateDirty;
+        draft.rows.reserve(m_rows.size());
+        for (size_t index = 0; index < m_rows.size(); ++index)
+        {
+            auto const& row = m_rows[index];
+            auto const& status = row.workflowStatus.empty() ? row.status : row.workflowStatus;
+            draft.rows.push_back({ index, to_string(status), to_string(row.target) });
+        }
         {
             std::ofstream stream(tempPath, std::ios::binary | std::ios::trunc);
             if (!stream)
                 return false;
-            stream << "AEGISUB-WINUI-DRAFT\t1\n";
-            stream << "FILE\t" << m_targetFileSize << '\t' << m_targetFileTimestamp << '\n';
-            stream << "ROWS\t" << m_rows.size() << '\n';
-            stream << "CURRENT\t" << m_currentIndex << '\n';
-            stream << "WORKFLOW\t" << (m_workflowStateDirty ? 1 : 0) << '\n';
-            for (size_t index = 0; index < m_rows.size(); ++index)
-            {
-                auto const& row = m_rows[index];
-                auto const& status = row.workflowStatus.empty() ? row.status : row.workflowStatus;
-                stream << "ROW\t" << index << '\t'
-                    << EscapeBridgeField(to_string(status)) << '\t'
-                    << EscapeBridgeField(to_string(row.target)) << '\n';
-            }
+            stream << agi::winui::SerializeRecoveryDraft(draft);
             if (!stream)
                 return false;
         }
@@ -2258,33 +2452,56 @@ namespace winrt::Aegisub_WinUI::implementation
                 row.targetModified = false;
                 row.historyInitialized = true;
 
-                bool matched = false;
-                std::wstring original;
-
+                std::vector<SubtitleEntry const*> matchedSources;
+                SubtitleEntry const* bestOverlapSource = nullptr;
+                SubtitleEntry const* nearestSource = nullptr;
+                double bestQuality = 0.0;
+                double nearestCenterDistance = (std::numeric_limits<double>::max)();
+                double const targetCenter = (target.startSeconds + target.endSeconds) / 2.0;
                 for (auto const& source : m_sourceEntries)
                 {
-                    double const overlap = (std::min)(target.endSeconds, source.endSeconds) -
-                        (std::max)(target.startSeconds, source.startSeconds);
-                    if (overlap <= 0.0)
+                    double const quality = agi::winui::SubtitleOverlapQuality(
+                        target.startSeconds, target.endSeconds, source.startSeconds, source.endSeconds);
+                    if (agi::winui::ShouldPairSubtitles(quality))
+                        matchedSources.push_back(&source);
+                    if (quality > bestQuality)
                     {
-                        continue;
+                        bestQuality = quality;
+                        bestOverlapSource = &source;
                     }
-
-                    if (!original.empty())
+                    double const sourceCenter = (source.startSeconds + source.endSeconds) / 2.0;
+                    double const centerDistance = std::abs(targetCenter - sourceCenter);
+                    if (centerDistance < nearestCenterDistance)
                     {
-                        original += L"\n";
+                        nearestCenterDistance = centerDistance;
+                        nearestSource = &source;
                     }
-                    original += source.text.c_str();
-                    if (!matched)
-                    {
-                        row.sourceStart = source.start;
-                    }
-                    row.sourceEnd = source.end;
-                    matched = true;
                 }
 
+                if (matchedSources.empty())
+                {
+                    if (bestOverlapSource)
+                        matchedSources.push_back(bestOverlapSource);
+                    else if (nearestSource && nearestCenterDistance <= 0.75)
+                    {
+                        matchedSources.push_back(nearestSource);
+                        bestQuality = 0.01;
+                    }
+                }
+
+                std::wstring original;
+                for (auto const* source : matchedSources)
+                {
+                    if (!original.empty())
+                        original += L"\n";
+                    original += source->text.c_str();
+                    if (row.sourceStart.empty())
+                        row.sourceStart = source->start;
+                    row.sourceEnd = source->end;
+                }
                 row.original = hstring{ original };
-                if (!matched)
+                row.sourceMatchQuality = bestQuality;
+                if (matchedSources.empty())
                 {
                     row.sourceStart = L"";
                     row.sourceEnd = L"";
@@ -2511,6 +2728,9 @@ namespace winrt::Aegisub_WinUI::implementation
         RefreshProjectFileLabels();
         SaveWorkspaceState();
         DeleteWorkspaceDraft();
+        SaveRecentProjectPaths();
+        RefreshRecentProjectAction();
+        m_externalChangeAcknowledged = false;
         m_workflowStateDirty = false;
         SetDirty(false);
 
