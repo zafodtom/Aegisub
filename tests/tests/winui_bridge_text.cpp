@@ -75,6 +75,17 @@ TEST(winui_workflow, quality_accepts_a_clean_subtitle) {
 	EXPECT_FALSE(facts.overlaps_next);
 }
 
+TEST(winui_workflow, subtitle_filters_select_the_expected_rows) {
+	EXPECT_TRUE(MatchesSubtitleFilter(SubtitleFilter::all, false, false, false, false, false));
+	EXPECT_TRUE(MatchesSubtitleFilter(SubtitleFilter::untranslated, true, false, true, false, false));
+	EXPECT_TRUE(MatchesSubtitleFilter(SubtitleFilter::modified, false, true, false, false, false));
+	EXPECT_TRUE(MatchesSubtitleFilter(SubtitleFilter::problems, false, false, true, true, false));
+	EXPECT_TRUE(MatchesSubtitleFilter(SubtitleFilter::ready, false, false, false, true, false));
+	EXPECT_FALSE(MatchesSubtitleFilter(SubtitleFilter::ready, false, false, true, true, false));
+	EXPECT_TRUE(MatchesSubtitleFilter(SubtitleFilter::approved, false, false, false, false, true));
+	EXPECT_FALSE(MatchesSubtitleFilter(SubtitleFilter::approved, false, false, true, false, true));
+}
+
 TEST(winui_workflow, recovery_retention_protects_current_and_limits_old_files) {
 	EXPECT_TRUE(ShouldKeepRecoveryArtifact(true, 24 * 365, 99));
 	EXPECT_TRUE(ShouldKeepRecoveryArtifact(false, 24, 0));

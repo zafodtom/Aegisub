@@ -5,6 +5,7 @@
 #endif
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <commdlg.h>
 #include <filesystem>
@@ -561,10 +562,8 @@ namespace winrt::Aegisub_WinUI::implementation
         Windows::Foundation::IInspectable const&,
         RoutedEventArgs const&)
     {
-        if (m_rows.empty() || m_currentIndex <= 0)
-        {
+        if (m_rows.empty())
             return;
-        }
 
         MoveCurrentBy(-1);
     }
@@ -573,10 +572,8 @@ namespace winrt::Aegisub_WinUI::implementation
         Windows::Foundation::IInspectable const&,
         RoutedEventArgs const&)
     {
-        if (m_rows.empty() || m_currentIndex >= static_cast<int32_t>(m_rows.size()) - 1)
-        {
+        if (m_rows.empty())
             return;
-        }
 
         MoveCurrentBy(1);
     }
@@ -862,6 +859,27 @@ namespace winrt::Aegisub_WinUI::implementation
         MoveToSearchResult(1);
     }
 
+    void MainWindow::FilterComboBox_SelectionChanged(
+        Windows::Foundation::IInspectable const&,
+        SelectionChangedEventArgs const&)
+    {
+        auto const selected = FilterComboBox().SelectedIndex();
+        if (selected < 0 || selected > static_cast<int32_t>(agi::winui::SubtitleFilter::approved))
+            return;
+
+        m_activeFilter = static_cast<agi::winui::SubtitleFilter>(selected);
+        if (!m_initialized)
+            return;
+        RefreshProgressSummary();
+        RefreshSearchSummary();
+        UpdateSelectionVisuals();
+        if (m_currentIndex >= 0 && m_currentIndex < static_cast<int32_t>(m_rows.size()) &&
+            RowMatchesActiveFilter(m_rows[m_currentIndex]))
+        {
+            ScrollCurrentRowIntoView();
+        }
+    }
+
     void MainWindow::TargetTextBox_TextChanged(
         Windows::Foundation::IInspectable const&,
         TextChangedEventArgs const&)
@@ -938,6 +956,7 @@ namespace winrt::Aegisub_WinUI::implementation
         UpdateTableRow(m_currentIndex);
         UpdateMetrics();
         RefreshSearchSummary();
+        RefreshProgressSummary();
         StatusBarText().Text(row.targetModified
             ? L"Neulo\u017Een\u00E1 zm\u011Bna v aktu\u00E1ln\u00EDm titulku"
             : L"Text odpov\u00EDd\u00E1 ulo\u017Een\u00E9 verzi");
@@ -1049,9 +1068,6 @@ namespace winrt::Aegisub_WinUI::implementation
         }
 
         RefreshProgressSummary();
-
-        PreviousButton().IsEnabled(m_currentIndex > 0);
-        NextButton().IsEnabled(m_currentIndex < static_cast<int32_t>(m_rows.size()) - 1);
 
         UpdateSelectionVisuals();
         ScrollCurrentRowIntoView();
@@ -1244,6 +1260,8 @@ namespace winrt::Aegisub_WinUI::implementation
         m_rowBorders.clear();
         m_rowTargetTexts.clear();
         m_rowStatusTexts.clear();
+        m_rowVisuals.clear();
+        m_rowVisuals.resize(m_rows.size());
 
         RowDefinition headerRow;
         headerRow.Height(GridLength{ 34.0, GridUnitType::Pixel });
@@ -1316,17 +1334,26 @@ namespace winrt::Aegisub_WinUI::implementation
             });
             grid.Children().Append(rowBorder);
             m_rowBorders.push_back(rowBorder);
+            auto& visuals = m_rowVisuals[index];
+            visuals.push_back(rowBorder.as<UIElement>());
 
-            addText(hstring{ std::to_wstring(row.number) }, visualRow, 0, false, 10.0);
-            addText(row.start, visualRow, 1, false, 8.0);
-            addText(row.end, visualRow, 2, false, 8.0);
-            addText(row.original, visualRow, 3, true, 8.0);
+            auto const numberText = addText(hstring{ std::to_wstring(row.number) }, visualRow, 0, false, 10.0);
+            auto const startText = addText(row.start, visualRow, 1, false, 8.0);
+            auto const endText = addText(row.end, visualRow, 2, false, 8.0);
+            auto const originalText = addText(row.original, visualRow, 3, true, 8.0);
             auto const targetText = addText(row.target, visualRow, 4, true, 8.0);
             auto const statusText = addText(row.status, visualRow, 5, true, 8.0);
+            visuals.push_back(numberText.as<UIElement>());
+            visuals.push_back(startText.as<UIElement>());
+            visuals.push_back(endText.as<UIElement>());
+            visuals.push_back(originalText.as<UIElement>());
+            visuals.push_back(targetText.as<UIElement>());
+            visuals.push_back(statusText.as<UIElement>());
             m_rowTargetTexts.push_back(targetText);
             m_rowStatusTexts.push_back(statusText);
         }
 
+        RefreshActiveFilter();
         UpdateSelectionVisuals();
     }
 
@@ -2172,6 +2199,96 @@ namespace winrt::Aegisub_WinUI::implementation
         });
     }
 
+    bool MainWindow::RowMatchesActiveFilter(SubtitleRowData const& row) const
+    {
+        return agi::winui::MatchesSubtitleFilter(
+            m_activeFilter,
+            IsTranslationEmpty(row.target),
+            row.targetModified,
+            !row.qaIssue.empty(),
+            row.workflowStatus == L"P\u0159ipraveno",
+            row.workflowStatus == L"Schv\u00E1leno");
+    }
+
+    void MainWindow::RefreshActiveFilter()
+    {
+        std::array<size_t, 6> counts{};
+        for (auto const& row : m_rows)
+        {
+            for (size_t filter = 0; filter < counts.size(); ++filter)
+            {
+                if (agi::winui::MatchesSubtitleFilter(
+                    static_cast<agi::winui::SubtitleFilter>(filter),
+                    IsTranslationEmpty(row.target),
+                    row.targetModified,
+                    !row.qaIssue.empty(),
+                    row.workflowStatus == L"P\u0159ipraveno",
+                    row.workflowStatus == L"Schv\u00E1leno"))
+                {
+                    ++counts[filter];
+                }
+            }
+        }
+
+        auto setFilterText = [](ComboBoxItem const& item, wchar_t const* label, size_t count)
+        {
+            item.Content(box_value(hstring{ std::wstring{ label } + L" (" + std::to_wstring(count) + L")" }));
+        };
+        setFilterText(FilterAllItem(), L"V\u0161echny", counts[0]);
+        setFilterText(FilterUntranslatedItem(), L"Nep\u0159elo\u017Een\u00E9", counts[1]);
+        setFilterText(FilterModifiedItem(), L"Upraven\u00E9", counts[2]);
+        setFilterText(FilterProblemsItem(), L"S probl\u00E9mem", counts[3]);
+        setFilterText(FilterReadyItem(), L"P\u0159ipraven\u00E9", counts[4]);
+        setFilterText(FilterApprovedItem(), L"Schv\u00E1len\u00E9", counts[5]);
+
+        if (m_subtitleGrid && m_subtitleGrid.RowDefinitions().Size() == m_rows.size() + 1)
+        {
+            for (size_t index = 0; index < m_rows.size(); ++index)
+            {
+                bool const visible = RowMatchesActiveFilter(m_rows[index]);
+                m_subtitleGrid.RowDefinitions().GetAt(static_cast<uint32_t>(index + 1)).Height(
+                    GridLength{ visible ? 36.0 : 0.0, GridUnitType::Pixel });
+                if (index < m_rowVisuals.size())
+                {
+                    for (auto const& element : m_rowVisuals[index])
+                        element.Visibility(visible ? Visibility::Visible : Visibility::Collapsed);
+                }
+            }
+        }
+
+        bool hasPrevious = false;
+        bool hasNext = false;
+        for (int32_t index = 0; index < static_cast<int32_t>(m_rows.size()); ++index)
+        {
+            if (!RowMatchesActiveFilter(m_rows[index]))
+                continue;
+            hasPrevious = hasPrevious || index < m_currentIndex;
+            hasNext = hasNext || index > m_currentIndex;
+        }
+        PreviousButton().IsEnabled(hasPrevious);
+        NextButton().IsEnabled(hasNext);
+    }
+
+    void MainWindow::MoveToFilteredRow(int32_t direction)
+    {
+        if (m_rows.empty() || direction == 0)
+            return;
+
+        for (auto index = m_currentIndex + direction;
+            index >= 0 && index < static_cast<int32_t>(m_rows.size());
+            index += direction)
+        {
+            if (!RowMatchesActiveFilter(m_rows[index]))
+                continue;
+            StoreCurrentEditorSelection();
+            m_currentIndex = index;
+            LoadCurrentRow();
+            RefreshCurrentQaVisuals();
+            TargetTextBox().Focus(FocusState::Programmatic);
+            return;
+        }
+    }
+
     void MainWindow::RefreshProgressSummary()
     {
         auto const untranslatedCount = std::count_if(m_rows.begin(), m_rows.end(), [this](auto const& row)
@@ -2200,9 +2317,18 @@ namespace winrt::Aegisub_WinUI::implementation
             std::to_wstring(m_rows.size()) + L" p\u0159elo\u017Eeno \u00B7 " +
             std::to_wstring(approvedCount) + L" schv\u00E1leno \u00B7 probl\u00E9my " +
             std::to_wstring(issueCount);
+        if (m_activeFilter != agi::winui::SubtitleFilter::all)
+        {
+            auto const visibleCount = std::count_if(m_rows.begin(), m_rows.end(), [this](auto const& row)
+            {
+                return RowMatchesActiveFilter(row);
+            });
+            summary += L" \u00B7 zobrazeno " + std::to_wstring(visibleCount);
+        }
         if (!m_rows.empty() && m_currentIndex >= 0 && m_currentIndex < static_cast<int32_t>(m_rows.size()))
             summary += L" \u00B7 aktu\u00E1ln\u00ED #" + std::to_wstring(m_rows[m_currentIndex].number);
         TablePositionText().Text(hstring{ summary });
+        RefreshActiveFilter();
     }
 
     void MainWindow::RefreshApprovalAction()
@@ -2234,7 +2360,7 @@ namespace winrt::Aegisub_WinUI::implementation
         std::wstring const query{ SearchTextBox().Text().c_str() };
         auto const matchCount = query.empty() ? 0 : std::count_if(m_rows.begin(), m_rows.end(), [this, &query](auto const& row)
         {
-            return RowMatchesSearch(row, query);
+            return RowMatchesActiveFilter(row) && RowMatchesSearch(row, query);
         });
         bool const hasMatches = matchCount > 0;
         SearchPreviousButton().IsEnabled(hasMatches);
@@ -2261,7 +2387,7 @@ namespace winrt::Aegisub_WinUI::implementation
             auto index = (m_currentIndex + direction * offset) % rowCount;
             if (index < 0)
                 index += rowCount;
-            if (!RowMatchesSearch(m_rows[index], query))
+            if (!RowMatchesActiveFilter(m_rows[index]) || !RowMatchesSearch(m_rows[index], query))
                 continue;
 
             if (index != m_currentIndex)

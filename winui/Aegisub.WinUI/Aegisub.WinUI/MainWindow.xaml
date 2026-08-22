@@ -376,9 +376,23 @@
                         Spacing="6"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center">
+                        <ComboBox
+                            x:Name="FilterComboBox"
+                            Width="185"
+                            MinHeight="30"
+                            SelectedIndex="0"
+                            ToolTipService.ToolTip="Filtrovat seznam titulků"
+                            SelectionChanged="FilterComboBox_SelectionChanged">
+                            <ComboBoxItem x:Name="FilterAllItem" Content="Všechny" />
+                            <ComboBoxItem x:Name="FilterUntranslatedItem" Content="Nepřeložené" />
+                            <ComboBoxItem x:Name="FilterModifiedItem" Content="Upravené" />
+                            <ComboBoxItem x:Name="FilterProblemsItem" Content="S problémem" />
+                            <ComboBoxItem x:Name="FilterReadyItem" Content="Připravené" />
+                            <ComboBoxItem x:Name="FilterApprovedItem" Content="Schválené" />
+                        </ComboBox>
                         <TextBox
                             x:Name="SearchTextBox"
-                            Width="270"
+                            Width="240"
                             MinHeight="30"
                             PlaceholderText="Hledat v originálu i češtině…"
                             ToolTipService.ToolTip="Ctrl+F hledat · Enter další · Shift+Enter předchozí"

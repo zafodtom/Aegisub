@@ -128,6 +128,10 @@ namespace winrt::Aegisub_WinUI::implementation
             winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
 
+        void FilterComboBox_SelectionChanged(
+            winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const& args);
+
     private:
         struct SubtitleEntry
         {
@@ -183,6 +187,7 @@ namespace winrt::Aegisub_WinUI::implementation
         std::vector<winrt::Microsoft::UI::Xaml::Controls::TextBlock> m_rowTargetTexts;
         std::vector<winrt::Microsoft::UI::Xaml::Controls::TextBlock> m_rowStatusTexts;
         winrt::Microsoft::UI::Xaml::Controls::Grid m_subtitleGrid{ nullptr };
+        std::vector<std::vector<winrt::Microsoft::UI::Xaml::UIElement>> m_rowVisuals;
         winrt::hstring m_sourcePath;
         winrt::hstring m_targetPath;
 
@@ -204,6 +209,7 @@ namespace winrt::Aegisub_WinUI::implementation
         winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer m_externalChangeTimer{ nullptr };
         bool m_hasPendingHistoryText{ false };
         winrt::hstring m_pendingHistoryText;
+        agi::winui::SubtitleFilter m_activeFilter{ agi::winui::SubtitleFilter::all };
 
         static constexpr size_t kMaxCpl = 42;
         static constexpr double kMaxCps = 20.0;
@@ -274,6 +280,9 @@ namespace winrt::Aegisub_WinUI::implementation
         void MoveToSearchResult(int32_t direction);
         void RefreshSearchSummary();
         bool RowMatchesSearch(SubtitleRowData const& row, std::wstring_view query) const;
+        bool RowMatchesActiveFilter(SubtitleRowData const& row) const;
+        void RefreshActiveFilter();
+        void MoveToFilteredRow(int32_t direction);
         bool IsTranslationEmpty(winrt::hstring const& text) const;
         double WorkflowTimestampSeconds(winrt::hstring const& value) const;
     };
@@ -422,20 +431,7 @@ namespace winrt::Aegisub_WinUI::implementation
 
     inline void MainWindow::MoveCurrentBy(int32_t delta)
     {
-        if (m_rows.empty())
-            return;
-
-        auto const candidate = m_currentIndex + delta;
-        auto const last = static_cast<int32_t>(m_rows.size()) - 1;
-        auto const next = (std::max)(0, (std::min)(last, candidate));
-        if (next == m_currentIndex)
-            return;
-
-        StoreCurrentEditorSelection();
-        m_currentIndex = next;
-        LoadCurrentRow();
-        RefreshCurrentQaVisuals();
-        TargetTextBox().Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
+        MoveToFilteredRow(delta < 0 ? -1 : 1);
     }
 
     inline void MainWindow::CommitCurrentAndMoveNext(bool approve)
@@ -470,12 +466,7 @@ namespace winrt::Aegisub_WinUI::implementation
         RefreshQaAll();
         UpdateTableRow(m_currentIndex);
 
-        if (m_currentIndex < static_cast<int32_t>(m_rows.size()) - 1)
-        {
-            StoreCurrentEditorSelection();
-            ++m_currentIndex;
-            LoadCurrentRow();
-        }
+        MoveToFilteredRow(1);
         RefreshCurrentQaVisuals();
         TargetTextBox().Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
     }

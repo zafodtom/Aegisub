@@ -31,6 +31,27 @@ struct SubtitleQualityFacts {
 	double cps{};
 };
 
+enum class SubtitleFilter {
+	all,
+	untranslated,
+	modified,
+	problems,
+	ready,
+	approved,
+};
+
+inline bool MatchesSubtitleFilter(SubtitleFilter filter, bool untranslated,
+	bool modified, bool has_problem, bool ready, bool approved) {
+	switch (filter) {
+		case SubtitleFilter::untranslated: return untranslated;
+		case SubtitleFilter::modified: return modified;
+		case SubtitleFilter::problems: return has_problem;
+		case SubtitleFilter::ready: return ready && !has_problem;
+		case SubtitleFilter::approved: return approved && !has_problem;
+		default: return true;
+	}
+}
+
 struct RecoveryDraftRow {
 	size_t index{};
 	std::string status;
