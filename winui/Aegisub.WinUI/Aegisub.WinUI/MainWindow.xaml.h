@@ -132,6 +132,30 @@ namespace winrt::Aegisub_WinUI::implementation
             winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const& args);
 
+        void ReplacePreviewButton_Click(
+            winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+
+        void ReplaceAllButton_Click(
+            winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+
+        void UndoBulkButton_Click(
+            winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+
+        void ConsistencyCheckButton_Click(
+            winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+
+        void BulkReadyButton_Click(
+            winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+
+        void BulkApprovedButton_Click(
+            winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+
     private:
         struct SubtitleEntry
         {
@@ -172,6 +196,13 @@ namespace winrt::Aegisub_WinUI::implementation
             bool selectionInitialized{};
         };
 
+        struct BulkRowSnapshot
+        {
+            size_t index{};
+            winrt::hstring target;
+            winrt::hstring workflowStatus;
+        };
+
         std::vector<SubtitleRowData> m_rows
         {
             { 143, L"00:12:38.310", L"00:12:41.420", 3.11, L"00:12:38.310", L"00:12:41.420", L"We still have time.", L"Po\u0159\u00E1d m\u00E1me \u010Das.", L"Po\u0159\u00E1d m\u00E1me \u010Das.", L"Schv\u00E1leno", false },
@@ -210,6 +241,9 @@ namespace winrt::Aegisub_WinUI::implementation
         bool m_hasPendingHistoryText{ false };
         winrt::hstring m_pendingHistoryText;
         agi::winui::SubtitleFilter m_activeFilter{ agi::winui::SubtitleFilter::all };
+        std::vector<BulkRowSnapshot> m_lastBulkSnapshot;
+        winrt::hstring m_lastBulkAction;
+        bool m_lastBulkWorkflowStateDirty{};
 
         static constexpr size_t kMaxCpl = 42;
         static constexpr double kMaxCps = 20.0;
@@ -283,6 +317,14 @@ namespace winrt::Aegisub_WinUI::implementation
         bool RowMatchesActiveFilter(SubtitleRowData const& row) const;
         void RefreshActiveFilter();
         void MoveToFilteredRow(int32_t direction);
+        void SelectFilter(int32_t index);
+        void RefreshProjectOverview();
+        std::vector<size_t> VisibleRowIndices() const;
+        size_t ReplacementCount(std::wstring_view query) const;
+        void ApplyBulkStatus(winrt::hstring const& status);
+        void CaptureBulkSnapshot(std::vector<size_t> const& indices, winrt::hstring const& action);
+        void RestoreLastBulkSnapshot();
+        void ClearBulkUndo();
         bool IsTranslationEmpty(winrt::hstring const& text) const;
         double WorkflowTimestampSeconds(winrt::hstring const& value) const;
     };
@@ -439,6 +481,8 @@ namespace winrt::Aegisub_WinUI::implementation
         if (m_rows.empty())
             return;
 
+        ClearBulkUndo();
+
         auto& row = m_rows[m_currentIndex];
         row.target = TargetTextBox().Text();
         if (m_currentIndex < static_cast<int32_t>(m_targetEntries.size()))
@@ -547,6 +591,14 @@ namespace winrt::Aegisub_WinUI::implementation
         bool const control = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
         auto const key = args.Key();
 
+        auto const keyValue = static_cast<int32_t>(key);
+        if (control && keyValue >= 0x31 && keyValue <= 0x36)
+        {
+            args.Handled(true);
+            SelectFilter(keyValue - 0x31);
+            return;
+        }
+
         if (key == winrt::Windows::System::VirtualKey::Enter)
         {
             args.Handled(true);
@@ -598,6 +650,14 @@ namespace winrt::Aegisub_WinUI::implementation
         bool const control = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
         bool const shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
         auto const key = args.Key();
+
+        auto const keyValue = static_cast<int32_t>(key);
+        if (control && keyValue >= 0x31 && keyValue <= 0x36)
+        {
+            args.Handled(true);
+            SelectFilter(keyValue - 0x31);
+            return;
+        }
 
         if (key == winrt::Windows::System::VirtualKey::PageUp)
         {

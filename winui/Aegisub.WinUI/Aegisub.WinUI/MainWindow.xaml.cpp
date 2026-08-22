@@ -13,6 +13,7 @@
 #include <iomanip>
 #include <iterator>
 #include <limits>
+#include <map>
 #include <shellapi.h>
 #include <sstream>
 #include <string>
@@ -585,6 +586,8 @@ namespace winrt::Aegisub_WinUI::implementation
         if (m_rows.empty())
             return;
 
+        ClearBulkUndo();
+
         auto& row = m_rows[m_currentIndex];
         if (row.workflowStatus == L"Schv\u00E1leno")
         {
@@ -880,6 +883,346 @@ namespace winrt::Aegisub_WinUI::implementation
         }
     }
 
+    std::vector<size_t> MainWindow::VisibleRowIndices() const
+    {
+        std::vector<size_t> indices;
+        for (size_t index = 0; index < m_rows.size(); ++index)
+        {
+            if (RowMatchesActiveFilter(m_rows[index]))
+                indices.push_back(index);
+        }
+        return indices;
+    }
+
+    size_t MainWindow::ReplacementCount(std::wstring_view query) const
+    {
+        size_t count = 0;
+        for (auto const index : VisibleRowIndices())
+        {
+            auto const& target = m_rows[index].target;
+            count += agi::winui::CountCaseInsensitiveMatches(
+                std::wstring_view{ target.c_str(), target.size() }, query);
+        }
+        return count;
+    }
+
+    void MainWindow::ReplacePreviewButton_Click(
+        Windows::Foundation::IInspectable const&,
+        RoutedEventArgs const&)
+    {
+        std::wstring const query{ SearchTextBox().Text().c_str() };
+        if (query.empty())
+        {
+            MessageBoxW(GetActiveWindow(), L"Nejd\u0159\u00EDve zadejte hledan\u00FD text.",
+                L"N\u00E1hled nahrazen\u00ED", MB_OK | MB_ICONINFORMATION);
+            SearchTextBox().Focus(FocusState::Programmatic);
+            return;
+        }
+
+        size_t occurrenceCount = 0;
+        size_t rowCount = 0;
+        std::wstring details;
+        for (auto const index : VisibleRowIndices())
+        {
+            auto const& row = m_rows[index];
+            auto const matches = agi::winui::CountCaseInsensitiveMatches(
+                std::wstring_view{ row.target.c_str(), row.target.size() }, query);
+            if (matches == 0)
+                continue;
+            occurrenceCount += matches;
+            ++rowCount;
+            if (rowCount <= 12)
+                details += L"\n#" + std::to_wstring(row.number) + L" \u00B7 " + std::to_wstring(matches) + L"\u00D7";
+        }
+        if (rowCount > 12)
+            details += L"\n\u2026 a dal\u0161\u00EDch " + std::to_wstring(rowCount - 12) + L" titulk\u016F";
+
+        std::wstring message = occurrenceCount == 0
+            ? L"Ve zobrazen\u00FDch \u010Desk\u00FDch titulc\u00EDch nebyla nalezena \u017E\u00E1dn\u00E1 shoda."
+            : L"Nalezeno " + std::to_wstring(occurrenceCount) + L" v\u00FDskyt\u016F v " +
+                std::to_wstring(rowCount) + L" titulc\u00EDch." + details;
+        MessageBoxW(GetActiveWindow(), message.c_str(), L"N\u00E1hled nahrazen\u00ED",
+            MB_OK | (occurrenceCount == 0 ? MB_ICONINFORMATION : MB_ICONASTERISK));
+    }
+
+    void MainWindow::CaptureBulkSnapshot(std::vector<size_t> const& indices, hstring const& action)
+    {
+        m_lastBulkWorkflowStateDirty = m_workflowStateDirty;
+        m_lastBulkSnapshot.clear();
+        m_lastBulkSnapshot.reserve(indices.size());
+        for (auto const index : indices)
+        {
+            if (index < m_rows.size())
+                m_lastBulkSnapshot.push_back({ index, m_rows[index].target, m_rows[index].workflowStatus });
+        }
+        m_lastBulkAction = action;
+        UndoBulkButton().IsEnabled(!m_lastBulkSnapshot.empty());
+        UndoBulkButton().Content(box_value(hstring{ L"Vr\u00E1tit: " + std::wstring{ action.c_str() } }));
+    }
+
+    void MainWindow::ClearBulkUndo()
+    {
+        m_lastBulkSnapshot.clear();
+        m_lastBulkAction.clear();
+        m_lastBulkWorkflowStateDirty = false;
+        if (m_initialized)
+        {
+            UndoBulkButton().IsEnabled(false);
+            UndoBulkButton().Content(box_value(hstring{ L"Vr\u00E1tit hromadnou zm\u011Bnu" }));
+        }
+    }
+
+    void MainWindow::ReplaceAllButton_Click(
+        Windows::Foundation::IInspectable const&,
+        RoutedEventArgs const&)
+    {
+        std::wstring const query{ SearchTextBox().Text().c_str() };
+        std::wstring const replacement{ ReplaceTextBox().Text().c_str() };
+        auto const occurrences = ReplacementCount(query);
+        if (query.empty() || occurrences == 0)
+        {
+            ReplacePreviewButton_Click(nullptr, nullptr);
+            return;
+        }
+
+        std::vector<size_t> affected;
+        for (auto const index : VisibleRowIndices())
+        {
+            auto const& target = m_rows[index].target;
+            if (agi::winui::CountCaseInsensitiveMatches(
+                    std::wstring_view{ target.c_str(), target.size() }, query) > 0)
+            {
+                affected.push_back(index);
+            }
+        }
+        std::wstring message = L"Nahradit " + std::to_wstring(occurrences) + L" v\u00FDskyt\u016F v " +
+            std::to_wstring(affected.size()) + L" zobrazen\u00FDch titulc\u00EDch?";
+        if (MessageBoxW(GetActiveWindow(), message.c_str(), L"Hromadn\u00E9 nahrazen\u00ED",
+                MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2) != IDYES)
+        {
+            return;
+        }
+
+        CaptureBulkSnapshot(affected, L"nahrazen\u00ED textu");
+        for (auto const index : affected)
+        {
+            auto& row = m_rows[index];
+            row.target = hstring{ agi::winui::ReplaceCaseInsensitive(
+                std::wstring_view{ row.target.c_str(), row.target.size() }, query, replacement) };
+            row.targetModified = !agi::winui::EquivalentEditorText(row.target.c_str(), row.savedTarget.c_str());
+            if (row.targetModified)
+                row.workflowStatus = L"Upraveno";
+            if (index < m_targetEntries.size())
+                m_targetEntries[index].text = row.target;
+        }
+        m_workflowStateDirty = true;
+        UpdateDirtyFromRows();
+        RefreshQaAll();
+        LoadCurrentRow();
+        ScheduleWorkspaceDraftSave();
+        StatusBarText().Text(hstring{ L"Nahrazeno " + std::to_wstring(occurrences) +
+            L" v\u00FDskyt\u016F \u00B7 operaci lze vr\u00E1tit" });
+    }
+
+    void MainWindow::RestoreLastBulkSnapshot()
+    {
+        if (m_lastBulkSnapshot.empty())
+            return;
+        auto const action = std::wstring{ m_lastBulkAction.c_str() };
+        for (auto const& snapshot : m_lastBulkSnapshot)
+        {
+            if (snapshot.index >= m_rows.size())
+                continue;
+            auto& row = m_rows[snapshot.index];
+            row.target = snapshot.target;
+            row.workflowStatus = snapshot.workflowStatus;
+            row.targetModified = !agi::winui::EquivalentEditorText(row.target.c_str(), row.savedTarget.c_str());
+            if (snapshot.index < m_targetEntries.size())
+                m_targetEntries[snapshot.index].text = row.target;
+        }
+        m_lastBulkSnapshot.clear();
+        m_lastBulkAction.clear();
+        UndoBulkButton().IsEnabled(false);
+        UndoBulkButton().Content(box_value(hstring{ L"Vr\u00E1tit hromadnou zm\u011Bnu" }));
+        m_workflowStateDirty = m_lastBulkWorkflowStateDirty;
+        UpdateDirtyFromRows();
+        RefreshQaAll();
+        LoadCurrentRow();
+        ScheduleWorkspaceDraftSave();
+        StatusBarText().Text(hstring{ L"Hromadn\u00E1 operace vr\u00E1cena: " + action });
+    }
+
+    void MainWindow::UndoBulkButton_Click(
+        Windows::Foundation::IInspectable const&,
+        RoutedEventArgs const&)
+    {
+        RestoreLastBulkSnapshot();
+    }
+
+    void MainWindow::ApplyBulkStatus(hstring const& status)
+    {
+        auto indices = VisibleRowIndices();
+        indices.erase(std::remove_if(indices.begin(), indices.end(), [&](size_t index)
+        {
+            return m_rows[index].workflowStatus == status;
+        }), indices.end());
+        if (indices.empty())
+        {
+            MessageBoxW(GetActiveWindow(), L"Ve zobrazen\u00FDch titulc\u00EDch nen\u00ED co zm\u011Bnit.",
+                L"Hromadn\u00E1 zm\u011Bna stavu", MB_OK | MB_ICONINFORMATION);
+            return;
+        }
+
+        std::wstring message = L"Nastavit stav \u201E" + std::wstring{ status.c_str() } + L"\u201C u " +
+            std::to_wstring(indices.size()) + L" zobrazen\u00FDch titulk\u016F?";
+        if (MessageBoxW(GetActiveWindow(), message.c_str(), L"Hromadn\u00E1 zm\u011Bna stavu",
+                MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2) != IDYES)
+        {
+            return;
+        }
+        CaptureBulkSnapshot(indices, hstring{ L"stav " + std::wstring{ status.c_str() } });
+        for (auto const index : indices)
+            m_rows[index].workflowStatus = status;
+        m_workflowStateDirty = true;
+        UpdateDirtyFromRows();
+        RefreshQaAll();
+        LoadCurrentRow();
+        ScheduleWorkspaceDraftSave();
+        StatusBarText().Text(hstring{ L"Stav zm\u011Bn\u011Bn u " + std::to_wstring(indices.size()) +
+            L" titulk\u016F \u00B7 operaci lze vr\u00E1tit" });
+    }
+
+    void MainWindow::BulkReadyButton_Click(
+        Windows::Foundation::IInspectable const&,
+        RoutedEventArgs const&)
+    {
+        ApplyBulkStatus(L"P\u0159ipraveno");
+    }
+
+    void MainWindow::BulkApprovedButton_Click(
+        Windows::Foundation::IInspectable const&,
+        RoutedEventArgs const&)
+    {
+        ApplyBulkStatus(L"Schv\u00E1leno");
+    }
+
+    void MainWindow::SelectFilter(int32_t index)
+    {
+        if (index < 0 || index > static_cast<int32_t>(agi::winui::SubtitleFilter::approved))
+            return;
+        FilterComboBox().SelectedIndex(index);
+        m_activeFilter = static_cast<agi::winui::SubtitleFilter>(index);
+        RefreshProgressSummary();
+        RefreshSearchSummary();
+        StatusBarText().Text(hstring{ L"Filtr titulk\u016F zm\u011Bn\u011Bn \u00B7 Ctrl+" + std::to_wstring(index + 1) });
+    }
+
+    void MainWindow::ConsistencyCheckButton_Click(
+        Windows::Foundation::IInspectable const&,
+        RoutedEventArgs const&)
+    {
+        struct ConsistencyIssue
+        {
+            size_t index{};
+            std::wstring description;
+        };
+        std::vector<ConsistencyIssue> issues;
+        std::map<std::wstring, std::pair<std::wstring, size_t>> knownTranslations;
+
+        for (size_t index = 0; index < m_rows.size(); ++index)
+        {
+            auto const& row = m_rows[index];
+            if (IsTranslationEmpty(row.target))
+                continue;
+            auto const originalKey = agi::winui::ConsistencyTextKey(row.original.c_str());
+            auto const targetKey = agi::winui::ConsistencyTextKey(row.target.c_str());
+            if (!originalKey.empty())
+            {
+                auto const existing = knownTranslations.find(originalKey);
+                if (existing == knownTranslations.end())
+                    knownTranslations.emplace(originalKey, std::make_pair(targetKey, index));
+                else if (existing->second.first != targetKey)
+                    issues.push_back({ index, L"stejn\u00FD origin\u00E1l m\u00E1 rozd\u00EDln\u00FD p\u0159eklad" });
+            }
+
+            auto const targetView = std::wstring_view{ row.target.c_str(), row.target.size() };
+            for (auto const& number : agi::winui::NumberTokens(row.original.c_str()))
+            {
+                if (targetView.find(number) == std::wstring_view::npos)
+                {
+                    issues.push_back({ index, L"v p\u0159ekladu chyb\u00ED \u010D\u00EDslo " + number });
+                    break;
+                }
+            }
+
+            auto const sourcePunctuation = agi::winui::TerminalPunctuation(row.original.c_str());
+            auto const targetPunctuation = agi::winui::TerminalPunctuation(row.target.c_str());
+            if (sourcePunctuation != 0 && sourcePunctuation != targetPunctuation)
+            {
+                issues.push_back({ index, L"odli\u0161n\u00E1 koncov\u00E1 interpunkce" });
+            }
+        }
+
+        if (issues.empty())
+        {
+            MessageBoxW(GetActiveWindow(),
+                L"Nebyl nalezen rozd\u00EDln\u00FD p\u0159eklad stejn\u00E9ho textu ani podez\u0159el\u00E9 rozd\u00EDly v \u010D\u00EDslech a interpunkci.",
+                L"Kontrola konzistence", MB_OK | MB_ICONINFORMATION);
+            return;
+        }
+
+        std::wstring message = L"Nalezeno " + std::to_wstring(issues.size()) + L" upozorn\u011Bn\u00ED:";
+        for (size_t issueIndex = 0; issueIndex < (std::min)(issues.size(), size_t{ 15 }); ++issueIndex)
+        {
+            auto const& issue = issues[issueIndex];
+            message += L"\n#" + std::to_wstring(m_rows[issue.index].number) + L" \u00B7 " + issue.description;
+        }
+        if (issues.size() > 15)
+            message += L"\n\u2026 a dal\u0161\u00EDch " + std::to_wstring(issues.size() - 15);
+        message += L"\n\nEditor p\u0159ejde na prvn\u00ED upozorn\u011Bn\u00ED.";
+        MessageBoxW(GetActiveWindow(), message.c_str(), L"Kontrola konzistence", MB_OK | MB_ICONWARNING);
+        StoreCurrentEditorSelection();
+        m_currentIndex = static_cast<int32_t>(issues.front().index);
+        LoadCurrentRow();
+        TargetTextBox().Focus(FocusState::Programmatic);
+        StatusBarText().Text(hstring{ L"Kontrola konzistence \u00B7 " + std::to_wstring(issues.size()) + L" upozorn\u011Bn\u00ED" });
+    }
+
+    void MainWindow::RefreshProjectOverview()
+    {
+        auto const total = m_rows.size();
+        auto const untranslated = static_cast<size_t>(std::count_if(m_rows.begin(), m_rows.end(), [this](auto const& row)
+        {
+            return IsTranslationEmpty(row.target);
+        }));
+        auto const problems = static_cast<size_t>(std::count_if(m_rows.begin(), m_rows.end(), [](auto const& row)
+        {
+            return !row.qaIssue.empty();
+        }));
+        auto const approved = static_cast<size_t>(std::count_if(m_rows.begin(), m_rows.end(), [](auto const& row)
+        {
+            return row.workflowStatus == L"Schv\u00E1leno" && row.qaIssue.empty();
+        }));
+        auto const translated = total - untranslated;
+        auto const visible = VisibleRowIndices().size();
+        double const percentage = total == 0 ? 0.0 : 100.0 * static_cast<double>(translated) / total;
+        OverviewProgressBar().Value(percentage);
+        OverviewTranslatedText().Text(hstring{ L"P\u0159elo\u017Eeno: " + std::to_wstring(translated) + L"/" + std::to_wstring(total) });
+        OverviewApprovedText().Text(hstring{ L"Schv\u00E1leno: " + std::to_wstring(approved) });
+        OverviewProblemsText().Text(hstring{ L"Probl\u00E9my QA: " + std::to_wstring(problems) });
+        OverviewVisibleText().Text(hstring{ L"Aktu\u00E1ln\u00ED filtr: " + std::to_wstring(visible) + L" zobrazeno" });
+        auto const remaining = total - approved;
+        auto const estimateMinutes = (remaining * 45 + 59) / 60;
+        OverviewEstimateText().Text(hstring{ L"Zb\u00FDv\u00E1 ke kontrole: " + std::to_wstring(remaining) +
+            L" \u00B7 orienta\u010Dn\u011B " + std::to_wstring(estimateMinutes) + L" min" });
+
+        std::wstring files = m_sourcePath.empty() ? L"Uk\u00E1zkov\u00E1 data" :
+            std::filesystem::path(m_sourcePath.c_str()).filename().wstring();
+        if (!m_targetPath.empty())
+            files += L" \u2192 " + std::filesystem::path(m_targetPath.c_str()).filename().wstring();
+        OverviewFilesText().Text(hstring{ files });
+    }
+
     void MainWindow::TargetTextBox_TextChanged(
         Windows::Foundation::IInspectable const&,
         TextChangedEventArgs const&)
@@ -888,6 +1231,8 @@ namespace winrt::Aegisub_WinUI::implementation
         {
             return;
         }
+
+        ClearBulkUndo();
 
         auto& row = m_rows[m_currentIndex];
         auto const newText = TargetTextBox().Text();
@@ -1818,6 +2163,7 @@ namespace winrt::Aegisub_WinUI::implementation
     void MainWindow::RefreshLoadedProject()
     {
         m_externalChangeAcknowledged = false;
+        ClearBulkUndo();
         BuildAlignedRows();
         LoadWorkspaceState();
         m_forceSaveAsForRecoveredDraft = false;
@@ -2329,6 +2675,7 @@ namespace winrt::Aegisub_WinUI::implementation
             summary += L" \u00B7 aktu\u00E1ln\u00ED #" + std::to_wstring(m_rows[m_currentIndex].number);
         TablePositionText().Text(hstring{ summary });
         RefreshActiveFilter();
+        RefreshProjectOverview();
     }
 
     void MainWindow::RefreshApprovalAction()

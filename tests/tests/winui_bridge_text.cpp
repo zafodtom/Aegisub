@@ -86,6 +86,22 @@ TEST(winui_workflow, subtitle_filters_select_the_expected_rows) {
 	EXPECT_FALSE(MatchesSubtitleFilter(SubtitleFilter::approved, false, false, true, false, true));
 }
 
+TEST(winui_workflow, bulk_replace_is_case_insensitive_and_non_overlapping) {
+	EXPECT_EQ(3U, CountCaseInsensitiveMatches(L"Test test TEST", L"test"));
+	EXPECT_EQ(L"X X X", ReplaceCaseInsensitive(L"Test test TEST", L"test", L"X"));
+	EXPECT_EQ(L"bbb", ReplaceCaseInsensitive(L"aaaaaa", L"aa", L"b"));
+	EXPECT_EQ(L"beze zm\u011Bny", ReplaceCaseInsensitive(L"beze zm\u011Bny", L"", L"X"));
+}
+
+TEST(winui_workflow, consistency_helpers_normalize_text_and_find_tokens) {
+	EXPECT_EQ(L"same text", ConsistencyTextKey(L"  SAME\t text  "));
+	auto const numbers = NumberTokens(L"Let 12 trv\u00E1 03:45");
+	ASSERT_EQ(3U, numbers.size());
+	EXPECT_EQ(L"12", numbers[0]);
+	EXPECT_EQ(L'?', TerminalPunctuation(L"Opravdu?  "));
+	EXPECT_EQ(wchar_t{}, TerminalPunctuation(L"Bez te\u010Dky"));
+}
+
 TEST(winui_workflow, recovery_retention_protects_current_and_limits_old_files) {
 	EXPECT_TRUE(ShouldKeepRecoveryArtifact(true, 24 * 365, 99));
 	EXPECT_TRUE(ShouldKeepRecoveryArtifact(false, 24, 0));

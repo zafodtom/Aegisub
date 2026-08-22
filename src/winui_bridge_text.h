@@ -52,6 +52,93 @@ inline bool MatchesSubtitleFilter(SubtitleFilter filter, bool untranslated,
 	}
 }
 
+inline bool CaseInsensitiveMatchAt(std::wstring_view text, std::wstring_view query, size_t position) {
+	if (query.empty() || position + query.size() > text.size())
+		return false;
+	for (size_t index = 0; index < query.size(); ++index) {
+		if (std::towlower(text[position + index]) != std::towlower(query[index]))
+			return false;
+	}
+	return true;
+}
+
+inline size_t CountCaseInsensitiveMatches(std::wstring_view text, std::wstring_view query) {
+	if (query.empty())
+		return 0;
+	size_t count = 0;
+	for (size_t position = 0; position + query.size() <= text.size();) {
+		if (CaseInsensitiveMatchAt(text, query, position)) {
+			++count;
+			position += query.size();
+		}
+		else {
+			++position;
+		}
+	}
+	return count;
+}
+
+inline std::wstring ReplaceCaseInsensitive(std::wstring_view text,
+	std::wstring_view query, std::wstring_view replacement) {
+	if (query.empty())
+		return std::wstring{ text };
+	std::wstring output;
+	output.reserve(text.size());
+	for (size_t position = 0; position < text.size();) {
+		if (CaseInsensitiveMatchAt(text, query, position)) {
+			output.append(replacement);
+			position += query.size();
+		}
+		else {
+			output.push_back(text[position++]);
+		}
+	}
+	return output;
+}
+
+inline std::wstring ConsistencyTextKey(std::wstring_view text) {
+	std::wstring key;
+	key.reserve(text.size());
+	bool pending_space = false;
+	for (auto const character : text) {
+		if (std::iswspace(character)) {
+			pending_space = !key.empty();
+			continue;
+		}
+		if (pending_space) {
+			key.push_back(L' ');
+			pending_space = false;
+		}
+		key.push_back(std::towlower(character));
+	}
+	return key;
+}
+
+inline std::vector<std::wstring> NumberTokens(std::wstring_view text) {
+	std::vector<std::wstring> numbers;
+	for (size_t position = 0; position < text.size();) {
+		if (!std::iswdigit(text[position])) {
+			++position;
+			continue;
+		}
+		auto const start = position;
+		while (position < text.size() && std::iswdigit(text[position]))
+			++position;
+		numbers.emplace_back(text.substr(start, position - start));
+	}
+	return numbers;
+}
+
+inline wchar_t TerminalPunctuation(std::wstring_view text) {
+	for (auto iterator = text.rbegin(); iterator != text.rend(); ++iterator) {
+		if (std::iswspace(*iterator))
+			continue;
+		return *iterator == L'.' || *iterator == L'?' || *iterator == L'!'
+			? *iterator : wchar_t{};
+	}
+	return {};
+}
+
 struct RecoveryDraftRow {
 	size_t index{};
 	std::string status;

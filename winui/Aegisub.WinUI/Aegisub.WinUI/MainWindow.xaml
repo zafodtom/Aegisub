@@ -354,11 +354,15 @@
             CornerRadius="8">
             <Grid>
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="42" />
+                    <RowDefinition Height="82" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
-                <Grid Padding="12,0" ColumnSpacing="8">
+                <Grid Padding="12,4" ColumnSpacing="8" RowSpacing="4">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="34" />
+                        <RowDefinition Height="34" />
+                    </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
@@ -426,6 +430,59 @@
                         FontSize="12"
                         Opacity="0.58"
                         VerticalAlignment="Center" />
+
+                    <ScrollViewer
+                        Grid.Row="1"
+                        Grid.ColumnSpan="3"
+                        HorizontalScrollBarVisibility="Auto"
+                        VerticalScrollBarVisibility="Disabled"
+                        HorizontalContentAlignment="Center">
+                    <StackPanel
+                        Orientation="Horizontal"
+                        Spacing="6"
+                        VerticalAlignment="Center">
+                        <TextBlock Text="Nahradit:" VerticalAlignment="Center" Opacity="0.7" />
+                        <TextBox
+                            x:Name="ReplaceTextBox"
+                            Width="210"
+                            MinHeight="30"
+                            PlaceholderText="Nový text…"
+                            ToolTipService.ToolTip="Nahrazuje hledaný text pouze ve zobrazených českých titulcích" />
+                        <Button Content="Náhled" MinHeight="30" Click="ReplacePreviewButton_Click" />
+                        <Button Content="Nahradit vše" MinHeight="30" Click="ReplaceAllButton_Click" />
+                        <Button
+                            x:Name="UndoBulkButton"
+                            Content="Vrátit hromadnou změnu"
+                            MinHeight="30"
+                            IsEnabled="False"
+                            Click="UndoBulkButton_Click" />
+                        <Button Content="Konzistence" MinHeight="30" Click="ConsistencyCheckButton_Click" />
+                        <Button Content="Hromadně ▾" MinHeight="30">
+                            <Button.Flyout>
+                                <MenuFlyout>
+                                    <MenuFlyoutItem Text="Označit zobrazené jako připravené" Click="BulkReadyButton_Click" />
+                                    <MenuFlyoutItem Text="Označit zobrazené jako schválené" Click="BulkApprovedButton_Click" />
+                                </MenuFlyout>
+                            </Button.Flyout>
+                        </Button>
+                        <Button Content="Přehled projektu" MinHeight="30">
+                            <Button.Flyout>
+                                <Flyout Placement="BottomEdgeAlignedRight">
+                                    <StackPanel Width="330" Spacing="9">
+                                        <TextBlock Text="Přehled projektu" FontSize="18" FontWeight="SemiBold" />
+                                        <TextBlock x:Name="OverviewFilesText" TextWrapping="Wrap" Opacity="0.7" />
+                                        <ProgressBar x:Name="OverviewProgressBar" Minimum="0" Maximum="100" Height="8" />
+                                        <TextBlock x:Name="OverviewTranslatedText" />
+                                        <TextBlock x:Name="OverviewApprovedText" />
+                                        <TextBlock x:Name="OverviewProblemsText" />
+                                        <TextBlock x:Name="OverviewVisibleText" />
+                                        <TextBlock x:Name="OverviewEstimateText" FontWeight="SemiBold" />
+                                    </StackPanel>
+                                </Flyout>
+                            </Button.Flyout>
+                        </Button>
+                    </StackPanel>
+                    </ScrollViewer>
                 </Grid>
 
                 <ScrollViewer
@@ -475,6 +532,7 @@
                 <TextBlock Text="F7 → nepřeložený" FontSize="11" Opacity="0.5" />
                 <TextBlock Text="F6 → ke kontrole" FontSize="11" Opacity="0.5" />
                 <TextBlock Text="Ctrl+F / F3 → hledat" FontSize="11" Opacity="0.5" />
+                <TextBlock Text="Ctrl+1–6 → filtry" FontSize="11" Opacity="0.5" />
             </StackPanel>
         </Grid>
     </Grid>
