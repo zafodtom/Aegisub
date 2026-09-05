@@ -47,6 +47,7 @@ tests_src = [
     'tests/uuencode.cpp',
     'tests/vfr.cpp',
     'tests/winui_bridge_text.cpp',
+    'tests/winui_workflow_features.cpp',
     'tests/word_split.cpp',
     'tests/ycbcr.cpp',
 ]
