@@ -12,7 +12,7 @@ using namespace agi::winui;
 
 TEST(winui_workflow_features, qa_settings_control_cpl_cps_duration_and_lines) {
 	SubtitleQaSettings settings;
-	settings.maximum_cpl = 8;
+	settings.maximum_cpl = 7;
 	settings.maximum_cps = 5.0;
 	settings.minimum_duration = 1.0;
 	settings.maximum_lines = 1;
