@@ -9,7 +9,7 @@
     mc:Ignorable="d"
     Title="Aegisub Translation Workspace">
 
-    <Grid x:Name="RootGrid" Loaded="RootGrid_Loaded">
+    <Grid x:Name="RootGrid" Loaded="RootGrid_Loaded" AllowDrop="True" DragOver="RootGrid_DragOver" Drop="RootGrid_Drop">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="410" />
@@ -40,7 +40,7 @@
                                     <MenuFlyoutItem Text="Otevřít pouze originál…" Click="OpenSourceButton_Click" />
                                     <MenuFlyoutItem Text="Otevřít pouze češtinu…" Click="OpenTargetButton_Click" />
                                     <MenuFlyoutSeparator />
-                                    <MenuFlyoutItem x:Name="RestoreBackupButton" Text="Obnovit zálohu…" IsEnabled="False" Click="RestoreBackupButton_Click" />
+                                    <MenuFlyoutItem x:Name="RestoreBackupButton" Text="Obnovit poslední zálohu…" IsEnabled="False" Click="RestoreBackupButton_Click" />
                                     <MenuFlyoutItem Text="Přehled obnovovacích dat…" Click="RecoveryOverviewButton_Click" />
                                     <MenuFlyoutItem Text="Otevřít složku obnovy" Click="OpenRecoveryFolderButton_Click" />
                                     <MenuFlyoutItem Text="Odstranit obnovovací data…" Click="DeleteRecoveryFilesButton_Click" />
@@ -50,42 +50,69 @@
                         <Button Content="Nastavení ▾" MinHeight="34">
                             <Button.Flyout>
                                 <Flyout Placement="BottomEdgeAlignedRight">
-                                    <StackPanel Width="360" Spacing="10">
-                                        <TextBlock Text="Nastavení pracovního prostoru" FontSize="18" FontWeight="SemiBold" />
-                                        <Grid ColumnSpacing="10" RowSpacing="8">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="120" />
-                                            </Grid.ColumnDefinitions>
-                                            <Grid.RowDefinitions>
-                                                <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="Auto" />
-                                            </Grid.RowDefinitions>
-                                            <TextBlock Text="Max. CPL" VerticalAlignment="Center" />
-                                            <NumberBox x:Name="QaCplBox" Grid.Column="1" Minimum="10" Maximum="100" SpinButtonPlacementMode="Compact" />
-                                            <TextBlock Grid.Row="1" Text="Max. CPS" VerticalAlignment="Center" />
-                                            <NumberBox x:Name="QaCpsBox" Grid.Row="1" Grid.Column="1" Minimum="1" Maximum="100" SmallChange="0.5" SpinButtonPlacementMode="Compact" />
-                                            <TextBlock Grid.Row="2" Text="Min. délka [s]" VerticalAlignment="Center" />
-                                            <NumberBox x:Name="QaMinDurationBox" Grid.Row="2" Grid.Column="1" Minimum="0" Maximum="10" SmallChange="0.1" SpinButtonPlacementMode="Compact" />
-                                            <TextBlock Grid.Row="3" Text="Max. řádků" VerticalAlignment="Center" />
-                                            <NumberBox x:Name="QaMaxLinesBox" Grid.Row="3" Grid.Column="1" Minimum="1" Maximum="8" SpinButtonPlacementMode="Compact" />
-                                            <TextBlock Grid.Row="4" Text="Min. poměr délky" VerticalAlignment="Center" />
-                                            <NumberBox x:Name="QaLengthMinBox" Grid.Row="4" Grid.Column="1" Minimum="0.05" Maximum="5" SmallChange="0.05" SpinButtonPlacementMode="Compact" />
-                                            <TextBlock Grid.Row="5" Text="Max. poměr délky" VerticalAlignment="Center" />
-                                            <NumberBox x:Name="QaLengthMaxBox" Grid.Row="5" Grid.Column="1" Minimum="0.1" Maximum="10" SmallChange="0.1" SpinButtonPlacementMode="Compact" />
-                                            <TextBlock Grid.Row="6" Text="Velikost editoru" VerticalAlignment="Center" />
-                                            <NumberBox x:Name="EditorFontSizeBox" Grid.Row="6" Grid.Column="1" Minimum="10" Maximum="72" SpinButtonPlacementMode="Compact" />
-                                        </Grid>
-                                        <CheckBox x:Name="CzechQuotesCheckBox" Content="Kontrolovat rovné uvozovky v českém textu" />
-                                        <CheckBox x:Name="AutosaveCheckBox" Content="Automaticky ukládat recovery draft" />
-                                        <TextBlock Text="Jazyk UI: cs-CZ · motiv: podle systému" FontSize="11" Opacity="0.6" />
-                                        <Button Content="Použít a uložit" HorizontalAlignment="Right" Click="ApplySettingsButton_Click" />
-                                    </StackPanel>
+                                    <ScrollViewer MaxHeight="720" VerticalScrollBarVisibility="Auto">
+                                        <StackPanel Width="440" Spacing="10" Padding="0,0,8,0">
+                                            <TextBlock Text="Nastavení pracovního prostoru" FontSize="18" FontWeight="SemiBold" />
+                                            <Grid ColumnSpacing="10" RowSpacing="8">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="140" /></Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                </Grid.RowDefinitions>
+                                                <TextBlock Text="Max. CPL" VerticalAlignment="Center" />
+                                                <NumberBox x:Name="QaCplBox" Grid.Column="1" Minimum="10" Maximum="100" SpinButtonPlacementMode="Compact" />
+                                                <TextBlock Grid.Row="1" Text="Max. CPS" VerticalAlignment="Center" />
+                                                <NumberBox x:Name="QaCpsBox" Grid.Row="1" Grid.Column="1" Minimum="1" Maximum="100" SmallChange="0.5" SpinButtonPlacementMode="Compact" />
+                                                <TextBlock Grid.Row="2" Text="Min. délka [s]" VerticalAlignment="Center" />
+                                                <NumberBox x:Name="QaMinDurationBox" Grid.Row="2" Grid.Column="1" Minimum="0" Maximum="10" SmallChange="0.1" SpinButtonPlacementMode="Compact" />
+                                                <TextBlock Grid.Row="3" Text="Max. řádků" VerticalAlignment="Center" />
+                                                <NumberBox x:Name="QaMaxLinesBox" Grid.Row="3" Grid.Column="1" Minimum="1" Maximum="8" SpinButtonPlacementMode="Compact" />
+                                                <TextBlock Grid.Row="4" Text="Min. poměr délky" VerticalAlignment="Center" />
+                                                <NumberBox x:Name="QaLengthMinBox" Grid.Row="4" Grid.Column="1" Minimum="0.05" Maximum="5" SmallChange="0.05" SpinButtonPlacementMode="Compact" />
+                                                <TextBlock Grid.Row="5" Text="Max. poměr délky" VerticalAlignment="Center" />
+                                                <NumberBox x:Name="QaLengthMaxBox" Grid.Row="5" Grid.Column="1" Minimum="0.1" Maximum="10" SmallChange="0.1" SpinButtonPlacementMode="Compact" />
+                                                <TextBlock Grid.Row="6" Text="Velikost editoru" VerticalAlignment="Center" />
+                                                <NumberBox x:Name="EditorFontSizeBox" Grid.Row="6" Grid.Column="1" Minimum="10" Maximum="72" SpinButtonPlacementMode="Compact" />
+                                            </Grid>
+                                            <CheckBox x:Name="CzechQuotesCheckBox" Content="Kontrolovat rovné uvozovky v českém textu" />
+                                            <CheckBox x:Name="AutosaveCheckBox" Content="Automaticky ukládat recovery draft" />
+                                            <Grid ColumnSpacing="10" RowSpacing="6">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="180" /></Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                                                <TextBlock Text="Jazyk pracovního prostoru" VerticalAlignment="Center" />
+                                                <ComboBox x:Name="UiLanguageComboBox" Grid.Column="1" SelectedIndex="0">
+                                                    <ComboBoxItem Content="Čeština (cs-CZ)" Tag="cs-CZ" />
+                                                    <ComboBoxItem Content="English (en-US)" Tag="en-US" />
+                                                </ComboBox>
+                                                <TextBlock Grid.Row="1" Text="Motiv" VerticalAlignment="Center" />
+                                                <ComboBox x:Name="ThemeComboBox" Grid.Row="1" Grid.Column="1" SelectedIndex="0">
+                                                    <ComboBoxItem Content="Podle systému" Tag="system" />
+                                                    <ComboBoxItem Content="Světlý" Tag="light" />
+                                                    <ComboBoxItem Content="Tmavý" Tag="dark" />
+                                                </ComboBox>
+                                            </Grid>
+                                            <TextBox x:Name="DefaultDirectoryTextBox" Header="Výchozí adresář projektů" PlaceholderText="volitelné" />
+                                            <Button x:Name="ApplyWorkspaceSettingsButton" Content="Použít a uložit" HorizontalAlignment="Right" Click="ApplySettingsButton_Click" />
+
+                                            <Rectangle Height="1" Fill="Gray" Opacity="0.25" Margin="0,4" />
+                                            <TextBlock Text="Poslední projekty" FontWeight="SemiBold" />
+                                            <Grid ColumnSpacing="8">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                                <ComboBox x:Name="RecentProjectsComboBox" IsEnabled="False" PlaceholderText="Žádná historie" />
+                                                <Button x:Name="OpenSelectedRecentProjectButton" Grid.Column="1" Content="Otevřít" IsEnabled="False" Click="OpenSelectedRecentProjectButton_Click" />
+                                            </Grid>
+
+                                            <Rectangle Height="1" Fill="Gray" Opacity="0.25" Margin="0,4" />
+                                            <TextBlock Text="Recovery historie" FontWeight="SemiBold" />
+                                            <TextBlock x:Name="RecoveryHistoryText" Text="Recovery: zatím nenačteno" FontSize="11" Opacity="0.65" />
+                                            <ComboBox x:Name="RecoveryVersionsComboBox" PlaceholderText="Žádná historická verze" />
+                                            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                                                <Button Content="Obnovit seznam" Click="RefreshRecoveryHistoryButton_Click" />
+                                                <Button x:Name="RestoreSelectedRecoveryButton" Content="Obnovit vybranou" IsEnabled="False" Click="RestoreSelectedRecoveryButton_Click" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </ScrollViewer>
                                 </Flyout>
                             </Button.Flyout>
                         </Button>
@@ -105,12 +132,7 @@
         </Border>
 
         <Grid Grid.Row="1" Margin="14,12,14,0" ColumnSpacing="12">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="1.1*" />
-                <ColumnDefinition Width="1.1*" />
-                <ColumnDefinition Width="0.8*" />
-            </Grid.ColumnDefinitions>
-
+            <Grid.ColumnDefinitions><ColumnDefinition Width="1.1*" /><ColumnDefinition Width="1.1*" /><ColumnDefinition Width="0.8*" /></Grid.ColumnDefinitions>
             <Border Grid.Column="0" Padding="16" BorderBrush="Gray" BorderThickness="1" CornerRadius="8">
                 <Grid>
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
@@ -209,30 +231,29 @@
                             <ComboBoxItem x:Name="FilterModifiedItem" Content="Upravené" /><ComboBoxItem x:Name="FilterProblemsItem" Content="S problémem" />
                             <ComboBoxItem x:Name="FilterReadyItem" Content="Připravené" /><ComboBoxItem x:Name="FilterApprovedItem" Content="Schválené" />
                         </ComboBox>
-                        <TextBox x:Name="SearchTextBox" Width="240" MinHeight="30" PlaceholderText="Hledat…" ToolTipService.ToolTip="Ctrl+F · Enter další · Shift+Enter předchozí" TextChanged="SearchTextBox_TextChanged" KeyDown="SearchTextBox_KeyDown" />
-                        <Button x:Name="SearchPreviousButton" Content="↑" MinWidth="32" MinHeight="30" ToolTipService.ToolTip="Předchozí · Shift+F3" Click="SearchPreviousButton_Click" />
-                        <Button x:Name="SearchNextButton" Content="↓" MinWidth="32" MinHeight="30" ToolTipService.ToolTip="Další · F3" Click="SearchNextButton_Click" />
+                        <TextBox x:Name="SearchTextBox" Width="240" MinHeight="30" PlaceholderText="Hledat…" ToolTipService.ToolTip="Ctrl+F · Enter další · Shift+Enter předchozí" TextChanged="AdvancedSearchTextBox_TextChanged" KeyDown="AdvancedSearchTextBox_KeyDown" />
+                        <Button x:Name="SearchPreviousButton" Content="↑" MinWidth="32" MinHeight="30" ToolTipService.ToolTip="Předchozí · Shift+F3" Click="AdvancedSearchPreviousButton_Click" />
+                        <Button x:Name="SearchNextButton" Content="↓" MinWidth="32" MinHeight="30" ToolTipService.ToolTip="Další · F3" Click="AdvancedSearchNextButton_Click" />
                         <TextBlock x:Name="SearchResultText" MinWidth="65" FontSize="11" Opacity="0.58" VerticalAlignment="Center" />
                     </StackPanel>
                     <TextBlock x:Name="TablePositionText" Grid.Column="2" Text="Načítání titulků…" FontSize="12" Opacity="0.58" VerticalAlignment="Center" />
 
                     <StackPanel Grid.Row="1" Grid.ColumnSpan="3" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center">
                         <TextBlock Text="Rozsah hledání:" VerticalAlignment="Center" Opacity="0.7" />
-                        <ComboBox x:Name="SearchScopeComboBox" Width="155" SelectedIndex="2">
+                        <ComboBox x:Name="SearchScopeComboBox" Width="155" SelectedIndex="2" SelectionChanged="SearchScopeComboBox_SelectionChanged">
                             <ComboBoxItem Content="Jen čeština" /><ComboBoxItem Content="Jen originál" /><ComboBoxItem Content="Obojí" />
                         </ComboBox>
                         <CheckBox x:Name="SearchCaseCheckBox" Content="Aa" ToolTipService.ToolTip="Rozlišovat velikost písmen" Click="SearchOptions_Changed" />
                         <CheckBox x:Name="SearchWholeWordCheckBox" Content="Celé slovo" Click="SearchOptions_Changed" />
-                        <Button Content="Přepočítat" Click="SearchOptions_Changed" />
-                        <TextBlock Text="Volby se používají pro rozšířenou kontrolu shod a náhrady." FontSize="11" Opacity="0.55" VerticalAlignment="Center" />
+                        <TextBlock Text="Volby platí pro navigaci, náhled i hromadnou náhradu." FontSize="11" Opacity="0.55" VerticalAlignment="Center" />
                     </StackPanel>
 
                     <ScrollViewer Grid.Row="2" Grid.ColumnSpan="3" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" HorizontalContentAlignment="Center">
                         <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                             <TextBlock Text="Nahradit:" VerticalAlignment="Center" Opacity="0.7" />
                             <TextBox x:Name="ReplaceTextBox" Width="200" MinHeight="30" PlaceholderText="Nový text…" />
-                            <Button Content="Náhled" MinHeight="30" Click="ReplacePreviewButton_Click" />
-                            <Button Content="Nahradit vše" MinHeight="30" Click="ReplaceAllButton_Click" />
+                            <Button Content="Náhled" MinHeight="30" Click="AdvancedReplacePreviewButton_Click" />
+                            <Button Content="Nahradit vše" MinHeight="30" Click="AdvancedReplaceAllButton_Click" />
                             <Button x:Name="UndoBulkButton" Content="Vrátit hromadnou změnu" MinHeight="30" IsEnabled="False" Click="UndoBulkButton_Click" />
                             <Button Content="Konzistence" MinHeight="30" Click="ConsistencyCheckButton_Click" />
                             <Button Content="Normalizovat" MinHeight="30" ToolTipService.ToolTip="Mezery a interpunkce ve zobrazených českých titulcích" Click="BulkNormalizeButton_Click" />
@@ -248,8 +269,12 @@
                                         <TextBlock Text="Přehled projektu" FontSize="18" FontWeight="SemiBold" />
                                         <TextBlock x:Name="OverviewFilesText" TextWrapping="Wrap" Opacity="0.7" />
                                         <ProgressBar x:Name="OverviewProgressBar" Minimum="0" Maximum="100" Height="8" />
-                                        <TextBlock x:Name="OverviewTranslatedText" /><TextBlock x:Name="OverviewApprovedText" />
-                                        <TextBlock x:Name="OverviewProblemsText" /><TextBlock x:Name="OverviewVisibleText" />
+                                        <TextBlock x:Name="OverviewTranslatedText" />
+                                        <TextBlock x:Name="OverviewModifiedText" />
+                                        <TextBlock x:Name="OverviewReadyText" />
+                                        <TextBlock x:Name="OverviewApprovedText" />
+                                        <TextBlock x:Name="OverviewProblemsText" />
+                                        <TextBlock x:Name="OverviewVisibleText" />
                                         <TextBlock x:Name="OverviewEstimateText" FontWeight="SemiBold" />
                                     </StackPanel>
                                 </Flyout></Button.Flyout>
@@ -271,7 +296,7 @@
 
         <Grid Grid.Row="3" Margin="14,8,14,12" ColumnSpacing="16">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-            <TextBlock x:Name="StatusBarText" Text="Připraveno" FontSize="11" Opacity="0.5" />
+            <TextBlock x:Name="StatusBarText" Text="Připraveno · můžete sem také přetáhnout dvojici .srt/.ass/.ssa" FontSize="11" Opacity="0.5" />
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="14">
                 <TextBlock Text="Shift+Enter → nový řádek" FontSize="11" Opacity="0.5" />
                 <TextBlock Text="Enter → potvrdit + další" FontSize="11" Opacity="0.5" />
