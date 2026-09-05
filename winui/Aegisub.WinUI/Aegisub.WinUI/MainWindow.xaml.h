@@ -16,6 +16,8 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <winrt/Windows.ApplicationModel.DataTransfer.h>
+#include <winrt/Windows.Storage.h>
 #include <winrt/Windows.System.h>
 
 namespace winrt::Aegisub_WinUI::implementation
@@ -118,6 +120,31 @@ namespace winrt::Aegisub_WinUI::implementation
         void RecentProjectsButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
 
+        void AdvancedSearchTextBox_TextChanged(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::Controls::TextChangedEventArgs const& args);
+        void AdvancedSearchTextBox_KeyDown(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const& args);
+        void AdvancedSearchPreviousButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void AdvancedSearchNextButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void AdvancedReplacePreviewButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void AdvancedReplaceAllButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void SearchScopeComboBox_SelectionChanged(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const& args);
+        void OpenSelectedRecentProjectButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void RefreshRecoveryHistoryButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void RestoreSelectedRecoveryButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void RootGrid_DragOver(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::DragEventArgs const& args);
+        void RootGrid_Drop(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::DragEventArgs const& args);
+
     private:
         struct SubtitleEntry
         {
@@ -210,6 +237,7 @@ namespace winrt::Aegisub_WinUI::implementation
         bool m_lastBulkWorkflowStateDirty{};
         agi::winui::WinUiWorkspaceSettings m_workspaceSettings;
         std::vector<agi::winui::RecentTranslationProject> m_recentProjects;
+        std::vector<std::wstring> m_recoveryVersions;
         bool m_featureStateLoaded{};
 
         static constexpr size_t kMaxCpl = 42;
@@ -298,10 +326,22 @@ namespace winrt::Aegisub_WinUI::implementation
         void RefreshPairingUi();
         void ChangeManualPair(int32_t delta);
         void CaptureRecoveryHistorySnapshot() const;
+
+        bool RowMatchesAdvancedSearch(SubtitleRowData const& row, std::wstring_view query) const;
+        void RefreshAdvancedSearchSummary();
+        void MoveToAdvancedSearchResult(int32_t direction);
+        void ApplyAdvancedReplace(bool previewOnly);
+        void RefreshFeatureOverview();
+        void RefreshRecentProjectsUi();
+        void OpenRecentProjectAt(size_t index);
+        void RefreshRecoveryHistoryUi();
+        void RestoreRecoveryVersion(size_t index);
+        winrt::fire_and_forget OpenDroppedProjectAsync(winrt::Microsoft::UI::Xaml::DragEventArgs args);
     };
 }
 
 #include "MainWindow.Workflow.inl"
+#include "MainWindow.Advanced.inl"
 
 namespace winrt::Aegisub_WinUI::factory_implementation
 {
