@@ -16,7 +16,7 @@ struct RecoveryArtifactInfo {
 	RecoveryArtifactKind kind{RecoveryArtifactKind::backup};
 	std::wstring path;
 	int64_t write_time{};
-	uintmax_t size{};
+	std::uintmax_t size{};
 	bool current_project{};
 };
 
