@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "App.xaml.h"
 #include "MainWindow.xaml.h"
+#include "../../../src/winui_locale.h"
 
 using namespace winrt;
 using namespace Microsoft::UI::Xaml;
@@ -16,6 +17,8 @@ namespace winrt::Aegisub_WinUI::implementation
     /// </summary>
     App::App()
     {
+        agi::winui::InitializeTextLocale();
+
         // Xaml objects should not call InitializeComponent during construction.
         // See https://github.com/microsoft/cppwinrt/tree/master/nuget#initializecomponent
 

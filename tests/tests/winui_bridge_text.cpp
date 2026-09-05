@@ -1,6 +1,7 @@
 #include <main.h>
 
 #include "../../src/winui_bridge_text.h"
+#include "../../src/winui_locale.h"
 
 using namespace agi::winui;
 
@@ -84,6 +85,14 @@ TEST(winui_workflow, subtitle_filters_select_the_expected_rows) {
 	EXPECT_FALSE(MatchesSubtitleFilter(SubtitleFilter::ready, false, false, true, true, false));
 	EXPECT_TRUE(MatchesSubtitleFilter(SubtitleFilter::approved, false, false, false, false, true));
 	EXPECT_FALSE(MatchesSubtitleFilter(SubtitleFilter::approved, false, false, true, false, true));
+}
+
+TEST(winui_workflow, initializes_unicode_ctype_for_czech_workflow_text) {
+	ASSERT_TRUE(InitializeTextLocale());
+	EXPECT_EQ(2U, CountCaseInsensitiveMatches(L"\u010CAS \u010Das", L"\u010Das"));
+	EXPECT_EQ(
+		L"p\u0159\u00EDli\u0161 \u017Elu\u0165ou\u010Dk\u00FD k\u016F\u0148",
+		ConsistencyTextKey(L"P\u0158\u00CDLI\u0160 \u017DLU\u0164OU\u010CK\u00DD K\u016E\u0147"));
 }
 
 TEST(winui_workflow, bulk_replace_is_case_insensitive_and_non_overlapping) {
