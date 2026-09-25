@@ -26,3 +26,6 @@ build*/
 
 # NuGet packages restored locally
 /winui/**/packages/
+
+# Local Meson/FFmpeg helper generated during Windows builds
+subprojects/checkasm.wrap
