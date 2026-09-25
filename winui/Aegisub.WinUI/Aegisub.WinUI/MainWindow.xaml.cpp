@@ -1388,6 +1388,7 @@ namespace winrt::Aegisub_WinUI::implementation
 
         TranscriptCurrentTimeText().Text(row.start);
         TranscriptCurrentText().Text(row.original);
+        SeekVideoToCurrentSubtitle();
 
         if (m_currentIndex > 0)
         {

@@ -16,6 +16,8 @@
 #include <string_view>
 #include <vector>
 #include <winrt/Windows.ApplicationModel.DataTransfer.h>
+#include <winrt/Windows.Media.Core.h>
+#include <winrt/Windows.Media.Playback.h>
 #include <winrt/Windows.Storage.h>
 #include <winrt/Windows.System.h>
 
@@ -132,6 +134,14 @@ namespace winrt::Aegisub_WinUI::implementation
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void TimingTextBox_KeyDown(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const& args);
+        void OpenVideoButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void VideoSeekCurrentButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void VideoSetStartButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void VideoSetEndButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void RecentProjectsButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
 
@@ -256,6 +266,7 @@ namespace winrt::Aegisub_WinUI::implementation
         agi::winui::WinUiWorkspaceSettings m_workspaceSettings;
         std::vector<agi::winui::RecentTranslationProject> m_recentProjects;
         std::vector<std::wstring> m_recoveryVersions;
+        std::wstring m_videoPath;
         bool m_featureStateLoaded{};
 
         static constexpr size_t kMaxCpl = 42;
@@ -346,6 +357,9 @@ namespace winrt::Aegisub_WinUI::implementation
         void RefreshTimingEditor();
         bool ApplyCurrentTimingFromEditors();
         void AdjustCurrentTiming(double startDelta, double endDelta, winrt::hstring const& action);
+        bool OpenVideoFile(std::wstring const& filename);
+        double CurrentVideoSeconds();
+        void SeekVideoToCurrentSubtitle();
         void CaptureRecoveryHistorySnapshot() const;
 
         bool RowMatchesAdvancedSearch(SubtitleRowData const& row, std::wstring_view query);
@@ -362,6 +376,7 @@ namespace winrt::Aegisub_WinUI::implementation
 }
 
 #include "MainWindow.Timing.inl"
+#include "MainWindow.Video.inl"
 #include "MainWindow.Workflow.inl"
 #include "MainWindow.Advanced.inl"
 
