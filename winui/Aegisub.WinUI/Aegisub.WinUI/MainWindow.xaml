@@ -204,6 +204,12 @@
                             <Button Grid.Column="5" Content="Vyvážit" Padding="8,2" MinHeight="26" FontSize="11" Click="InsertLineBreakButton_Click" />
                             <Button Grid.Column="6" Content="Sloučit" Padding="8,2" MinHeight="26" FontSize="11" Click="MergeLinesButton_Click" />
                         </Grid>
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Button Content="Rozdělit titulek" Padding="7,2" MinHeight="25" FontSize="10" Click="SplitSubtitleButton_Click" ToolTipService.ToolTip="Rozdělit aktuální titulek v místě kurzoru" />
+                            <Button Content="Spojit s dalším" Padding="7,2" MinHeight="25" FontSize="10" Click="JoinNextSubtitleButton_Click" />
+                            <Button Content="+ nový" Padding="7,2" MinHeight="25" FontSize="10" Click="InsertSubtitleButton_Click" />
+                            <Button Content="Smazat" Padding="7,2" MinHeight="25" FontSize="10" Click="DeleteSubtitleButton_Click" />
+                        </StackPanel>
                         <Grid ColumnSpacing="8">
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                             <TextBlock x:Name="PairingQualityText" Text="Pár: —" FontSize="11" Opacity="0.62" VerticalAlignment="Center" />

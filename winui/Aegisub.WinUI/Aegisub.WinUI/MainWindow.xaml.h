@@ -120,6 +120,14 @@ namespace winrt::Aegisub_WinUI::implementation
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void PairIgnoreButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void SplitSubtitleButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void JoinNextSubtitleButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void InsertSubtitleButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void DeleteSubtitleButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void TimingApplyButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void TimingShiftBackButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
@@ -280,6 +288,7 @@ namespace winrt::Aegisub_WinUI::implementation
         std::wstring m_waveformPath;
         std::vector<std::pair<float, float>> m_waveformPeaks;
         double m_waveformDuration{};
+        bool m_structureDirty{};
         bool m_featureStateLoaded{};
 
         static constexpr size_t kMaxCpl = 42;
@@ -369,6 +378,9 @@ namespace winrt::Aegisub_WinUI::implementation
         void ChangeManualPair(int32_t delta);
         void RefreshTimingEditor();
         bool ApplyCurrentTimingFromEditors();
+        void RenumberSubtitleRows();
+        void SyncTargetEntriesFromRows();
+        void RefreshAfterStructureEdit(winrt::hstring const& status);
         void AdjustCurrentTiming(double startDelta, double endDelta, winrt::hstring const& action);
         bool OpenVideoFile(std::wstring const& filename);
         double CurrentVideoSeconds();
@@ -392,6 +404,7 @@ namespace winrt::Aegisub_WinUI::implementation
 }
 
 #include "MainWindow.Timing.inl"
+#include "MainWindow.Structure.inl"
 #include "MainWindow.Video.inl"
 #include "MainWindow.Audio.inl"
 #include "MainWindow.Workflow.inl"

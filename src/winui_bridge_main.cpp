@@ -118,13 +118,21 @@ void ApplyBridgeFile(agi::fs::path const& input, AssFile& file) {
         throw agi::InvalidInputException("WinUI update file is empty.");
     if (!line.empty() && line.back() == '\r')
         line.pop_back();
-    if (line != "AEGISUB-WINUI-BRIDGE\t1" && line != "AEGISUB-WINUI-BRIDGE\t2")
+    bool const fullReplacement = line == "AEGISUB-WINUI-BRIDGE\t3";
+    if (line != "AEGISUB-WINUI-BRIDGE\t1" &&
+        line != "AEGISUB-WINUI-BRIDGE\t2" &&
+        !fullReplacement)
         throw agi::InvalidInputException("WinUI update file has an unknown format.");
 
+    if (fullReplacement)
+        file.Events.clear_and_dispose([](AssDialogue* dialogue) { delete dialogue; });
+
     std::vector<AssDialogue*> dialogues;
-    for (auto& dialogue : file.Events) {
-        if (!dialogue.Comment)
-            dialogues.push_back(&dialogue);
+    if (!fullReplacement) {
+        for (auto& dialogue : file.Events) {
+            if (!dialogue.Comment)
+                dialogues.push_back(&dialogue);
+        }
     }
 
     size_t index = 0;
@@ -138,12 +146,23 @@ void ApplyBridgeFile(agi::fs::path const& input, AssFile& file) {
             : line.find('\t', firstTab + 1);
         if (firstTab == std::string::npos || secondTab == std::string::npos)
             throw agi::InvalidInputException("WinUI update file contains an invalid row.");
-        if (index >= dialogues.size())
-            throw agi::InvalidInputException("WinUI update file contains more dialogue rows than the subtitle template.");
-
         auto const start = line.substr(0, firstTab);
         auto const end = line.substr(firstTab + 1, secondTab - firstTab - 1);
         auto const text = UnescapeBridgeField(std::string_view(line).substr(secondTab + 1));
+
+        if (fullReplacement)
+        {
+            auto* dialogue = new AssDialogue;
+            dialogue->Start = std::string_view(start);
+            dialogue->End = std::string_view(end);
+            dialogue->Text = DenormalizeSubtitleText(text);
+            file.Events.push_back(*dialogue);
+            ++index;
+            continue;
+        }
+
+        if (index >= dialogues.size())
+            throw agi::InvalidInputException("WinUI update file contains more dialogue rows than the subtitle template.");
 
         auto& dialogue = *dialogues[index++];
         dialogue.Start = std::string_view(start);
@@ -151,7 +170,7 @@ void ApplyBridgeFile(agi::fs::path const& input, AssFile& file) {
         dialogue.Text = DenormalizeSubtitleText(text);
     }
 
-    if (index != dialogues.size())
+    if (!fullReplacement && index != dialogues.size())
         throw agi::InvalidInputException("WinUI update file contains fewer dialogue rows than the subtitle template.");
 }
 

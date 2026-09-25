@@ -491,7 +491,7 @@ namespace winrt::Aegisub_WinUI::implementation
 
     inline void MainWindow::UpdateDirtyFromRows()
     {
-        SetDirty(m_workflowStateDirty || std::any_of(m_rows.begin(), m_rows.end(), [](auto const& row) {
+        SetDirty(m_structureDirty || m_workflowStateDirty || std::any_of(m_rows.begin(), m_rows.end(), [](auto const& row) {
             return row.targetModified || row.timingModified;
         }));
         if (m_workspaceSettings.autosave_draft) ScheduleWorkspaceDraftSave();

@@ -3092,7 +3092,7 @@ namespace winrt::Aegisub_WinUI::implementation
                 return false;
             }
 
-            stream << "AEGISUB-WINUI-BRIDGE\t1\n";
+            stream << "AEGISUB-WINUI-BRIDGE\t3\n";
             for (auto const& row : m_rows)
             {
                 auto const textForSave = row.targetModified ? row.target : row.rawTarget;
@@ -3179,30 +3179,32 @@ namespace winrt::Aegisub_WinUI::implementation
             return false;
         }
 
-        if (m_targetEntries.empty())
+        m_targetEntries.clear();
+        m_targetEntries.reserve(m_rows.size());
+        for (auto& row : m_rows)
         {
-            m_targetEntries = m_sourceEntries;
+            auto savedRaw = row.targetModified ? row.target : row.rawTarget;
+            row.rawTarget = savedRaw;
+            row.savedTarget = row.target;
+            row.savedStart = row.start;
+            row.savedEnd = row.end;
+            row.savedWorkflowStatus = row.workflowStatus;
+            row.historyInitialized = true;
+            row.targetModified = false;
+            row.timingModified = false;
+            row.editSequenceKind = 0;
+
+            SubtitleEntry entry;
+            entry.start = row.start;
+            entry.end = row.end;
+            entry.startSeconds = TimestampSeconds(to_string(row.start));
+            entry.endSeconds = TimestampSeconds(to_string(row.end));
+            entry.duration = (std::max)(0.0, entry.endSeconds - entry.startSeconds);
+            entry.text = row.target;
+            entry.rawText = savedRaw;
+            m_targetEntries.push_back(std::move(entry));
         }
-        for (size_t i = 0; i < m_rows.size(); ++i)
-        {
-            auto savedRaw = m_rows[i].targetModified ? m_rows[i].target : m_rows[i].rawTarget;
-            m_rows[i].rawTarget = savedRaw;
-            m_rows[i].savedTarget = m_rows[i].target;
-            m_rows[i].savedStart = m_rows[i].start;
-            m_rows[i].savedEnd = m_rows[i].end;
-            m_rows[i].savedWorkflowStatus = m_rows[i].workflowStatus;
-            m_rows[i].historyInitialized = true;
-            m_rows[i].targetModified = false;
-            m_rows[i].timingModified = false;
-            m_rows[i].editSequenceKind = 0;
-            m_targetEntries[i].start = m_rows[i].start;
-            m_targetEntries[i].end = m_rows[i].end;
-            m_targetEntries[i].startSeconds = TimestampSeconds(to_string(m_rows[i].start));
-            m_targetEntries[i].endSeconds = TimestampSeconds(to_string(m_rows[i].end));
-            m_targetEntries[i].duration = (std::max)(0.0, m_targetEntries[i].endSeconds - m_targetEntries[i].startSeconds);
-            m_targetEntries[i].text = m_rows[i].target;
-            m_targetEntries[i].rawText = savedRaw;
-        }
+        m_structureDirty = false;
 
         if (m_workspaceDraftTimer)
             m_workspaceDraftTimer.Stop();
