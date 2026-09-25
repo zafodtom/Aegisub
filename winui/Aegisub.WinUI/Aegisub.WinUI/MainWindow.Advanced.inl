@@ -5,7 +5,7 @@
 
 namespace winrt::Aegisub_WinUI::implementation
 {
-    inline bool MainWindow::RowMatchesAdvancedSearch(SubtitleRowData const& row, std::wstring_view query) const
+    inline bool MainWindow::RowMatchesAdvancedSearch(SubtitleRowData const& row, std::wstring_view query)
     {
         return agi::winui::SearchRowMatches(
             std::wstring_view{ row.original.c_str(), row.original.size() },
@@ -304,9 +304,9 @@ namespace winrt::Aegisub_WinUI::implementation
         }
         try
         {
-            auto const* local = _wgetenv(L"LOCALAPPDATA");
-            if (!local) return;
-            auto const directory = std::filesystem::path{ local } / L"Aegisub" / L"TranslationWorkspace" / L"Backups";
+            auto const local = WinUiLocalAppDataPath();
+            if (local.empty()) return;
+            auto const directory = local / L"Aegisub" / L"TranslationWorkspace" / L"Backups";
             auto const targetName = std::filesystem::path(m_targetPath.c_str()).filename().wstring();
             std::vector<std::filesystem::directory_entry> entries;
             std::error_code error;
@@ -332,7 +332,7 @@ namespace winrt::Aegisub_WinUI::implementation
             RestoreSelectedRecoveryButton().IsEnabled(!m_recoveryVersions.empty());
 
             std::wstring draftStatus = L"žádný recovery draft";
-            auto const workspace = std::filesystem::path{ local } / L"Aegisub" / L"TranslationWorkspace";
+            auto const workspace = local / L"Aegisub" / L"TranslationWorkspace";
             std::filesystem::directory_iterator dit(workspace, error), dend;
             std::filesystem::file_time_type newest{};
             bool hasDraft = false;

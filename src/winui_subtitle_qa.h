@@ -93,7 +93,7 @@ inline std::vector<std::wstring> ProtectedTokens(std::wstring_view text) {
 		while (position < text.size()) {
 			auto const c = text[position];
 			if (std::iswdigit(c) || c == L':' || c == L'.' || c == L',' || c == L'%' ||
-				c == L'€' || c == L'$' || c == L'£' || c == L'K' || c == L'č') {
+				c == L'\u20AC' || c == L'$' || c == L'\u00A3' || c == L'K' || c == L'\u010D') {
 				++position;
 				continue;
 			}

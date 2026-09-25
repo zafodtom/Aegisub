@@ -61,19 +61,19 @@
                                                     <RowDefinition Height="Auto" />
                                                 </Grid.RowDefinitions>
                                                 <TextBlock Text="Max. CPL" VerticalAlignment="Center" />
-                                                <NumberBox x:Name="QaCplBox" Grid.Column="1" Minimum="10" Maximum="100" SpinButtonPlacementMode="Compact" />
+                                                <NumberBox x:Name="QaCplBox" Grid.Column="1" Minimum="10" Maximum="100" SpinButtonPlacementMode="Inline" />
                                                 <TextBlock Grid.Row="1" Text="Max. CPS" VerticalAlignment="Center" />
-                                                <NumberBox x:Name="QaCpsBox" Grid.Row="1" Grid.Column="1" Minimum="1" Maximum="100" SmallChange="0.5" SpinButtonPlacementMode="Compact" />
+                                                <NumberBox x:Name="QaCpsBox" Grid.Row="1" Grid.Column="1" Minimum="1" Maximum="100" SmallChange="0.5" SpinButtonPlacementMode="Inline" />
                                                 <TextBlock Grid.Row="2" Text="Min. délka [s]" VerticalAlignment="Center" />
-                                                <NumberBox x:Name="QaMinDurationBox" Grid.Row="2" Grid.Column="1" Minimum="0" Maximum="10" SmallChange="0.1" SpinButtonPlacementMode="Compact" />
+                                                <NumberBox x:Name="QaMinDurationBox" Grid.Row="2" Grid.Column="1" Minimum="0" Maximum="10" SmallChange="0.1" SpinButtonPlacementMode="Inline" />
                                                 <TextBlock Grid.Row="3" Text="Max. řádků" VerticalAlignment="Center" />
-                                                <NumberBox x:Name="QaMaxLinesBox" Grid.Row="3" Grid.Column="1" Minimum="1" Maximum="8" SpinButtonPlacementMode="Compact" />
+                                                <NumberBox x:Name="QaMaxLinesBox" Grid.Row="3" Grid.Column="1" Minimum="1" Maximum="8" SpinButtonPlacementMode="Inline" />
                                                 <TextBlock Grid.Row="4" Text="Min. poměr délky" VerticalAlignment="Center" />
-                                                <NumberBox x:Name="QaLengthMinBox" Grid.Row="4" Grid.Column="1" Minimum="0.05" Maximum="5" SmallChange="0.05" SpinButtonPlacementMode="Compact" />
+                                                <NumberBox x:Name="QaLengthMinBox" Grid.Row="4" Grid.Column="1" Minimum="0.05" Maximum="5" SmallChange="0.05" SpinButtonPlacementMode="Inline" />
                                                 <TextBlock Grid.Row="5" Text="Max. poměr délky" VerticalAlignment="Center" />
-                                                <NumberBox x:Name="QaLengthMaxBox" Grid.Row="5" Grid.Column="1" Minimum="0.1" Maximum="10" SmallChange="0.1" SpinButtonPlacementMode="Compact" />
+                                                <NumberBox x:Name="QaLengthMaxBox" Grid.Row="5" Grid.Column="1" Minimum="0.1" Maximum="10" SmallChange="0.1" SpinButtonPlacementMode="Inline" />
                                                 <TextBlock Grid.Row="6" Text="Velikost editoru" VerticalAlignment="Center" />
-                                                <NumberBox x:Name="EditorFontSizeBox" Grid.Row="6" Grid.Column="1" Minimum="10" Maximum="72" SpinButtonPlacementMode="Compact" />
+                                                <NumberBox x:Name="EditorFontSizeBox" Grid.Row="6" Grid.Column="1" Minimum="10" Maximum="72" SpinButtonPlacementMode="Inline" />
                                             </Grid>
                                             <CheckBox x:Name="CzechQuotesCheckBox" Content="Kontrolovat rovné uvozovky v českém textu" />
                                             <CheckBox x:Name="AutosaveCheckBox" Content="Automaticky ukládat recovery draft" />

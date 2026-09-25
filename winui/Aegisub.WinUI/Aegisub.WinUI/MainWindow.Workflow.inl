@@ -3,9 +3,23 @@
 #include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <cstdlib>
 
 namespace winrt::Aegisub_WinUI::implementation
 {
+    inline std::filesystem::path WinUiLocalAppDataPath()
+    {
+        wchar_t* value = nullptr;
+        size_t length = 0;
+
+        if (_wdupenv_s(&value, &length, L"LOCALAPPDATA") != 0 || !value)
+            return {};
+
+        std::filesystem::path path{ value };
+        std::free(value);
+        return path;
+    }
+
     inline double MainWindow::WorkflowTimestampSeconds(winrt::hstring const& value) const
     {
         std::wstring const text{ value.c_str() };
@@ -165,11 +179,11 @@ namespace winrt::Aegisub_WinUI::implementation
         if (m_targetPath.empty()) return;
         try
         {
-            auto const* local = _wgetenv(L"LOCALAPPDATA");
-            if (!local) return;
+            auto const local = WinUiLocalAppDataPath();
+            if (local.empty()) return;
             std::filesystem::path const source{ m_targetPath.c_str() };
             if (!std::filesystem::exists(source)) return;
-            auto const directory = std::filesystem::path{ local } / L"Aegisub" / L"TranslationWorkspace" / L"Backups";
+            auto const directory = local / L"Aegisub" / L"TranslationWorkspace" / L"Backups";
             std::filesystem::create_directories(directory);
             auto const stamp = std::chrono::duration_cast<std::chrono::seconds>(
                 std::chrono::system_clock::now().time_since_epoch()).count();
@@ -288,9 +302,9 @@ namespace winrt::Aegisub_WinUI::implementation
         m_featureStateLoaded = true;
         try
         {
-            auto const* local = _wgetenv(L"LOCALAPPDATA");
-            if (!local) return;
-            auto const directory = std::filesystem::path{ local } / L"Aegisub" / L"TranslationWorkspace";
+            auto const local = WinUiLocalAppDataPath();
+            if (local.empty()) return;
+            auto const directory = local / L"Aegisub" / L"TranslationWorkspace";
             std::filesystem::create_directories(directory);
             auto readFile = [](std::filesystem::path const& path) {
                 std::ifstream stream(path, std::ios::binary);
@@ -322,9 +336,9 @@ namespace winrt::Aegisub_WinUI::implementation
     {
         try
         {
-            auto const* local = _wgetenv(L"LOCALAPPDATA");
-            if (!local) return;
-            auto const directory = std::filesystem::path{ local } / L"Aegisub" / L"TranslationWorkspace";
+            auto const local = WinUiLocalAppDataPath();
+            if (local.empty()) return;
+            auto const directory = local / L"Aegisub" / L"TranslationWorkspace";
             std::filesystem::create_directories(directory);
             std::ofstream stream(directory / L"settings.tsv", std::ios::binary | std::ios::trunc);
             stream << agi::winui::SerializeWorkspaceSettings(m_workspaceSettings);
@@ -339,9 +353,9 @@ namespace winrt::Aegisub_WinUI::implementation
             { winrt::to_string(m_sourcePath), winrt::to_string(m_targetPath) }, 10);
         try
         {
-            auto const* local = _wgetenv(L"LOCALAPPDATA");
-            if (!local) return;
-            auto const directory = std::filesystem::path{ local } / L"Aegisub" / L"TranslationWorkspace";
+            auto const local = WinUiLocalAppDataPath();
+            if (local.empty()) return;
+            auto const directory = local / L"Aegisub" / L"TranslationWorkspace";
             std::filesystem::create_directories(directory);
             std::ofstream stream(directory / L"recent-projects.tsv", std::ios::binary | std::ios::trunc);
             stream << agi::winui::SerializeRecentProjects(m_recentProjects);
@@ -543,7 +557,7 @@ namespace winrt::Aegisub_WinUI::implementation
         StatusBarText().Text(L"QA · nebyl nalezen žádný problém");
     }
 
-    inline agi::winui::SearchOptions MainWindow::CurrentSearchOptions() const
+    inline agi::winui::SearchOptions MainWindow::CurrentSearchOptions()
     {
         agi::winui::SearchOptions options;
         auto const scope = SearchScopeComboBox().SelectedIndex();

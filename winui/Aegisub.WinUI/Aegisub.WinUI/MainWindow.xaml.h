@@ -4,7 +4,6 @@
 #include "../../../src/winui_bridge_text.h"
 #include "../../../src/winui_project_state.h"
 #include "../../../src/winui_search_replace.h"
-#include "../../../src/winui_subtitle_io.h"
 #include "../../../src/winui_subtitle_qa.h"
 #include "../../../src/winui_subtitle_workflow.h"
 
@@ -318,7 +317,7 @@ namespace winrt::Aegisub_WinUI::implementation
         bool IsTranslationEmpty(winrt::hstring const& text) const;
         double WorkflowTimestampSeconds(winrt::hstring const& value) const;
 
-        agi::winui::SearchOptions CurrentSearchOptions() const;
+        agi::winui::SearchOptions CurrentSearchOptions();
         void RefreshFeatureMetrics();
         void LoadFeatureState();
         void SaveFeatureSettings() const;
@@ -327,7 +326,7 @@ namespace winrt::Aegisub_WinUI::implementation
         void ChangeManualPair(int32_t delta);
         void CaptureRecoveryHistorySnapshot() const;
 
-        bool RowMatchesAdvancedSearch(SubtitleRowData const& row, std::wstring_view query) const;
+        bool RowMatchesAdvancedSearch(SubtitleRowData const& row, std::wstring_view query);
         void RefreshAdvancedSearchSummary();
         void MoveToAdvancedSearchResult(int32_t direction);
         void ApplyAdvancedReplace(bool previewOnly);
