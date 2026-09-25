@@ -151,7 +151,7 @@
 
             <Border x:Name="TargetPanelBorder" Grid.Column="1" Padding="16" BorderBrush="#0078D4" BorderThickness="2" CornerRadius="8">
                 <Grid>
-                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                     <Grid>
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                         <StackPanel>
@@ -160,9 +160,38 @@
                         </StackPanel>
                         <TextBlock Grid.Column="1" Text="EDITACE" FontSize="10" Opacity="0.58" VerticalAlignment="Center" />
                     </Grid>
-                    <TextBlock x:Name="TargetInfoText" Grid.Row="1" Margin="0,5,0,12" Text="#145 · Upraveno" FontSize="13" Opacity="0.62" TextTrimming="CharacterEllipsis" />
-                    <TextBox x:Name="TargetTextBox" Grid.Row="2" Padding="14" Text="Měli bychom tam být před východem slunce." AcceptsReturn="True" TextWrapping="Wrap" FontSize="24" VerticalContentAlignment="Top" Loaded="TargetTextBox_WorkflowLoaded" TextChanged="TargetTextBox_TextChanged" />
-                    <StackPanel Grid.Row="3" Margin="0,8,0,0" Spacing="5">
+                    <TextBlock x:Name="TargetInfoText" Grid.Row="1" Margin="0,5,0,7" Text="#145 · Upraveno" FontSize="13" Opacity="0.62" TextTrimming="CharacterEllipsis" />
+                    <Grid Grid.Row="2" Margin="0,0,0,8" ColumnSpacing="6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="118" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="118" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Start" VerticalAlignment="Center" FontSize="11" Opacity="0.7" />
+                        <TextBox x:Name="StartTimeBox" Grid.Column="1" FontFamily="Consolas" FontSize="12" Padding="6,3" KeyDown="TimingTextBox_KeyDown" />
+                        <TextBlock Grid.Column="2" Text="Konec" VerticalAlignment="Center" FontSize="11" Opacity="0.7" />
+                        <TextBox x:Name="EndTimeBox" Grid.Column="3" FontFamily="Consolas" FontSize="12" Padding="6,3" KeyDown="TimingTextBox_KeyDown" />
+                        <Button Grid.Column="4" Content="Použít" Padding="8,3" Click="TimingApplyButton_Click" ToolTipService.ToolTip="Použít ručně zadané časy" />
+                        <Button Grid.Column="5" Content="◀ 100" Padding="6,3" Click="TimingShiftBackButton_Click" ToolTipService.ToolTip="Posunout celý titulek o 100 ms zpět" />
+                        <Button Grid.Column="6" Content="100 ▶" Padding="6,3" Click="TimingShiftForwardButton_Click" ToolTipService.ToolTip="Posunout celý titulek o 100 ms vpřed" />
+                        <Button Grid.Column="7" Content="S−" Padding="6,3" Click="TimingStartBackButton_Click" ToolTipService.ToolTip="Začátek o 100 ms dříve" />
+                        <Button Grid.Column="8" Content="S+" Padding="6,3" Click="TimingStartForwardButton_Click" ToolTipService.ToolTip="Začátek o 100 ms později" />
+                        <Button Grid.Column="9" Content="E−" Padding="6,3" Click="TimingEndBackButton_Click" ToolTipService.ToolTip="Konec o 100 ms dříve" />
+                        <StackPanel Grid.Column="10" Orientation="Horizontal" Spacing="6">
+                            <Button Content="E+" Padding="6,3" Click="TimingEndForwardButton_Click" ToolTipService.ToolTip="Konec o 100 ms později" />
+                            <TextBlock x:Name="TimingDurationText" Text="0,00 s" VerticalAlignment="Center" FontSize="11" Opacity="0.62" />
+                        </StackPanel>
+                    </Grid>
+                    <TextBox x:Name="TargetTextBox" Grid.Row="3" Padding="14" Text="Měli bychom tam být před východem slunce." AcceptsReturn="True" TextWrapping="Wrap" FontSize="24" VerticalContentAlignment="Top" Loaded="TargetTextBox_WorkflowLoaded" TextChanged="TargetTextBox_TextChanged" />
+                    <StackPanel Grid.Row="4" Margin="0,8,0,0" Spacing="5">
                         <Grid ColumnSpacing="10">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" />

@@ -116,6 +116,22 @@ namespace winrt::Aegisub_WinUI::implementation
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void PairIgnoreButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void TimingApplyButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void TimingShiftBackButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void TimingShiftForwardButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void TimingStartBackButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void TimingStartForwardButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void TimingEndBackButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void TimingEndForwardButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void TimingTextBox_KeyDown(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const& args);
         void RecentProjectsButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
 
@@ -173,6 +189,9 @@ namespace winrt::Aegisub_WinUI::implementation
             winrt::hstring qaIssue;
             double sourceMatchQuality{};
             winrt::hstring savedTarget;
+            winrt::hstring savedStart;
+            winrt::hstring savedEnd;
+            bool timingModified{};
             winrt::hstring savedWorkflowStatus;
             std::vector<winrt::hstring> undoHistory;
             std::vector<winrt::hstring> redoHistory;
@@ -324,6 +343,9 @@ namespace winrt::Aegisub_WinUI::implementation
         void RememberRecentProject();
         void RefreshPairingUi();
         void ChangeManualPair(int32_t delta);
+        void RefreshTimingEditor();
+        bool ApplyCurrentTimingFromEditors();
+        void AdjustCurrentTiming(double startDelta, double endDelta, winrt::hstring const& action);
         void CaptureRecoveryHistorySnapshot() const;
 
         bool RowMatchesAdvancedSearch(SubtitleRowData const& row, std::wstring_view query);
@@ -339,6 +361,7 @@ namespace winrt::Aegisub_WinUI::implementation
     };
 }
 
+#include "MainWindow.Timing.inl"
 #include "MainWindow.Workflow.inl"
 #include "MainWindow.Advanced.inl"
 

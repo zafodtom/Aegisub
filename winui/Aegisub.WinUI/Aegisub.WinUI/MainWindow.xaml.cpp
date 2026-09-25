@@ -1286,7 +1286,7 @@ namespace winrt::Aegisub_WinUI::implementation
 
         row.target = newText;
         row.targetModified = !agi::winui::EquivalentEditorText(row.target.c_str(), row.savedTarget.c_str());
-        row.status = row.targetModified
+        row.status = (row.targetModified || row.timingModified)
             ? hstring{ L"Upraveno" }
             : (row.savedWorkflowStatus.empty() ? hstring{ L"Ulo\u017Eeno" } : row.savedWorkflowStatus);
         UpdateDirtyFromRows();
@@ -1364,6 +1364,7 @@ namespace winrt::Aegisub_WinUI::implementation
         std::wstring targetInfo = L"#" + std::to_wstring(row.number) + L" \u00B7 ";
         targetInfo += row.status.c_str();
         TargetInfoText().Text(hstring{ targetInfo });
+        RefreshTimingEditor();
         TargetTextBox().Text(row.target);
         if (row.selectionInitialized)
         {
@@ -2919,6 +2920,9 @@ namespace winrt::Aegisub_WinUI::implementation
                 row.target = target.text;
                 row.rawTarget = target.rawText;
                 row.savedTarget = row.target;
+                row.savedStart = row.start;
+                row.savedEnd = row.end;
+                row.timingModified = false;
                 row.status = L"P\u0159ipraveno";
                 row.targetModified = false;
                 row.historyInitialized = true;
@@ -2998,6 +3002,9 @@ namespace winrt::Aegisub_WinUI::implementation
                 row.target = L"";
                 row.rawTarget = L"";
                 row.savedTarget = row.target;
+                row.savedStart = row.start;
+                row.savedEnd = row.end;
+                row.timingModified = false;
                 row.status = L"P\u0159ipraveno";
                 row.targetModified = false;
                 row.historyInitialized = true;
@@ -3179,12 +3186,18 @@ namespace winrt::Aegisub_WinUI::implementation
             auto savedRaw = m_rows[i].targetModified ? m_rows[i].target : m_rows[i].rawTarget;
             m_rows[i].rawTarget = savedRaw;
             m_rows[i].savedTarget = m_rows[i].target;
+            m_rows[i].savedStart = m_rows[i].start;
+            m_rows[i].savedEnd = m_rows[i].end;
             m_rows[i].savedWorkflowStatus = m_rows[i].workflowStatus;
             m_rows[i].historyInitialized = true;
             m_rows[i].targetModified = false;
+            m_rows[i].timingModified = false;
             m_rows[i].editSequenceKind = 0;
             m_targetEntries[i].start = m_rows[i].start;
             m_targetEntries[i].end = m_rows[i].end;
+            m_targetEntries[i].startSeconds = TimestampSeconds(to_string(m_rows[i].start));
+            m_targetEntries[i].endSeconds = TimestampSeconds(to_string(m_rows[i].end));
+            m_targetEntries[i].duration = (std::max)(0.0, m_targetEntries[i].endSeconds - m_targetEntries[i].startSeconds);
             m_targetEntries[i].text = m_rows[i].target;
             m_targetEntries[i].rawText = savedRaw;
         }
