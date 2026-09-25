@@ -2,9 +2,7 @@
 #include "ass_file.h"
 #include "libresrc/libresrc.h"
 #include "options.h"
-#include "subtitle_format_ass.h"
 #include "subtitle_format_srt.h"
-#include "subtitle_format_ssa.h"
 #include "winui_bridge_text.h"
 
 #include <libaegisub/charset.h>
@@ -64,19 +62,13 @@ void LoadSubtitles(agi::fs::path const& input, AssFile& file) {
     auto encoding = DetectEncoding(input);
     agi::vfr::Framerate fps;
 
-    if (extension == ".ass" || extension == ".ssa") {
-        AssSubtitleFormat format;
-        format.ReadFile(&file, input, fps, encoding.c_str());
-        return;
-    }
-
     if (extension == ".srt") {
         SRTSubtitleFormat format;
         format.ReadFile(&file, input, fps, encoding.c_str());
         return;
     }
 
-    throw agi::InvalidInputException("WinUI bridge currently supports .ass, .ssa and .srt files only.");
+    throw agi::InvalidInputException("WinUI bridge supports .srt files only.");
 }
 
 void SaveSubtitles(agi::fs::path const& templateFile, agi::fs::path const& output, AssFile const& file) {
@@ -84,25 +76,13 @@ void SaveSubtitles(agi::fs::path const& templateFile, agi::fs::path const& outpu
     auto encoding = DetectEncoding(templateFile);
     agi::vfr::Framerate fps;
 
-    if (extension == ".ass") {
-        AssSubtitleFormat format;
-        format.WriteFile(&file, output, fps, encoding.c_str());
-        return;
-    }
-
-    if (extension == ".ssa") {
-        SsaSubtitleFormat format;
-        format.WriteFile(&file, output, fps, encoding.c_str());
-        return;
-    }
-
     if (extension == ".srt") {
         SRTSubtitleFormat format;
         format.WriteFile(&file, output, fps, encoding.c_str());
         return;
     }
 
-    throw agi::InvalidInputException("WinUI bridge currently supports writing .ass, .ssa and .srt files only.");
+    throw agi::InvalidInputException("WinUI bridge supports writing .srt files only.");
 }
 
 void WriteBridgeFile(agi::fs::path const& output, AssFile const& file) {
@@ -111,8 +91,8 @@ void WriteBridgeFile(agi::fs::path const& output, AssFile const& file) {
         throw agi::fs::FileNotAccessible(output);
 
     // v2 adds the raw Aegisub dialogue text as a fourth field.  The WinUI
-    // frontend displays the stripped third field, but can round-trip unchanged
-    // ASS/SSA/SRT formatting using the raw field.
+    // frontend displays the stripped third field while preserving the raw
+    // internal dialogue text needed for an unchanged SRT round-trip.
     stream << "AEGISUB-WINUI-BRIDGE\t2\n";
 
     for (auto const& line : file.Events) {

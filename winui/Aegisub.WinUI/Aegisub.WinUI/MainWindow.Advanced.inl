@@ -423,7 +423,7 @@ namespace winrt::Aegisub_WinUI::implementation
                 auto path = std::filesystem::path{ file.Path().c_str() };
                 auto extension = path.extension().wstring();
                 std::transform(extension.begin(), extension.end(), extension.begin(), ::towlower);
-                if (extension == L".srt" || extension == L".ass" || extension == L".ssa")
+                if (extension == L".srt")
                     files.push_back(path.wstring());
             }
         }
@@ -431,7 +431,7 @@ namespace winrt::Aegisub_WinUI::implementation
 
         if (files.empty())
         {
-            StatusBarText().Text(L"Přetažený obsah neobsahuje podporované titulky .srt/.ass/.ssa");
+            StatusBarText().Text(L"Přetažený obsah neobsahuje podporované titulky .srt");
             co_return;
         }
 

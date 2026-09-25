@@ -1988,7 +1988,7 @@ namespace winrt::Aegisub_WinUI::implementation
     {
         wchar_t buffer[32768]{};
         wchar_t const filter[] =
-            L"Titulky (*.srt;*.ass;*.ssa)\0*.srt;*.ass;*.ssa\0"
+            L"Titulky SubRip (*.srt)\0*.srt\0"
             L"V\u0161echny soubory (*.*)\0*.*\0\0";
 
         OPENFILENAMEW dialog{};
@@ -2029,8 +2029,6 @@ namespace winrt::Aegisub_WinUI::implementation
 
         wchar_t const filter[] =
             L"Titulky SubRip (*.srt)\0*.srt\0"
-            L"Titulky Advanced SubStation Alpha (*.ass)\0*.ass\0"
-            L"Titulky SubStation Alpha (*.ssa)\0*.ssa\0"
             L"V\u0161echny soubory (*.*)\0*.*\0\0";
 
         OPENFILENAMEW dialog{};

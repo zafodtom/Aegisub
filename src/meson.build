@@ -258,7 +258,7 @@ foreach opt: opt_src
 endforeach
 
 # Temporary process boundary used by the new WinUI frontend.  This deliberately
-# reuses Aegisub's existing ASS/SRT readers rather than introducing a second
+# reuses Aegisub's existing SRT reader/writer rather than introducing a second
 # subtitle parser in the frontend.  It will eventually be replaced by the
 # in-process core library once the wxWidgets UI has been separated from core.
 if host_machine.system() == 'windows'
@@ -273,9 +273,7 @@ if host_machine.system() == 'windows'
         'ass_parser.cpp',
         'ass_style.cpp',
         'ass_style_storage.cpp',
-        'subtitle_format_ass.cpp',
         'subtitle_format_srt.cpp',
-        'subtitle_format_ssa.cpp',
         'text_file_reader.cpp',
         'text_file_writer.cpp',
         'version.cpp',
