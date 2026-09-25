@@ -142,6 +142,14 @@ namespace winrt::Aegisub_WinUI::implementation
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void VideoSetEndButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void VideoInfoButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void OpenAudioButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void WaveformCanvas_SizeChanged(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::SizeChangedEventArgs const& args);
+        void WaveformCanvas_PointerPressed(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args);
         void RecentProjectsButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
 
@@ -267,6 +275,9 @@ namespace winrt::Aegisub_WinUI::implementation
         std::vector<agi::winui::RecentTranslationProject> m_recentProjects;
         std::vector<std::wstring> m_recoveryVersions;
         std::wstring m_videoPath;
+        std::wstring m_waveformPath;
+        std::vector<std::pair<float, float>> m_waveformPeaks;
+        double m_waveformDuration{};
         bool m_featureStateLoaded{};
 
         static constexpr size_t kMaxCpl = 42;
@@ -360,6 +371,9 @@ namespace winrt::Aegisub_WinUI::implementation
         bool OpenVideoFile(std::wstring const& filename);
         double CurrentVideoSeconds();
         void SeekVideoToCurrentSubtitle();
+        bool LoadWaveformForMedia(std::wstring const& filename);
+        void RenderWaveform();
+        void SeekMediaToSeconds(double seconds);
         void CaptureRecoveryHistorySnapshot() const;
 
         bool RowMatchesAdvancedSearch(SubtitleRowData const& row, std::wstring_view query);
@@ -376,6 +390,7 @@ namespace winrt::Aegisub_WinUI::implementation
 }
 
 #include "MainWindow.Timing.inl"
+#include "MainWindow.Audio.inl"
 #include "MainWindow.Video.inl"
 #include "MainWindow.Workflow.inl"
 #include "MainWindow.Advanced.inl"

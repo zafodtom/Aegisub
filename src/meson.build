@@ -264,6 +264,7 @@ endforeach
 if host_machine.system() == 'windows'
     winui_bridge_src = files(
         'winui_bridge_main.cpp',
+        'winui_waveform_ffms.cpp',
         'winui_subtitle_format_base.cpp',
         'ass_attachment.cpp',
         'ass_dialogue.cpp',

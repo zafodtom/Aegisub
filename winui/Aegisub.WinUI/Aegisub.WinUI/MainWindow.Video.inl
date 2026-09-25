@@ -31,11 +31,15 @@ namespace winrt::Aegisub_WinUI::implementation
             auto const absolute = std::filesystem::absolute(std::filesystem::path{ filename }).wstring();
             auto const mediaSource = winrt::Windows::Media::Core::MediaSource::CreateFromUri(
                 winrt::Windows::Foundation::Uri{ WinUiVideoFileUri(absolute) });
-            VideoPlayer().Source(mediaSource);
+            winrt::Windows::Media::Playback::MediaPlayer player;
+            player.AutoPlay(false);
+            player.Source(mediaSource);
+            VideoPlayer().SetMediaPlayer(player);
             m_videoPath = absolute;
             VideoFileText().Text(winrt::hstring{ std::filesystem::path{ absolute }.filename().wstring() });
             SeekVideoToCurrentSubtitle();
-            StatusBarText().Text(L"Video načteno · výběr titulku nyní sleduje čas videa");
+            LoadWaveformForMedia(absolute);
+            StatusBarText().Text(L"Video načteno · výběr titulku sleduje čas videa");
             return true;
         }
         catch (winrt::hresult_error const& error)
@@ -140,5 +144,41 @@ namespace winrt::Aegisub_WinUI::implementation
         }
         EndTimeBox().Text(FormatWinUiTiming(seconds));
         ApplyCurrentTimingFromEditors();
+    }
+    inline void MainWindow::VideoInfoButton_Click(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        if (m_videoPath.empty())
+        {
+            StatusBarText().Text(L"Nejprve otevřete video");
+            return;
+        }
+
+        try
+        {
+            auto const player = VideoPlayer().MediaPlayer();
+            if (!player)
+            {
+                StatusBarText().Text(L"MediaPlayer není inicializovaný");
+                return;
+            }
+
+            auto const session = player.PlaybackSession();
+            auto const width = session.NaturalVideoWidth();
+            auto const height = session.NaturalVideoHeight();
+            if (width == 0 || height == 0)
+            {
+                StatusBarText().Text(L"Video stopa: 0×0 · zvuk může fungovat, ale Windows nedekóduje obrazový kodek");
+                return;
+            }
+
+            StatusBarText().Text(winrt::hstring{
+                L"Video stopa: " + std::to_wstring(width) + L"×" + std::to_wstring(height) });
+        }
+        catch (...)
+        {
+            StatusBarText().Text(L"Informaci o video stopě se nepodařilo načíst");
+        }
     }
 }

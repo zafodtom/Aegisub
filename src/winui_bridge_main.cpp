@@ -4,6 +4,7 @@
 #include "options.h"
 #include "subtitle_format_srt.h"
 #include "winui_bridge_text.h"
+#include "winui_waveform_ffms.h"
 
 #include <libaegisub/charset.h>
 #include <libaegisub/dispatch.h>
@@ -163,13 +164,14 @@ void WriteErrorFile(agi::fs::path const& output, std::string_view message) {
 
 int wmain(int argc, wchar_t **argv) {
     bool const writeMode = argc == 5 && std::wstring_view(argv[1]) == L"--write";
+    bool const waveformMode = argc == 5 && std::wstring_view(argv[1]) == L"--waveform";
     bool const readMode = argc == 3;
-    if (!writeMode && !readMode)
+    if (!writeMode && !waveformMode && !readMode)
         return 2;
 
-    const agi::fs::path input{ std::filesystem::path(argv[writeMode ? 2 : 1]) };
+    const agi::fs::path input{ std::filesystem::path(argv[(writeMode || waveformMode) ? 2 : 1]) };
     const agi::fs::path update{ writeMode ? std::filesystem::path(argv[3]) : std::filesystem::path() };
-    const agi::fs::path output{ std::filesystem::path(argv[writeMode ? 4 : 2]) };
+    const agi::fs::path output{ std::filesystem::path(waveformMode ? argv[3] : argv[writeMode ? 4 : 2]) };
 
     try {
         // Aegisub's LogSink creates a serial dispatch queue in its constructor,
@@ -192,15 +194,29 @@ int wmain(int argc, wchar_t **argv) {
             agi::Options::FLUSH_SKIP);
         config::opt = options.get();
 
-        AssFile file;
-        LoadSubtitles(input, file);
-
-        if (writeMode) {
-            ApplyBridgeFile(update, file);
-            SaveSubtitles(input, output, file);
+        if (waveformMode) {
+            size_t bins = 1600;
+            try {
+                bins = static_cast<size_t>(std::stoul(argv[4]));
+            }
+            catch (...) {
+                bins = 1600;
+            }
+            std::string waveformError;
+            if (!WriteWinUiWaveform(input, output, bins, waveformError))
+                throw agi::InvalidInputException(waveformError);
         }
         else {
-            WriteBridgeFile(output, file);
+            AssFile file;
+            LoadSubtitles(input, file);
+
+            if (writeMode) {
+                ApplyBridgeFile(update, file);
+                SaveSubtitles(input, output, file);
+            }
+            else {
+                WriteBridgeFile(output, file);
+            }
         }
 
         config::opt = nullptr;

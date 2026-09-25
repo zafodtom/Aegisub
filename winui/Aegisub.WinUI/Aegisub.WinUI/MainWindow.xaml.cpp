@@ -1389,6 +1389,7 @@ namespace winrt::Aegisub_WinUI::implementation
         TranscriptCurrentTimeText().Text(row.start);
         TranscriptCurrentText().Text(row.original);
         SeekVideoToCurrentSubtitle();
+        RenderWaveform();
 
         if (m_currentIndex > 0)
         {
