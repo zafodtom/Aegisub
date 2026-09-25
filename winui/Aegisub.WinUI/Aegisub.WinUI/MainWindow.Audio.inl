@@ -290,6 +290,6 @@ namespace winrt::Aegisub_WinUI::implementation
         SeekMediaToSeconds(seconds);
         args.Handled(true);
         StatusBarText().Text(winrt::hstring{
-            L"Audio pozice: " + FormatWinUiTiming(seconds) });
+            std::wstring{ L"Audio pozice: " } + FormatWinUiTiming(seconds).c_str() });
     }
 }

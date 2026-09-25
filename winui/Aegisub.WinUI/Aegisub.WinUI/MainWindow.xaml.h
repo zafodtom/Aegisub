@@ -14,7 +14,9 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
+#include <chrono>
 #include <winrt/Windows.ApplicationModel.DataTransfer.h>
 #include <winrt/Windows.Media.Core.h>
 #include <winrt/Windows.Media.Playback.h>
@@ -390,8 +392,8 @@ namespace winrt::Aegisub_WinUI::implementation
 }
 
 #include "MainWindow.Timing.inl"
-#include "MainWindow.Audio.inl"
 #include "MainWindow.Video.inl"
+#include "MainWindow.Audio.inl"
 #include "MainWindow.Workflow.inl"
 #include "MainWindow.Advanced.inl"
 

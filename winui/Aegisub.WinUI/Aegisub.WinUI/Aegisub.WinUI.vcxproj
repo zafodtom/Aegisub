@@ -175,9 +175,13 @@
     Explorer "Package and Publish" context menu entry to be enabled for this project even if
     the Windows App SDK Nuget package has not yet been restored.
   -->
+  <PropertyGroup>
+    <WinUiBridgePath Condition="Exists('..\..\..\build-x64\src\aegisub-winui-bridge.exe')">..\..\..\build-x64\src\aegisub-winui-bridge.exe</WinUiBridgePath>
+    <WinUiBridgePath Condition="'$(WinUiBridgePath)'=='' and Exists('..\..\..\build\src\aegisub-winui-bridge.exe')">..\..\..\build\src\aegisub-winui-bridge.exe</WinUiBridgePath>
+  </PropertyGroup>
   <ItemGroup>
     <None Include="packages.config" />
-    <Content Include="..\..\..\build\src\aegisub-winui-bridge.exe" Condition="Exists('..\..\..\build\src\aegisub-winui-bridge.exe')">
+    <Content Include="$(WinUiBridgePath)" Condition="'$(WinUiBridgePath)'!=''">
       <Link>aegisub-winui-bridge.exe</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <DeploymentContent>true</DeploymentContent>

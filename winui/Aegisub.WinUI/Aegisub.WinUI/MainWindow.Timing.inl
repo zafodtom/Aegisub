@@ -90,8 +90,9 @@ namespace winrt::Aegisub_WinUI::implementation
         row.end = FormatWinUiTiming(end);
         row.duration = end - start;
         row.timingModified = row.start != row.savedStart || row.end != row.savedEnd;
-        if (row.timingModified)
-            row.workflowStatus = L"Upraveno";
+        row.status = (row.targetModified || row.timingModified)
+            ? winrt::hstring{ L"Upraveno" }
+            : (row.savedWorkflowStatus.empty() ? winrt::hstring{ L"Uloženo" } : row.savedWorkflowStatus);
 
         if (m_currentIndex < static_cast<int32_t>(m_targetEntries.size()))
         {
@@ -103,7 +104,6 @@ namespace winrt::Aegisub_WinUI::implementation
             entry.duration = row.duration;
         }
 
-        m_workflowStateDirty = m_workflowStateDirty || row.timingModified;
         UpdateDirtyFromRows();
         RefreshQaAll();
         RebuildSubtitleGrid();
