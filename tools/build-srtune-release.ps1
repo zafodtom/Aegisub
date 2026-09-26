@@ -143,13 +143,53 @@ if (-not $SkipInstaller) {
         $ProgramFilesX86 = [Environment]::GetFolderPath("ProgramFilesX86")
         $Candidates = @(
             (Join-Path $ProgramFilesX86 "Inno Setup 6\ISCC.exe"),
-            (Join-Path $env:ProgramFiles "Inno Setup 6\ISCC.exe")
+            (Join-Path $env:ProgramFiles "Inno Setup 6\ISCC.exe"),
+            (Join-Path $env:LOCALAPPDATA "Programs\Inno Setup 6\ISCC.exe"),
+            (Join-Path $env:LOCALAPPDATA "Inno Setup 6\ISCC.exe")
         )
+
         foreach ($Candidate in $Candidates) {
             if ($Candidate -and (Test-Path $Candidate)) {
                 $Iscc = Get-Item $Candidate
                 break
             }
+        }
+    }
+
+    if (-not $Iscc) {
+        $UninstallRoots = @(
+            "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*",
+            "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*",
+            "HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*"
+        )
+
+        foreach ($RootKey in $UninstallRoots) {
+            $Entries = Get-ItemProperty $RootKey -ErrorAction SilentlyContinue |
+                Where-Object { $_.DisplayName -like "Inno Setup*" }
+
+            foreach ($Entry in $Entries) {
+                if ($Entry.InstallLocation) {
+                    $Candidate = Join-Path $Entry.InstallLocation "ISCC.exe"
+                    if (Test-Path $Candidate) {
+                        $Iscc = Get-Item $Candidate
+                        break
+                    }
+                }
+
+                if ($Entry.UninstallString) {
+                    $UninstallExe = $Entry.UninstallString.Trim('"').Split('"')[0]
+                    $InstallDir = Split-Path -Parent $UninstallExe
+                    if ($InstallDir) {
+                        $Candidate = Join-Path $InstallDir "ISCC.exe"
+                        if (Test-Path $Candidate) {
+                            $Iscc = Get-Item $Candidate
+                            break
+                        }
+                    }
+                }
+            }
+
+            if ($Iscc) { break }
         }
     }
 
