@@ -137,6 +137,10 @@ namespace winrt::Aegisub_WinUI::implementation
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void InsertSubtitleBelowButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void InsertSubtitleAtVideoButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void DuplicateSubtitleButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void DeleteSubtitleButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void TimingApplyButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
@@ -485,6 +489,8 @@ namespace winrt::Aegisub_WinUI::implementation
         void SplitCurrentSubtitleAtCursor();
         void MergeSelectedSubtitles();
         void InsertSubtitleRelative(bool above);
+        void InsertSubtitleAtVideoPosition();
+        void DuplicateCurrentSubtitle();
         void DeleteCurrentSubtitle();
         void RefreshAfterStructureEdit(winrt::hstring const& status);
         void AdjustCurrentTiming(double startDelta, double endDelta, winrt::hstring const& action);

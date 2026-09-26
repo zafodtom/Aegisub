@@ -327,6 +327,113 @@ namespace winrt::Aegisub_WinUI::implementation
         InsertSubtitleRelative(false);
     }
 
+    inline void MainWindow::DuplicateCurrentSubtitle()
+    {
+        if (m_rows.empty())
+            return;
+
+        StoreCurrentEditorSelection();
+
+        auto duplicate = m_rows[m_currentIndex];
+        duplicate.savedTarget = L"";
+        duplicate.savedStart = L"";
+        duplicate.savedEnd = L"";
+        duplicate.targetModified = true;
+        duplicate.timingModified = true;
+        duplicate.workflowStatus = L"Upraveno";
+        duplicate.savedWorkflowStatus = L"";
+        duplicate.status = L"Upraveno";
+        duplicate.qaIssue = L"";
+        duplicate.undoHistory.clear();
+        duplicate.redoHistory.clear();
+        duplicate.selectionInitialized = false;
+
+        auto const position = m_currentIndex + 1;
+        m_rows.insert(m_rows.begin() + position, std::move(duplicate));
+        m_currentIndex = position;
+        m_selectedSubtitleIndices.assign(1, position);
+        m_selectionAnchorIndex = position;
+
+        RefreshAfterStructureEdit(L"Řádek zdvojen");
+        TargetTextBox().Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
+    }
+
+    inline void MainWindow::InsertSubtitleAtVideoPosition()
+    {
+        auto const videoSeconds = CurrentVideoSeconds();
+        if (videoSeconds < 0.0)
+        {
+            StatusBarText().Text(L"Nejprve otevřete video");
+            return;
+        }
+
+        auto start = (std::max)(0.0, videoSeconds - 1.0);
+        auto end = videoSeconds + 1.0;
+
+        auto const mediaDuration = CurrentMediaDurationSeconds();
+        if (mediaDuration > 0.0)
+        {
+            if (end > mediaDuration)
+            {
+                end = mediaDuration;
+                start = (std::max)(0.0, end - 2.0);
+            }
+            else if (start <= 0.0)
+            {
+                start = 0.0;
+                end = (std::min)(mediaDuration, 2.0);
+            }
+        }
+
+        if (end <= start)
+            end = start + 2.0;
+
+        SubtitleRowData row;
+        row.start = FormatWinUiTiming(start);
+        row.end = FormatWinUiTiming(end);
+        row.duration = end - start;
+        row.target = L"";
+        row.rawTarget = L"";
+        row.savedTarget = L"";
+        row.savedStart = L"";
+        row.savedEnd = L"";
+        row.status = L"Upraveno";
+        row.workflowStatus = L"Upraveno";
+        row.targetModified = false;
+        row.timingModified = true;
+        row.historyInitialized = true;
+        row.selectionInitialized = false;
+
+        int32_t position = 0;
+        while (position < static_cast<int32_t>(m_rows.size()) &&
+            WorkflowTimestampSeconds(m_rows[position].start) <= start)
+        {
+            ++position;
+        }
+
+        m_rows.insert(m_rows.begin() + position, std::move(row));
+        m_currentIndex = position;
+        m_selectedSubtitleIndices.assign(1, position);
+        m_selectionAnchorIndex = position;
+
+        RefreshAfterStructureEdit(L"Vložen prázdný titulek na pozici videa · ±1 s");
+        TargetTextBox().Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
+    }
+
+    inline void MainWindow::DuplicateSubtitleButton_Click(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        DuplicateCurrentSubtitle();
+    }
+
+    inline void MainWindow::InsertSubtitleAtVideoButton_Click(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        InsertSubtitleAtVideoPosition();
+    }
+
     inline void MainWindow::DeleteCurrentSubtitle()
     {
         if (m_rows.empty())

@@ -1919,6 +1919,23 @@ namespace winrt::Aegisub_WinUI::implementation
             });
             rowMenu.Items().Append(insertBelowItem);
 
+            MenuFlyoutItem insertAtVideoItem;
+            insertAtVideoItem.Text(L"Přidat titulek na pozici videa");
+            insertAtVideoItem.Click([this](auto const&, auto const&)
+            {
+                InsertSubtitleAtVideoPosition();
+            });
+            rowMenu.Items().Append(insertAtVideoItem);
+
+            MenuFlyoutItem duplicateItem;
+            duplicateItem.Text(L"Zdvojit řádek");
+            duplicateItem.Click([this, activateContextRow](auto const&, auto const&)
+            {
+                if (activateContextRow())
+                    DuplicateCurrentSubtitle();
+            });
+            rowMenu.Items().Append(duplicateItem);
+
             rowMenu.Items().Append(MenuFlyoutSeparator{});
 
             MenuFlyoutItem mergeItem;

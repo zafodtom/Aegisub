@@ -57,6 +57,8 @@
                 <MenuBarItem Title="Titulky">
                     <MenuFlyoutItem Text="Přidat titulek nad" Click="InsertSubtitleAboveButton_Click" />
                     <MenuFlyoutItem Text="Přidat titulek pod" Click="InsertSubtitleBelowButton_Click" />
+                    <MenuFlyoutItem Text="Přidat titulek na pozici videa" Click="InsertSubtitleAtVideoButton_Click" />
+                    <MenuFlyoutItem Text="Zdvojit řádek" Click="DuplicateSubtitleButton_Click" />
                     <MenuFlyoutItem Text="Smazat titulek" Click="DeleteSubtitleButton_Click" />
                     <MenuFlyoutSeparator />
                     <MenuFlyoutItem Text="Rozdělit v kurzoru" Click="SplitSubtitleButton_Click" />
