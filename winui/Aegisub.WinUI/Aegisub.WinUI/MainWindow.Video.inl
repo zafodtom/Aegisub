@@ -3,7 +3,7 @@
 #include <fstream>
 #include <thread>
 
-namespace winrt::Aegisub_WinUI::implementation
+namespace winrt::SRTune::implementation
 {
     inline std::wstring WinUiVideoFileUri(std::wstring path)
     {
@@ -316,7 +316,7 @@ namespace winrt::Aegisub_WinUI::implementation
         auto const outputVideo = std::filesystem::path{ outputPath };
         auto const rows = m_rows;
         auto const temporaryDirectory = std::filesystem::temp_directory_path() /
-            (L"aegisub-winui-burn-" + std::to_wstring(GetCurrentProcessId()) + L"-" + std::to_wstring(GetTickCount64()));
+            (L"srtune-burn-" + std::to_wstring(GetCurrentProcessId()) + L"-" + std::to_wstring(GetTickCount64()));
 
         std::error_code error;
         std::filesystem::create_directories(temporaryDirectory, error);
