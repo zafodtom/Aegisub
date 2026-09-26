@@ -26,7 +26,7 @@
 #include <winrt/Windows.UI.Text.h>
 #include <winrt/Microsoft.UI.Input.h>
 
-namespace winrt::Aegisub_WinUI::implementation
+namespace winrt::SRTune::implementation
 {
     struct MainWindow : MainWindowT<MainWindow>
     {
@@ -606,7 +606,7 @@ namespace winrt::Aegisub_WinUI::implementation
 #include "MainWindow.Glossary.inl"
 #include "MainWindow.Advanced.inl"
 
-namespace winrt::Aegisub_WinUI::factory_implementation
+namespace winrt::SRTune::factory_implementation
 {
     struct MainWindow : MainWindowT<MainWindow, implementation::MainWindow>
     {
