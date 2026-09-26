@@ -253,16 +253,18 @@ inline SubtitleQualityFacts AnalyzeSubtitleQuality(std::wstring_view text,
 	});
 	facts.too_short = !facts.empty && facts.duration > 0.0 && facts.duration < 0.7;
 	facts.edge_whitespace = !text.empty() &&
-		(std::iswspace(text.front()) != 0 || std::iswspace(text.back()) != 0);
+		(text.front() == L' ' || text.front() == L'\t' ||
+		 text.back() == L' ' || text.back() == L'\t');
 
 	facts.line_count = 1;
 	size_t current_line_length = 0;
 	int brace_depth = 0;
 	for (size_t index = 0; index < text.size(); ++index) {
 		wchar_t const character = text[index];
-		if (character == L'\r')
-			continue;
-		if (character == L'\n') {
+		if (character == L'\r' || character == L'\n') {
+			// WinUI TextBox may use CR, LF or CRLF. Treat all variants as one line break.
+			if (character == L'\r' && index + 1 < text.size() && text[index + 1] == L'\n')
+				++index;
 			++facts.line_count;
 			facts.max_line_length = (std::max)(facts.max_line_length, current_line_length);
 			current_line_length = 0;

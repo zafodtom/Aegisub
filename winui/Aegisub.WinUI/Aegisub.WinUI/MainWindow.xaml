@@ -148,10 +148,17 @@
                                 PointerReleased="WaveformCanvas_PointerReleased" />
                     </Border>
                     <Grid Grid.Row="4">
-                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                        <TextBlock x:Name="WaveformRangeText" Text="Lokální pohled kolem aktuálního titulku" FontFamily="Consolas" FontSize="10" Opacity="0.55" />
-                        <Border Grid.Column="1" Width="22" Height="22" CornerRadius="11" BorderBrush="Gray" BorderThickness="1"
-                                ToolTipService.ToolTip="Levé tlačítko = začátek titulku · pravé tlačítko = konec · tažením plynule. H± mění časový zoom, V± výšku vlny. Při tažení za okraj se detail posouvá.">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock x:Name="WaveformRangeText" Text="Lokální pohled kolem aktuálního titulku" FontFamily="Consolas" FontSize="10" Opacity="0.55" VerticalAlignment="Center" />
+                        <Button x:Name="WaveformPlaySelectedButton" Grid.Column="1" Content="▶ Titulek" MinHeight="22" Height="22" Padding="7,0"
+                                Click="VideoPlaySelectedButton_Click" ToolTipService.ToolTip="Přehrát / pozastavit aktuální titulek" />
+                        <Border Grid.Column="2" Width="22" Height="22" CornerRadius="11" BorderBrush="Gray" BorderThickness="1"
+                                Margin="5,0,0,0"
+                                ToolTipService.ToolTip="Levé = začátek · pravé = konec · Shift+levé nebo prostřední tlačítko = posun waveformu. H± mění časový zoom, V± výšku vlny.">
                             <TextBlock Text="?" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.65" />
                         </Border>
                     </Grid>

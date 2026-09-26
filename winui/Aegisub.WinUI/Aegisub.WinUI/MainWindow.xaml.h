@@ -347,6 +347,9 @@ namespace winrt::Aegisub_WinUI::implementation
         int32_t m_waveformViewportSubtitleIndex{-1};
         int m_waveformDragMode{};
         bool m_waveformDragActive{};
+        double m_waveformPanStartX{};
+        double m_waveformPanWindowStart{};
+        double m_waveformPanWindowEnd{};
         uint64_t m_lastWaveformAutoPanTick{};
         double m_waveformHorizontalZoom{1.0};
         double m_waveformVerticalGain{1.0};

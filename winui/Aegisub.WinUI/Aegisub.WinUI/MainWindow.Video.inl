@@ -84,6 +84,7 @@ namespace winrt::Aegisub_WinUI::implementation
             m_playSelectedUntil = -1.0;
             VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"▶" }));
             VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Přehrát titulek" }));
+            WaveformPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"▶ Titulek" }));
             auto const seconds = WorkflowTimestampSeconds(m_rows[m_currentIndex].start);
             auto const position = std::chrono::duration_cast<winrt::Windows::Foundation::TimeSpan>(
                 std::chrono::duration<double>{ seconds });
@@ -216,6 +217,7 @@ namespace winrt::Aegisub_WinUI::implementation
     {
         m_playSelectedUntil = -1.0;
         VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Přehrát titulek" }));
+            WaveformPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"▶ Titulek" }));
         try
         {
             auto const player = VideoPlayer().MediaPlayer();
@@ -304,6 +306,7 @@ namespace winrt::Aegisub_WinUI::implementation
                     m_playSelectedUntil = -1.0;
                     VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"▶" }));
                     VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Přehrát titulek" }));
+            WaveformPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"▶ Titulek" }));
                     RefreshVideoPositionText();
                     RefreshTimelineSlider();
                     RefreshWaveformPlayhead();
@@ -338,6 +341,7 @@ namespace winrt::Aegisub_WinUI::implementation
                 player.Pause();
                 m_playSelectedUntil = -1.0;
                 VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Přehrát titulek" }));
+            WaveformPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"▶ Titulek" }));
                 VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"▶" }));
                 return;
             }
@@ -352,6 +356,7 @@ namespace winrt::Aegisub_WinUI::implementation
             m_playSelectedUntil = end;
             player.Play();
             VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Pozastavit" }));
+            WaveformPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"❚❚ Titulek" }));
             VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"❚❚" }));
             RefreshWaveformPlayhead();
         }

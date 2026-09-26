@@ -945,13 +945,28 @@ namespace winrt::Aegisub_WinUI::implementation
         auto const point = args.GetCurrentPoint(WaveformCanvas());
         auto const properties = point.Properties();
 
-        m_waveformDragMode = properties.IsRightButtonPressed() ? 2 :
-            (properties.IsLeftButtonPressed() ? 1 : 0);
+        bool const shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+        bool const middle = (GetKeyState(VK_MBUTTON) & 0x8000) != 0;
+        bool const left = properties.IsLeftButtonPressed();
+        bool const right = properties.IsRightButtonPressed();
+
+        m_waveformDragMode = (middle || (shift && left)) ? 3 :
+            (right ? 2 : (left ? 1 : 0));
         if (m_waveformDragMode == 0)
             return;
 
         m_waveformDragActive = WaveformCanvas().CapturePointer(args.Pointer());
         m_lastWaveformAutoPanTick = 0;
+
+        if (m_waveformDragMode == 3)
+        {
+            m_waveformPanStartX = point.Position().X;
+            m_waveformPanWindowStart = m_waveformWindowStart;
+            m_waveformPanWindowEnd = m_waveformWindowEnd;
+            args.Handled(true);
+            return;
+        }
+
         auto const seconds = WaveformSecondsFromPointer(
             point.Position().X, WaveformCanvas().ActualWidth(), false);
         PreviewWaveformBoundary(seconds);
@@ -966,6 +981,29 @@ namespace winrt::Aegisub_WinUI::implementation
             return;
 
         auto const point = args.GetCurrentPoint(WaveformCanvas());
+
+        if (m_waveformDragMode == 3)
+        {
+            auto const width = WaveformCanvas().ActualWidth();
+            auto const span = m_waveformPanWindowEnd - m_waveformPanWindowStart;
+            if (width > 0.0 && span > 0.0)
+            {
+                auto const deltaPixels = point.Position().X - m_waveformPanStartX;
+                auto const shiftSeconds = -deltaPixels / width * span;
+
+                auto newStart = m_waveformPanWindowStart + shiftSeconds;
+                newStart = (std::max)(0.0,
+                    (std::min)((std::max)(0.0, m_waveformDuration - span), newStart));
+
+                m_waveformWindowStart = newStart;
+                m_waveformWindowEnd = (std::min)(m_waveformDuration, newStart + span);
+                RenderWaveform();
+            }
+
+            args.Handled(true);
+            return;
+        }
+
         auto const seconds = WaveformSecondsFromPointer(
             point.Position().X, WaveformCanvas().ActualWidth(), true);
         PreviewWaveformBoundary(seconds);
@@ -979,11 +1017,19 @@ namespace winrt::Aegisub_WinUI::implementation
         if (!m_waveformDragActive)
             return;
 
+        auto const completedMode = m_waveformDragMode;
         WaveformCanvas().ReleasePointerCapture(args.Pointer());
         m_waveformDragActive = false;
         m_waveformDragMode = 0;
 
-        // Full model/QA/list synchronization only once after the drag finishes.
+        if (completedMode == 3)
+        {
+            RenderWaveform();
+            args.Handled(true);
+            return;
+        }
+
+        // Full model/QA/list synchronization only once after a timing drag finishes.
         ApplyCurrentTimingFromEditors();
         RenderWaveform();
         args.Handled(true);

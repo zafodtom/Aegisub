@@ -1336,6 +1336,16 @@ namespace winrt::Aegisub_WinUI::implementation
 
         auto& row = m_rows[m_currentIndex];
         row.editSequenceKind = 0;
+
+        if (!m_targetPath.empty())
+        {
+            row.qaIssue = EvaluateQaIssue(m_currentIndex);
+            row.status = row.qaIssue.empty()
+                ? (row.workflowStatus.empty() ? winrt::hstring{ L"Připraveno" } : row.workflowStatus)
+                : winrt::hstring{ L"Problém" };
+            UpdateTableRow(m_currentIndex);
+        }
+
         m_loadingSelection = true;
 
         std::wstring header = L"Aktu\u00E1ln\u00ED titulek #" + std::to_wstring(row.number);
@@ -1503,15 +1513,13 @@ namespace winrt::Aegisub_WinUI::implementation
         size_t maxLineLength = 0;
         size_t characterCount = 0;
 
-        for (auto const character : text)
+        for (size_t index = 0; index < text.size(); ++index)
         {
-            if (character == L'\r')
+            auto const character = text[index];
+            if (character == L'\r' || character == L'\n')
             {
-                continue;
-            }
-
-            if (character == L'\n')
-            {
+                if (character == L'\r' && index + 1 < text.size() && text[index + 1] == L'\n')
+                    ++index;
                 maxLineLength = (std::max)(maxLineLength, currentLineLength);
                 currentLineLength = 0;
                 continue;

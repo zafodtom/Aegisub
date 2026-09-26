@@ -14,15 +14,15 @@ namespace agi::winui {
 struct SubtitleQaSettings {
 	size_t maximum_cpl{42};
 	double maximum_cps{20.0};
-	double minimum_duration{0.7};
+	double minimum_duration{0.5};
 	size_t maximum_lines{2};
 	double minimum_length_ratio{0.35};
 	double maximum_length_ratio{2.5};
-	bool check_terminal_punctuation{true};
+	bool check_terminal_punctuation{false};
 	bool check_number_tokens{true};
 	bool check_spacing{true};
 	bool check_repeated_punctuation{true};
-	bool check_length_ratio{true};
+	bool check_length_ratio{false};
 	bool check_czech_quotes{false};
 };
 
@@ -68,16 +68,29 @@ inline size_t VisibleCharacterCount(std::wstring_view text) {
 
 inline bool HasSpaceBeforePunctuation(std::wstring_view text) {
 	for (size_t index = 1; index < text.size(); ++index) {
-		if (IsSubtitlePunctuation(text[index]) && std::iswspace(text[index - 1]))
+		if (IsSubtitlePunctuation(text[index]) &&
+			(text[index - 1] == L' ' || text[index - 1] == L'\t'))
 			return true;
 	}
 	return false;
 }
 
 inline bool HasRepeatedPunctuation(std::wstring_view text) {
-	for (size_t index = 1; index < text.size(); ++index) {
-		if (IsSubtitlePunctuation(text[index]) && text[index] == text[index - 1])
+	for (size_t index = 0; index < text.size();) {
+		if (!IsSubtitlePunctuation(text[index])) {
+			++index;
+			continue;
+		}
+
+		auto const punctuation = text[index];
+		auto end = index + 1;
+		while (end < text.size() && text[end] == punctuation)
+			++end;
+
+		auto const count = end - index;
+		if (count > 1 && !(punctuation == L'.' && count == 3))
 			return true;
+		index = end;
 	}
 	return false;
 }

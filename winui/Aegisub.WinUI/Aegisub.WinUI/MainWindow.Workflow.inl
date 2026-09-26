@@ -60,28 +60,74 @@ namespace winrt::Aegisub_WinUI::implementation
         std::wstring issues;
         auto addIssue = [&](std::wstring const& issue)
         {
-            if (!issues.empty()) issues += L"; ";
+            if (!issues.empty())
+                issues += L"; ";
             issues += issue;
         };
-
-        if (!row.pairingIgnored)
-        {
-            if (row.sourceStart.empty())
-                addIssue(L"bez časového páru s originálem");
-            else if (row.manualSourceIndex < 0 && row.sourceMatchQuality > 0.0 && row.sourceMatchQuality < 0.35)
-                addIssue(L"nejisté časové párování");
-        }
 
         auto const start = WorkflowTimestampSeconds(row.start);
         auto const end = WorkflowTimestampSeconds(row.end);
         auto const nextStart = index + 1 < static_cast<int32_t>(m_rows.size())
             ? WorkflowTimestampSeconds(m_rows[index + 1].start) : -1.0;
+
+        // Core translator QA: keep only directly actionable checks.
+        auto settings = m_workspaceSettings.qa;
+        settings.minimum_duration = 0.5;
+        settings.check_terminal_punctuation = false;
+        settings.check_length_ratio = false;
+
         auto const report = agi::winui::AnalyzeTranslationQuality(
             std::wstring_view{ row.original.c_str(), row.original.size() },
             std::wstring_view{ row.target.c_str(), row.target.size() },
-            start, end, nextStart, m_workspaceSettings.qa);
+            start, end, nextStart, settings);
+
         for (auto const issue : report.issues)
-            addIssue(agi::winui::SubtitleQaIssueLabel(issue));
+        {
+            switch (issue)
+            {
+                case agi::winui::SubtitleQaIssue::line_too_long:
+                    addIssue(L"CPL " + std::to_wstring(report.facts.max_line_length) +
+                        L" > " + std::to_wstring(settings.maximum_cpl) +
+                        L" (nejdelší řádek)");
+                    break;
+
+                case agi::winui::SubtitleQaIssue::too_fast:
+                {
+                    std::wostringstream stream;
+                    stream << L"CPS " << std::fixed << std::setprecision(1)
+                           << report.facts.cps << L" > " << settings.maximum_cps;
+                    addIssue(stream.str());
+                    break;
+                }
+
+                case agi::winui::SubtitleQaIssue::too_many_lines:
+                    addIssue(std::to_wstring(report.facts.line_count) +
+                        L" řádky (max " + std::to_wstring(settings.maximum_lines) + L")");
+                    break;
+
+                case agi::winui::SubtitleQaIssue::too_short:
+                {
+                    std::wostringstream stream;
+                    stream << L"délka " << std::fixed << std::setprecision(2)
+                           << report.facts.duration << L" s < " << settings.minimum_duration << L" s";
+                    addIssue(stream.str());
+                    break;
+                }
+
+                case agi::winui::SubtitleQaIssue::overlaps_next:
+                    addIssue(L"časový překryv s následujícím titulkem");
+                    break;
+
+                case agi::winui::SubtitleQaIssue::number_token_mismatch:
+                    addIssue(L"číslo, čas nebo jednotka se liší od originálu");
+                    break;
+
+                default:
+                    addIssue(agi::winui::SubtitleQaIssueLabel(issue));
+                    break;
+            }
+        }
+
         return winrt::hstring{ issues };
     }
 
