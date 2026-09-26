@@ -232,8 +232,12 @@
                                 <TextBlock x:Name="TargetCplText" Text="CPL 0" FontSize="10" Opacity="0.5" />
                                 <TextBlock x:Name="TargetCpsText" Grid.Column="1" Text="CPS 0" FontSize="10" Opacity="0.5" />
                                 <TextBlock x:Name="TargetLengthText" Grid.Column="2" Text="Znaky 0" FontSize="10" Opacity="0.5" />
-                                <Button Grid.Column="4" Content="Převzít originál" Padding="6,2" FontSize="10" Click="CopyOriginalButton_Click" />
-                                <Button Grid.Column="5" Content="Rozdělit řádky" Padding="6,2" FontSize="10" Click="InsertLineBreakButton_Click" />
+                                <StackPanel Grid.Column="4" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="6">
+                                    <Button Content="Rozdělit v kurzoru" Padding="7,2" FontSize="10" Click="SplitSubtitleButton_Click"
+                                            ToolTipService.ToolTip="Rozdělit text v místě kurzoru; čas řezu použije aktuální pozici videa, pokud leží uvnitř titulku" />
+                                    <Button Content="Převzít originál" Padding="6,2" FontSize="10" Click="CopyOriginalButton_Click" />
+                                    <Button Content="Rozdělit řádky" Padding="6,2" FontSize="10" Click="InsertLineBreakButton_Click" />
+                                </StackPanel>
                             </Grid>
                         </Grid>
                     </Border>
@@ -241,10 +245,18 @@
 
                 <Grid Grid.Row="1">
                     <Grid.RowDefinitions><RowDefinition Height="32" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-                    <Grid Padding="10,2">
-                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                    <Grid Padding="10,2" ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
                         <TextBlock Text="Titulky" FontWeight="SemiBold" VerticalAlignment="Center" />
-                        <TextBlock x:Name="TablePositionText" Grid.Column="1" FontSize="10" Opacity="0.5" VerticalAlignment="Center" />
+                        <TextBlock x:Name="SubtitleSelectionText" Grid.Column="1" Text="Vybrán 1 titulek" FontSize="10" Opacity="0.55" VerticalAlignment="Center" />
+                        <Button Grid.Column="2" Content="Sloučit vybrané" Padding="7,2" FontSize="10" Click="MergeSelectedSubtitlesButton_Click"
+                                ToolTipService.ToolTip="Sloučit souvisle vybrané titulky; Ctrl+klik přidává, Shift+klik vybírá rozsah" />
+                        <TextBlock x:Name="TablePositionText" Grid.Column="3" FontSize="10" Opacity="0.5" VerticalAlignment="Center" />
                     </Grid>
                     <ScrollViewer x:Name="SubtitleScrollViewer" Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
                         <Grid x:Name="SubtitleGridHost" MinWidth="1000">

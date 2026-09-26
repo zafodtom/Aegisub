@@ -551,6 +551,11 @@ namespace winrt::Aegisub_WinUI::implementation
 
         m_initialized = true;
         InitializeDynamicSubtitleGrid();
+        if (m_selectedSubtitleIndices.empty() && !m_rows.empty())
+        {
+            m_selectedSubtitleIndices.push_back(m_currentIndex);
+            m_selectionAnchorIndex = m_currentIndex;
+        }
         RebuildSubtitleGrid();
         HookWindowClosing();
         StartExternalChangeMonitoring();
@@ -1497,20 +1502,108 @@ namespace winrt::Aegisub_WinUI::implementation
         TargetCpsText().Text(hstring{ cpsStream.str() });
     }
 
+    bool MainWindow::IsSubtitleRowSelected(int32_t index) const
+    {
+        return std::find(m_selectedSubtitleIndices.begin(), m_selectedSubtitleIndices.end(), index)
+            != m_selectedSubtitleIndices.end();
+    }
+
+    void MainWindow::NormalizeSubtitleSelection()
+    {
+        m_selectedSubtitleIndices.erase(
+            std::remove_if(
+                m_selectedSubtitleIndices.begin(),
+                m_selectedSubtitleIndices.end(),
+                [this](int32_t index)
+                {
+                    return index < 0 || index >= static_cast<int32_t>(m_rows.size());
+                }),
+            m_selectedSubtitleIndices.end());
+
+        std::sort(m_selectedSubtitleIndices.begin(), m_selectedSubtitleIndices.end());
+        m_selectedSubtitleIndices.erase(
+            std::unique(m_selectedSubtitleIndices.begin(), m_selectedSubtitleIndices.end()),
+            m_selectedSubtitleIndices.end());
+
+        if (m_selectedSubtitleIndices.empty() && !m_rows.empty())
+            m_selectedSubtitleIndices.push_back(m_currentIndex);
+    }
+
+    void MainWindow::RefreshSubtitleSelectionText()
+    {
+        NormalizeSubtitleSelection();
+        auto const count = m_selectedSubtitleIndices.size();
+        if (count <= 1)
+        {
+            SubtitleSelectionText().Text(L"Vybrán 1 titulek");
+            return;
+        }
+
+        SubtitleSelectionText().Text(winrt::hstring{
+            L"Vybráno " + std::to_wstring(count) + L" titulků" });
+    }
+
+    void MainWindow::SelectSubtitleRow(int32_t index, bool ctrl, bool shift)
+    {
+        if (index < 0 || index >= static_cast<int32_t>(m_rows.size()))
+            return;
+
+        if (shift && m_selectionAnchorIndex >= 0)
+        {
+            auto const first = (std::min)(m_selectionAnchorIndex, index);
+            auto const last = (std::max)(m_selectionAnchorIndex, index);
+            m_selectedSubtitleIndices.clear();
+            for (int32_t row = first; row <= last; ++row)
+                m_selectedSubtitleIndices.push_back(row);
+        }
+        else if (ctrl)
+        {
+            auto const it = std::find(
+                m_selectedSubtitleIndices.begin(),
+                m_selectedSubtitleIndices.end(),
+                index);
+            if (it == m_selectedSubtitleIndices.end())
+                m_selectedSubtitleIndices.push_back(index);
+            else if (m_selectedSubtitleIndices.size() > 1)
+                m_selectedSubtitleIndices.erase(it);
+
+            m_selectionAnchorIndex = index;
+        }
+        else
+        {
+            m_selectedSubtitleIndices.assign(1, index);
+            m_selectionAnchorIndex = index;
+        }
+
+        NormalizeSubtitleSelection();
+        UpdateSelectionVisuals();
+        RefreshSubtitleSelectionText();
+    }
+
     void MainWindow::UpdateSelectionVisuals()
     {
         auto const accentBrush = TargetPanelBorder().BorderBrush();
 
-        for (auto const& border : m_rowBorders)
+        winrt::Microsoft::UI::Xaml::Media::SolidColorBrush transparentBrush;
+        transparentBrush.Color(winrt::Windows::UI::Color{ 0, 0, 0, 0 });
+
+        winrt::Microsoft::UI::Xaml::Media::SolidColorBrush selectedBrush;
+        selectedBrush.Color(winrt::Windows::UI::Color{ 34, 0, 120, 212 });
+
+        for (int32_t index = 0; index < static_cast<int32_t>(m_rowBorders.size()); ++index)
         {
-            border.BorderThickness(Thickness{ 0.0, 0.0, 0.0, 0.0 });
+            auto const& border = m_rowBorders[index];
             border.BorderBrush(accentBrush);
+            border.BorderThickness(Thickness{ 0.0, 0.0, 0.0, 0.0 });
+            border.Background(IsSubtitleRowSelected(index) ? selectedBrush : transparentBrush);
         }
 
         if (m_currentIndex >= 0 && m_currentIndex < static_cast<int32_t>(m_rowBorders.size()))
         {
             m_rowBorders[m_currentIndex].BorderThickness(Thickness{ 4.0, 1.0, 0.0, 1.0 });
         }
+
+        RefreshSubtitleSelectionText();
     }
 
     void MainWindow::StoreCurrentEditorSelection()
@@ -1651,12 +1744,16 @@ namespace winrt::Aegisub_WinUI::implementation
             Grid::SetColumnSpan(rowBorder, 6);
             rowBorder.Tapped([this, index](auto const&, auto const&)
             {
-                if (index < 0 || index >= static_cast<int32_t>(m_rows.size()) || index == m_currentIndex)
-                {
+                if (index < 0 || index >= static_cast<int32_t>(m_rows.size()))
                     return;
-                }
 
-                StoreCurrentEditorSelection();
+                bool const ctrl = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
+                bool const shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+
+                if (index != m_currentIndex)
+                    StoreCurrentEditorSelection();
+
+                SelectSubtitleRow(index, ctrl, shift);
                 m_currentIndex = index;
                 LoadCurrentRow();
                 TargetTextBox().Focus(FocusState::Programmatic);
@@ -2147,6 +2244,10 @@ namespace winrt::Aegisub_WinUI::implementation
         m_externalChangeAcknowledged = false;
         ClearBulkUndo();
         BuildAlignedRows();
+        m_selectedSubtitleIndices.clear();
+        if (!m_rows.empty())
+            m_selectedSubtitleIndices.push_back(m_currentIndex);
+        m_selectionAnchorIndex = m_currentIndex;
         m_waveformViewportSubtitleIndex = -1;
         LoadWorkspaceState();
         m_forceSaveAsForRecoveredDraft = false;

@@ -123,6 +123,8 @@ namespace winrt::Aegisub_WinUI::implementation
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void SplitSubtitleButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void MergeSelectedSubtitlesButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void JoinNextSubtitleButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void InsertSubtitleButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
@@ -281,6 +283,8 @@ namespace winrt::Aegisub_WinUI::implementation
         winrt::hstring m_targetPath;
 
         int32_t m_currentIndex{ 2 };
+        std::vector<int32_t> m_selectedSubtitleIndices;
+        int32_t m_selectionAnchorIndex{-1};
         bool m_loadingSelection{ false };
         bool m_initialized{ false };
         bool m_workflowHooksInstalled{ false };
@@ -332,6 +336,10 @@ namespace winrt::Aegisub_WinUI::implementation
         void LoadCurrentRow();
         void UpdateMetrics();
         void UpdateSelectionVisuals();
+        void SelectSubtitleRow(int32_t index, bool ctrl, bool shift);
+        bool IsSubtitleRowSelected(int32_t index) const;
+        void NormalizeSubtitleSelection();
+        void RefreshSubtitleSelectionText();
         void StoreCurrentEditorSelection();
         void ScrollCurrentRowIntoView();
         void UpdateTableRow(int32_t index);

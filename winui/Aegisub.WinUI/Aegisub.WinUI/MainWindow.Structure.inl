@@ -36,6 +36,7 @@ namespace winrt::Aegisub_WinUI::implementation
 
         RenumberSubtitleRows();
         SyncTargetEntriesFromRows();
+        NormalizeSubtitleSelection();
         m_structureDirty = true;
         ClearBulkUndo();
         UpdateDirtyFromRows();
@@ -113,8 +114,93 @@ namespace winrt::Aegisub_WinUI::implementation
         current.workflowStatus = L"Upraveno";
         current.status = L"Upraveno";
 
+        auto const firstIndex = m_currentIndex;
         m_rows.insert(m_rows.begin() + m_currentIndex + 1, std::move(second));
-        RefreshAfterStructureEdit(L"Titulek rozdělen v místě kurzoru");
+        m_selectedSubtitleIndices = { firstIndex, firstIndex + 1 };
+        m_selectionAnchorIndex = firstIndex;
+        RefreshAfterStructureEdit(split >= start + 0.05 && split <= end - 0.05
+            ? L"Titulek rozdělen v místě kurzoru podle aktuální pozice videa"
+            : L"Titulek rozdělen v místě kurzoru");
+    }
+
+    inline void MainWindow::MergeSelectedSubtitlesButton_Click(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        NormalizeSubtitleSelection();
+        if (m_selectedSubtitleIndices.size() < 2)
+        {
+            StatusBarText().Text(L"Pro sloučení vyberte alespoň dva titulky pomocí Ctrl nebo Shift");
+            return;
+        }
+
+        auto const first = m_selectedSubtitleIndices.front();
+        auto const last = m_selectedSubtitleIndices.back();
+        if (last - first + 1 != static_cast<int32_t>(m_selectedSubtitleIndices.size()))
+        {
+            StatusBarText().Text(L"Sloučit lze pouze souvislou skupinu titulků");
+            return;
+        }
+
+        if (first < 0 || last >= static_cast<int32_t>(m_rows.size()))
+            return;
+
+        SubtitleRowData merged = m_rows[first];
+        std::wstring targetText;
+        std::wstring originalText;
+
+        for (int32_t index = first; index <= last; ++index)
+        {
+            auto const& row = m_rows[index];
+
+            if (!row.target.empty())
+            {
+                if (!targetText.empty())
+                    targetText += L"\n";
+                targetText += row.target.c_str();
+            }
+
+            if (!row.original.empty())
+            {
+                if (!originalText.empty())
+                    originalText += L"\n";
+                originalText += row.original.c_str();
+            }
+        }
+
+        merged.start = m_rows[first].start;
+        merged.end = m_rows[last].end;
+        merged.duration = (std::max)(0.0,
+            WorkflowTimestampSeconds(merged.end) - WorkflowTimestampSeconds(merged.start));
+        merged.target = winrt::hstring{ targetText };
+        merged.rawTarget = merged.target;
+        merged.original = winrt::hstring{ originalText };
+
+        if (!m_rows[first].sourceStart.empty())
+            merged.sourceStart = m_rows[first].sourceStart;
+        if (!m_rows[last].sourceEnd.empty())
+            merged.sourceEnd = m_rows[last].sourceEnd;
+
+        merged.savedTarget = L"";
+        merged.savedStart = L"";
+        merged.savedEnd = L"";
+        merged.targetModified = true;
+        merged.timingModified = true;
+        merged.workflowStatus = L"Upraveno";
+        merged.status = L"Upraveno";
+        merged.undoHistory.clear();
+        merged.redoHistory.clear();
+        merged.selectionInitialized = false;
+
+        m_rows[first] = std::move(merged);
+        m_rows.erase(m_rows.begin() + first + 1, m_rows.begin() + last + 1);
+
+        m_currentIndex = first;
+        m_selectedSubtitleIndices.assign(1, first);
+        m_selectionAnchorIndex = first;
+
+        RefreshAfterStructureEdit(winrt::hstring{
+            L"Sloučeno " + std::to_wstring(last - first + 1) + L" titulků" });
     }
 
     inline void MainWindow::JoinNextSubtitleButton_Click(
@@ -151,6 +237,8 @@ namespace winrt::Aegisub_WinUI::implementation
         current.status = L"Upraveno";
 
         m_rows.erase(m_rows.begin() + m_currentIndex + 1);
+        m_selectedSubtitleIndices.assign(1, m_currentIndex);
+        m_selectionAnchorIndex = m_currentIndex;
         RefreshAfterStructureEdit(L"Aktuální titulek spojen s následujícím");
     }
 
@@ -188,6 +276,8 @@ namespace winrt::Aegisub_WinUI::implementation
         auto const position = m_rows.empty() ? 0 : m_currentIndex + 1;
         m_rows.insert(m_rows.begin() + position, std::move(row));
         m_currentIndex = position;
+        m_selectedSubtitleIndices.assign(1, position);
+        m_selectionAnchorIndex = position;
         RefreshAfterStructureEdit(L"Vložen nový prázdný titulek");
         TargetTextBox().Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
     }
@@ -209,6 +299,10 @@ namespace winrt::Aegisub_WinUI::implementation
         m_rows.erase(m_rows.begin() + m_currentIndex);
         if (m_currentIndex >= static_cast<int32_t>(m_rows.size()) && m_currentIndex > 0)
             --m_currentIndex;
+        m_selectedSubtitleIndices.clear();
+        if (!m_rows.empty())
+            m_selectedSubtitleIndices.push_back(m_currentIndex);
+        m_selectionAnchorIndex = m_currentIndex;
         RefreshAfterStructureEdit(L"Titulek smazán");
     }
 }
