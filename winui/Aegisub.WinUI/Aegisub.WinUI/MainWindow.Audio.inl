@@ -330,23 +330,61 @@ namespace winrt::Aegisub_WinUI::implementation
         winrt::Windows::Foundation::IInspectable const&,
         winrt::Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
     {
-        if (m_waveformDuration <= 0.0 || m_waveformPeaks.empty())
+        if (m_waveformDuration <= 0.0 || m_waveformPeaks.empty() || m_rows.empty())
             return;
 
         auto const width = WaveformCanvas().ActualWidth();
         if (width <= 0.0 || m_waveformWindowEnd <= m_waveformWindowStart)
             return;
 
-        auto const point = args.GetCurrentPoint(WaveformCanvas()).Position();
+        auto const pointerPoint = args.GetCurrentPoint(WaveformCanvas());
+        auto const point = pointerPoint.Position();
         auto const ratio = (std::max)(0.0, (std::min)(1.0, point.X / width));
         auto const seconds = m_waveformWindowStart +
             ratio * (m_waveformWindowEnd - m_waveformWindowStart);
+        auto const properties = pointerPoint.Properties();
+
+        bool const setEnd = properties.IsRightButtonPressed();
+        bool const setStart = properties.IsLeftButtonPressed();
+        if (!setStart && !setEnd)
+            return;
 
         SeekMediaToSeconds(seconds);
+        RefreshVideoPositionText();
+
+        auto const& row = m_rows[m_currentIndex];
+        auto const currentStart = WorkflowTimestampSeconds(row.start);
+        auto const currentEnd = WorkflowTimestampSeconds(row.end);
+
+        if (setEnd)
+        {
+            if (seconds <= currentStart + 0.001)
+            {
+                StatusBarText().Text(L"Konec musí být později než začátek titulku");
+                args.Handled(true);
+                return;
+            }
+            EndTimeBox().Text(FormatWinUiTiming(seconds));
+            ApplyCurrentTimingFromEditors();
+            StatusBarText().Text(winrt::hstring{
+                std::wstring{ L"Konec titulku: " } + FormatWinUiTiming(seconds).c_str() });
+        }
+        else
+        {
+            if (seconds >= currentEnd - 0.001)
+            {
+                StatusBarText().Text(L"Začátek musí být dříve než konec titulku");
+                args.Handled(true);
+                return;
+            }
+            StartTimeBox().Text(FormatWinUiTiming(seconds));
+            ApplyCurrentTimingFromEditors();
+            StatusBarText().Text(winrt::hstring{
+                std::wstring{ L"Začátek titulku: " } + FormatWinUiTiming(seconds).c_str() });
+        }
+
+        RenderWaveform();
         args.Handled(true);
-        StatusBarText().Text(winrt::hstring{
-            std::wstring{ L"Pozice: " } + FormatWinUiTiming(seconds).c_str() +
-            L" · použij Start = pozice / Konec = pozice pro nastavení času" });
     }
 
 }

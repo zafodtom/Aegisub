@@ -155,6 +155,12 @@ namespace winrt::Aegisub_WinUI::implementation
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void VideoInfoButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void VideoPlayPauseButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void VideoBackFiveButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void VideoForwardFiveButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void OpenAudioButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void WaveformCanvas_SizeChanged(winrt::Windows::Foundation::IInspectable const& sender,
@@ -388,6 +394,8 @@ namespace winrt::Aegisub_WinUI::implementation
         bool OpenVideoFile(std::wstring const& filename);
         double CurrentVideoSeconds();
         void SeekVideoToCurrentSubtitle();
+        void AdjustVideoPosition(double deltaSeconds);
+        void RefreshVideoPositionText();
         bool LoadWaveformForMedia(std::wstring const& filename);
         void RenderWaveform();
         void SeekMediaToSeconds(double seconds);

@@ -38,6 +38,7 @@ namespace winrt::Aegisub_WinUI::implementation
             m_videoPath = absolute;
             VideoFileText().Text(winrt::hstring{ std::filesystem::path{ absolute }.filename().wstring() });
             SeekVideoToCurrentSubtitle();
+            RefreshVideoPositionText();
             LoadWaveformForMedia(absolute);
             StatusBarText().Text(L"Video načteno · výběr titulku sleduje čas videa");
             return true;
@@ -81,6 +82,7 @@ namespace winrt::Aegisub_WinUI::implementation
             auto const position = std::chrono::duration_cast<winrt::Windows::Foundation::TimeSpan>(
                 std::chrono::duration<double>{ seconds });
             player.PlaybackSession().Position(position);
+            RefreshVideoPositionText();
         }
         catch (...) {}
     }
@@ -181,4 +183,69 @@ namespace winrt::Aegisub_WinUI::implementation
             StatusBarText().Text(L"Informaci o video stopě se nepodařilo načíst");
         }
     }
+    inline void MainWindow::RefreshVideoPositionText()
+    {
+        auto const seconds = CurrentVideoSeconds();
+        VideoPositionText().Text(seconds < 0.0 ? winrt::hstring{ L"00:00:00.000" } : FormatWinUiTiming(seconds));
+    }
+
+    inline void MainWindow::AdjustVideoPosition(double deltaSeconds)
+    {
+        auto const current = CurrentVideoSeconds();
+        if (current < 0.0)
+        {
+            StatusBarText().Text(L"Nejprve otevřete video");
+            return;
+        }
+
+        SeekMediaToSeconds((std::max)(0.0, current + deltaSeconds));
+        RefreshVideoPositionText();
+    }
+
+    inline void MainWindow::VideoPlayPauseButton_Click(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        try
+        {
+            auto const player = VideoPlayer().MediaPlayer();
+            if (!player)
+            {
+                StatusBarText().Text(L"Nejprve otevřete video");
+                return;
+            }
+
+            if (player.PlaybackSession().PlaybackState() ==
+                winrt::Windows::Media::Playback::MediaPlaybackState::Playing)
+            {
+                player.Pause();
+                VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"▶" }));
+            }
+            else
+            {
+                player.Play();
+                VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"❚❚" }));
+            }
+            RefreshVideoPositionText();
+        }
+        catch (...)
+        {
+            StatusBarText().Text(L"Přehrávání videa se nepodařilo změnit");
+        }
+    }
+
+    inline void MainWindow::VideoBackFiveButton_Click(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        AdjustVideoPosition(-5.0);
+    }
+
+    inline void MainWindow::VideoForwardFiveButton_Click(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        AdjustVideoPosition(5.0);
+    }
+
 }
