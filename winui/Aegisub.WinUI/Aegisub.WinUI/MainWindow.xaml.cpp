@@ -2995,8 +2995,8 @@ namespace winrt::Aegisub_WinUI::implementation
             ToolTipService::SetToolTip(label, box_value(path));
         };
 
-        update(OriginalFileText(), m_sourcePath, L"Soubor nen\u00ED na\u010Dten");
-        update(TargetFileText(), m_targetPath, L"Nov\u00FD p\u0159eklad \u00B7 zat\u00EDm neulo\u017Een");
+        update(OriginalFileText(), m_sourcePath, L"");
+        update(TargetFileText(), m_targetPath, L"");
         RefreshOriginalPanelVisibility();
         RefreshBackupAction();
     }
