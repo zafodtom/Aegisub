@@ -195,9 +195,63 @@ if (-not $SkipInstaller) {
 
     if ($Iscc) {
         $InstallerScript = Join-Path $Root "installer\SRTune.iss"
-        & $Iscc.FullName "/DMyAppVersion=$Version" "/DSourceDir=$Stage" $InstallerScript
-        if ($LASTEXITCODE -ne 0) {
-            throw "Inno Setup failed with exit code $LASTEXITCODE."
+        $InstallerTempDir = Join-Path $Dist ("installer-temp-" + [Guid]::NewGuid().ToString("N"))
+        $InstallerBaseName = "SRTune-" + $Version + "-Setup-x64"
+        $InstallerTempExe = Join-Path $InstallerTempDir ($InstallerBaseName + ".exe")
+        $InstallerFinalExe = Join-Path $Dist ($InstallerBaseName + ".exe")
+
+        New-Item -ItemType Directory -Force -Path $InstallerTempDir | Out-Null
+
+        try {
+            $IsccArgs = @(
+                "/DMyAppVersion=$Version",
+                "/DSourceDir=$Stage",
+                "/DOutputDir=$InstallerTempDir",
+                "/DOutputBaseFilename=$InstallerBaseName",
+                $InstallerScript
+            )
+            & $Iscc.FullName $IsccArgs
+
+            if ($LASTEXITCODE -ne 0) {
+                throw "Inno Setup failed with exit code $LASTEXITCODE."
+            }
+
+            if (-not (Test-Path $InstallerTempExe)) {
+                throw "Inno Setup finished without creating $InstallerTempExe"
+            }
+
+            Wait-FileReadable -Path $InstallerTempExe -TimeoutSeconds 30
+
+            if (Test-Path $InstallerFinalExe) {
+                $removed = $false
+                for ($attempt = 1; $attempt -le 10; $attempt++) {
+                    try {
+                        Remove-Item -Force $InstallerFinalExe -ErrorAction Stop
+                        $removed = $true
+                        break
+                    }
+                    catch {
+                        if ($attempt -lt 10) {
+                            Start-Sleep -Milliseconds 500
+                        }
+                    }
+                }
+
+                if (-not $removed -and (Test-Path $InstallerFinalExe)) {
+                    throw "Starý instalátor je stále používán jiným procesem: $InstallerFinalExe"
+                }
+            }
+
+            Move-Item -Force $InstallerTempExe $InstallerFinalExe
+
+            Write-Host ""
+            Write-Host "[SRTune] Installer:"
+            Write-Host "  $InstallerFinalExe"
+        }
+        finally {
+            if (Test-Path $InstallerTempDir) {
+                Remove-Item -Recurse -Force $InstallerTempDir -ErrorAction SilentlyContinue
+            }
         }
     } else {
         Write-Warning "Inno Setup was not found. Portable ZIP was created; installer was skipped."
