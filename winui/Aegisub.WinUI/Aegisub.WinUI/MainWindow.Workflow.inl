@@ -330,7 +330,12 @@ namespace winrt::Aegisub_WinUI::implementation
         if (key == winrt::Windows::System::VirtualKey::Up) { args.Handled(true); MoveCurrentBy(-1); return; }
         if (key == winrt::Windows::System::VirtualKey::Down) { args.Handled(true); MoveCurrentBy(1); return; }
         if (control && key == winrt::Windows::System::VirtualKey::N)
-        { args.Handled(true); NewProjectMenuItem_Click(nullptr, nullptr); return; }
+        {
+            args.Handled(true);
+            if (ConfirmSaveBefore(L"zahájením nového projektu"))
+                ResetWorkspaceToBlank();
+            return;
+        }
         if (control && key == winrt::Windows::System::VirtualKey::F)
         { args.Handled(true); ShowSearchBar(false); return; }
         if (control && key == winrt::Windows::System::VirtualKey::R)
@@ -368,7 +373,11 @@ namespace winrt::Aegisub_WinUI::implementation
         }
 
         if (control && key == winrt::Windows::System::VirtualKey::N)
-        { args.Handled(true); NewProjectMenuItem_Click(nullptr, nullptr); }
+        {
+            args.Handled(true);
+            if (ConfirmSaveBefore(L"zahájením nového projektu"))
+                ResetWorkspaceToBlank();
+        }
         else if (control && key == winrt::Windows::System::VirtualKey::S)
         { args.Handled(true); if (shift) SaveAsFromShortcut(); else SaveFromShortcut(); }
         else if (control && key == winrt::Windows::System::VirtualKey::O) { args.Handled(true); OpenProjectFiles(); }
