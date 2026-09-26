@@ -9,6 +9,20 @@
     mc:Ignorable="d"
     Title="Aegisub">
 
+    <Window.Resources>
+        <Style TargetType="Button">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="MinHeight" Value="28" />
+            <Setter Property="Padding" Value="7,3" />
+        </Style>
+        <Style TargetType="TextBlock">
+            <Setter Property="FontSize" Value="10.5" />
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="FontSize" Value="11" />
+        </Style>
+    </Window.Resources>
+
     <Grid x:Name="RootGrid" Loaded="RootGrid_Loaded" AllowDrop="True" DragOver="RootGrid_DragOver" Drop="RootGrid_Drop">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -29,7 +43,7 @@
                     <TextBlock x:Name="HeaderCurrentSubtitleText" Text="Aktuální titulek" FontSize="11" Opacity="0.58" />
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
-                    <Button Content="Soubor ▾" MinHeight="31">
+                    <Button Content="Soubor ▾" MinHeight="28">
                         <Button.Flyout>
                             <MenuFlyout>
                                 <MenuFlyoutItem Text="Otevřít video…" Click="OpenVideoButton_Click" />
@@ -45,13 +59,13 @@
                             </MenuFlyout>
                         </Button.Flyout>
                     </Button>
-                    <Button Content="Video…" MinHeight="31" Click="OpenVideoButton_Click" />
-                    <Button Content="Originál…" MinHeight="31" Click="OpenSourceButton_Click" />
-                    <Button Content="Překlad…" MinHeight="31" Click="OpenTargetButton_Click" />
-                    <Button Content="Uložit" MinHeight="31" ToolTipService.ToolTip="Ctrl+S" Click="SaveButton_Click" />
+                    <Button Content="Video…" MinHeight="28" Click="OpenVideoButton_Click" />
+                    <Button Content="Originál…" MinHeight="28" Click="OpenSourceButton_Click" />
+                    <Button Content="Překlad…" MinHeight="28" Click="OpenTargetButton_Click" />
+                    <Button Content="Uložit" MinHeight="28" ToolTipService.ToolTip="Ctrl+S" Click="SaveButton_Click" />
                     <Rectangle Width="1" Height="24" Fill="Gray" Opacity="0.35" Margin="3,0" />
-                    <Button x:Name="PreviousButton" Content="◀" MinWidth="36" MinHeight="31" ToolTipService.ToolTip="Předchozí titulek" Click="PreviousButton_Click" />
-                    <Button x:Name="NextButton" Content="▶" MinWidth="36" MinHeight="31" ToolTipService.ToolTip="Další titulek" Click="NextButton_Click" />
+                    <Button x:Name="PreviousButton" Content="◀" MinWidth="34" MinHeight="28" ToolTipService.ToolTip="Předchozí titulek" Click="PreviousButton_Click" />
+                    <Button x:Name="NextButton" Content="▶" MinWidth="34" MinHeight="28" ToolTipService.ToolTip="Další titulek" Click="NextButton_Click" />
                 </StackPanel>
             </Grid>
         </Border>
@@ -73,7 +87,7 @@
                     </Grid.RowDefinitions>
                     <Grid>
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                        <TextBlock Text="Video" FontWeight="SemiBold" />
+                        <TextBlock Text="Video" FontSize="12" FontWeight="SemiBold" />
                         <TextBlock x:Name="VideoFileText" Grid.Column="1" Text="není načteno" FontSize="10" Opacity="0.5" TextTrimming="CharacterEllipsis" MaxWidth="210" />
                     </Grid>
                     <Border Grid.Row="1" Background="Black" CornerRadius="3">
@@ -106,7 +120,7 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel Orientation="Horizontal" Spacing="10">
-                            <TextBlock Text="Zvuková vlna" FontWeight="SemiBold" />
+                            <TextBlock Text="Zvuková vlna" FontSize="12" FontWeight="SemiBold" />
                             <TextBlock x:Name="WaveformFileText" Text="otevři video nebo audio" FontSize="10" Opacity="0.5" VerticalAlignment="Center" />
                         </StackPanel>
                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
@@ -138,20 +152,20 @@
             <Border x:Name="TranscriptPanel" Grid.Column="2" Padding="8" BorderBrush="Gray" BorderThickness="1" CornerRadius="6">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Spacing="9">
-                        <TextBlock Text="Kontext / transcript" FontWeight="SemiBold" />
+                        <TextBlock Text="Kontext / transcript" FontSize="12" FontWeight="SemiBold" />
                         <StackPanel x:Name="TranscriptPreviousBlock">
                             <TextBlock x:Name="TranscriptPreviousTimeText" FontFamily="Consolas" FontSize="10" Opacity="0.45" />
-                            <TextBlock x:Name="TranscriptPreviousText" TextWrapping="Wrap" FontSize="12" Opacity="0.55" />
+                            <TextBlock x:Name="TranscriptPreviousText" TextWrapping="Wrap" FontSize="11" Opacity="0.55" />
                         </StackPanel>
                         <Border Padding="7,5" BorderBrush="#0078D4" BorderThickness="3,0,0,0">
                             <StackPanel>
                                 <TextBlock x:Name="TranscriptCurrentTimeText" FontFamily="Consolas" FontSize="10" />
-                                <TextBlock x:Name="TranscriptCurrentText" TextWrapping="Wrap" FontSize="13" FontWeight="SemiBold" />
+                                <TextBlock x:Name="TranscriptCurrentText" TextWrapping="Wrap" FontSize="12" FontWeight="SemiBold" />
                             </StackPanel>
                         </Border>
                         <StackPanel x:Name="TranscriptNextBlock">
                             <TextBlock x:Name="TranscriptNextTimeText" FontFamily="Consolas" FontSize="10" Opacity="0.45" />
-                            <TextBlock x:Name="TranscriptNextText" TextWrapping="Wrap" FontSize="12" Opacity="0.55" />
+                            <TextBlock x:Name="TranscriptNextText" TextWrapping="Wrap" FontSize="11" Opacity="0.55" />
                         </StackPanel>
                     </StackPanel>
                 </ScrollViewer>
@@ -179,14 +193,14 @@
                             <Grid>
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                                 <StackPanel>
-                                    <TextBlock Text="Originál" FontWeight="SemiBold" />
-                                    <TextBlock x:Name="OriginalFileText" Text="soubor není načten" FontSize="10" Opacity="0.5" />
+                                    <TextBlock Text="Originál" FontSize="12" FontWeight="SemiBold" />
+                                    <TextBlock x:Name="OriginalFileText" Text="soubor není načten" FontSize="9.5" Opacity="0.5" />
                                 </StackPanel>
                                 <TextBlock Grid.Column="1" Text="?" FontSize="10" Opacity="0.42"
                                            ToolTipService.ToolTip="Originální titulky slouží jako referenční text a časování pro překlad." />
                             </Grid>
                             <TextBlock x:Name="OriginalTimingText" Grid.Row="1" Margin="0,4,0,6" FontFamily="Consolas" FontSize="11" Opacity="0.58" />
-                            <TextBox x:Name="OriginalTextBox" Grid.Row="2" Padding="9" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" FontSize="18" />
+                            <TextBox x:Name="OriginalTextBox" Grid.Row="2" Padding="8" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" FontSize="16" />
                         </Grid>
                     </Border>
 
@@ -201,10 +215,10 @@
                             <Grid>
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                                 <StackPanel>
-                                    <TextBlock Text="Překlad" FontWeight="SemiBold" />
-                                    <TextBlock x:Name="TargetFileText" Text="soubor není načten" FontSize="10" Opacity="0.5" />
+                                    <TextBlock Text="Překlad" FontSize="12" FontWeight="SemiBold" />
+                                    <TextBlock x:Name="TargetFileText" Text="soubor není načten" FontSize="9.5" Opacity="0.5" />
                                 </StackPanel>
-                                <TextBlock x:Name="TargetInfoText" Grid.Column="1" FontSize="10" Opacity="0.5" VerticalAlignment="Center" />
+                                <TextBlock x:Name="TargetInfoText" Grid.Column="1" FontSize="9.5" Opacity="0.5" VerticalAlignment="Center" />
                             </Grid>
 
                             <Grid Grid.Row="1" Margin="0,4,0,6" ColumnSpacing="5">
@@ -215,9 +229,9 @@
                                     <ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Text="Start" FontSize="10" VerticalAlignment="Center" Opacity="0.6" />
+                                <TextBlock Text="Start" FontSize="9.5" VerticalAlignment="Center" Opacity="0.6" />
                                 <TextBox x:Name="StartTimeBox" Grid.Column="1" FontFamily="Consolas" FontSize="11" Padding="5,2" KeyDown="TimingTextBox_KeyDown" />
-                                <TextBlock Grid.Column="2" Text="Konec" FontSize="10" VerticalAlignment="Center" Opacity="0.6" />
+                                <TextBlock Grid.Column="2" Text="Konec" FontSize="9.5" VerticalAlignment="Center" Opacity="0.6" />
                                 <TextBox x:Name="EndTimeBox" Grid.Column="3" FontFamily="Consolas" FontSize="11" Padding="5,2" KeyDown="TimingTextBox_KeyDown" />
                                 <Button Grid.Column="4" Content="−100" Padding="5,2" Click="TimingShiftBackButton_Click" />
                                 <Button Grid.Column="5" Content="+100" Padding="5,2" Click="TimingShiftForwardButton_Click" />
@@ -225,7 +239,7 @@
                                 <TextBlock x:Name="TimingDurationText" Grid.Column="7" FontSize="10" Opacity="0.55" VerticalAlignment="Center" />
                             </Grid>
 
-                            <TextBox x:Name="TargetTextBox" Grid.Row="2" Padding="9" AcceptsReturn="True" TextWrapping="Wrap" FontSize="18"
+                            <TextBox x:Name="TargetTextBox" Grid.Row="2" Padding="8" AcceptsReturn="True" TextWrapping="Wrap" FontSize="16"
                                      Loaded="TargetTextBox_WorkflowLoaded" TextChanged="TargetTextBox_TextChanged" />
 
                             <Grid Grid.Row="3" Margin="0,5,0,0" ColumnSpacing="8">
@@ -237,10 +251,10 @@
                                 <TextBlock x:Name="TargetCpsText" Grid.Column="1" Text="CPS 0" FontSize="10" Opacity="0.5" />
                                 <TextBlock x:Name="TargetLengthText" Grid.Column="2" Text="Znaky 0" FontSize="10" Opacity="0.5" />
                                 <StackPanel Grid.Column="4" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="6">
-                                    <Button Content="Rozdělit v kurzoru" Padding="7,2" FontSize="10" Click="SplitSubtitleButton_Click"
+                                    <Button Content="Rozdělit v kurzoru" Padding="7,2" FontSize="11" Click="SplitSubtitleButton_Click"
                                             ToolTipService.ToolTip="Rozdělit text v místě kurzoru; čas řezu použije aktuální pozici videa, pokud leží uvnitř titulku" />
-                                    <Button Content="Převzít originál" Padding="6,2" FontSize="10" Click="CopyOriginalButton_Click" />
-                                    <Button Content="Rozdělit řádky" Padding="6,2" FontSize="10" Click="InsertLineBreakButton_Click" />
+                                    <Button Content="Převzít originál" Padding="6,2" FontSize="11" Click="CopyOriginalButton_Click" />
+                                    <Button Content="Rozdělit řádky" Padding="6,2" FontSize="11" Click="InsertLineBreakButton_Click" />
                                 </StackPanel>
                             </Grid>
                         </Grid>
@@ -259,9 +273,9 @@
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Text="Překladatelský manuál" FontWeight="SemiBold"
+                                <TextBlock Text="Překladatelský manuál" FontSize="12" FontWeight="SemiBold"
                                            ToolTipService.ToolTip="Výrazy nalezené v aktuálním originálu jsou řazené nahoru. Ostatní výrazy jsou abecedně. Pořadí se během editace řádku nemění." />
-                                <Button Grid.Column="1" Content="+ řádek" Padding="6,2" FontSize="10" Click="GlossaryAddButton_Click" />
+                                <Button Grid.Column="1" Content="+ řádek" Padding="6,2" FontSize="11" Click="GlossaryAddButton_Click" />
                             </Grid>
 
                             <Grid Grid.Row="1" ColumnSpacing="5">
@@ -289,8 +303,8 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <TextBlock x:Name="GlossaryFileText" Text="bez souboru" FontSize="9" Opacity="0.5" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                                <Button Grid.Column="1" Content="Import…" Padding="6,2" FontSize="10" Click="GlossaryImportButton_Click" />
-                                <Button Grid.Column="2" Content="Export…" Padding="6,2" FontSize="10" Click="GlossaryExportButton_Click" />
+                                <Button Grid.Column="1" Content="Import…" Padding="6,2" FontSize="11" Click="GlossaryImportButton_Click" />
+                                <Button Grid.Column="2" Content="Export…" Padding="6,2" FontSize="11" Click="GlossaryExportButton_Click" />
                             </Grid>
                         </Grid>
                     </Border>
@@ -305,10 +319,10 @@
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="Titulky" FontWeight="SemiBold" VerticalAlignment="Center"
+                        <TextBlock Text="Titulky" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"
                                    ToolTipService.ToolTip="Klik = jeden titulek · Ctrl+klik = přidat/odebrat · Shift+klik = souvislý rozsah. ↑/↓ mění aktuální titulek." />
                         <TextBlock x:Name="SubtitleSelectionText" Grid.Column="1" Text="Vybrán 1 titulek" FontSize="10" Opacity="0.55" VerticalAlignment="Center" />
-                        <Button Grid.Column="2" Content="Sloučit vybrané" Padding="7,2" FontSize="10" Click="MergeSelectedSubtitlesButton_Click"
+                        <Button Grid.Column="2" Content="Sloučit vybrané" Padding="7,2" FontSize="11" Click="MergeSelectedSubtitlesButton_Click"
                                 ToolTipService.ToolTip="Sloučit souvisle vybrané titulky; Ctrl+klik přidává, Shift+klik vybírá rozsah" />
                         <TextBlock x:Name="TablePositionText" Grid.Column="3" FontSize="10" Opacity="0.5" VerticalAlignment="Center" />
                     </Grid>

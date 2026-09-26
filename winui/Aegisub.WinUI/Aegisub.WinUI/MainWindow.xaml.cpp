@@ -1595,14 +1595,17 @@ namespace winrt::Aegisub_WinUI::implementation
         for (int32_t index = 0; index < static_cast<int32_t>(m_rowBorders.size()); ++index)
         {
             auto const& border = m_rowBorders[index];
-            border.BorderBrush(accentBrush);
-            border.BorderThickness(Thickness{ 0.0, 0.0, 0.0, 0.0 });
+            Microsoft::UI::Xaml::Media::SolidColorBrush separatorBrush;
+            separatorBrush.Color(Windows::UI::Color{ 42, 128, 128, 128 });
+            border.BorderBrush(separatorBrush);
+            border.BorderThickness(Thickness{ 0.0, 0.0, 0.0, 1.0 });
             border.Background(IsSubtitleRowSelected(index) ? selectedBrush : transparentBrush);
         }
 
         if (m_currentIndex >= 0 && m_currentIndex < static_cast<int32_t>(m_rowBorders.size()))
         {
-            m_rowBorders[m_currentIndex].BorderThickness(Thickness{ 4.0, 1.0, 0.0, 1.0 });
+            m_rowBorders[m_currentIndex].BorderBrush(accentBrush);
+            m_rowBorders[m_currentIndex].BorderThickness(Thickness{ 4.0, 0.0, 0.0, 1.0 });
         }
 
         RefreshSubtitleSelectionText();
@@ -1688,13 +1691,13 @@ namespace winrt::Aegisub_WinUI::implementation
         m_rowVisuals.resize(m_rows.size());
 
         RowDefinition headerRow;
-        headerRow.Height(GridLength{ 34.0, GridUnitType::Pixel });
+        headerRow.Height(GridLength{ 30.0, GridUnitType::Pixel });
         grid.RowDefinitions().Append(headerRow);
 
         for (size_t i = 0; i < m_rows.size(); ++i)
         {
             RowDefinition rowDefinition;
-            rowDefinition.Height(GridLength{ 36.0, GridUnitType::Pixel });
+            rowDefinition.Height(GridLength{ 31.0, GridUnitType::Pixel });
             grid.RowDefinitions().Append(rowDefinition);
         }
 
@@ -1714,6 +1717,9 @@ namespace winrt::Aegisub_WinUI::implementation
             block.Margin(Thickness{ leftMargin, 0.0, 4.0, 0.0 });
             block.VerticalAlignment(VerticalAlignment::Center);
             block.IsHitTestVisible(false);
+            block.FontSize(row == 0 ? 10.5 : 11.5);
+            if (row == 0)
+                block.FontWeight(Windows::UI::Text::FontWeights::SemiBold());
             if (ellipsis)
             {
                 block.TextTrimming(TextTrimming::CharacterEllipsis);
@@ -1741,7 +1747,12 @@ namespace winrt::Aegisub_WinUI::implementation
 
             Border rowBorder;
             rowBorder.Background(transparentBrush);
-            rowBorder.BorderBrush(accentBrush);
+
+            Microsoft::UI::Xaml::Media::SolidColorBrush separatorBrush;
+            separatorBrush.Color(Windows::UI::Color{ 42, 128, 128, 128 });
+            rowBorder.BorderBrush(separatorBrush);
+            rowBorder.BorderThickness(Thickness{ 0.0, 0.0, 0.0, 1.0 });
+
             Grid::SetRow(rowBorder, visualRow);
             Grid::SetColumnSpan(rowBorder, 6);
             rowBorder.Tapped([this, index](auto const&, auto const&)
