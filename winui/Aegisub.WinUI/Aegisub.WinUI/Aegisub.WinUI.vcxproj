@@ -178,11 +178,22 @@
   <PropertyGroup>
     <WinUiBridgePath Condition="Exists('..\..\..\build-x64\src\aegisub-winui-bridge.exe')">..\..\..\build-x64\src\aegisub-winui-bridge.exe</WinUiBridgePath>
     <WinUiBridgePath Condition="'$(WinUiBridgePath)'=='' and Exists('..\..\..\build\src\aegisub-winui-bridge.exe')">..\..\..\build\src\aegisub-winui-bridge.exe</WinUiBridgePath>
+    <WinUiBundledFfmpegPath>External\ffmpeg.exe</WinUiBundledFfmpegPath>
   </PropertyGroup>
   <ItemGroup>
     <None Include="packages.config" />
     <Content Include="$(WinUiBridgePath)" Condition="'$(WinUiBridgePath)'!=''">
       <Link>aegisub-winui-bridge.exe</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <DeploymentContent>true</DeploymentContent>
+    </Content>
+    <Content Include="$(WinUiBundledFfmpegPath)" Condition="'$(Platform)'=='x64'">
+      <Link>ffmpeg.exe</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <DeploymentContent>true</DeploymentContent>
+    </Content>
+    <Content Include="External\FFMPEG-NOTICE.txt" Condition="'$(Platform)'=='x64'">
+      <Link>FFMPEG-NOTICE.txt</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <DeploymentContent>true</DeploymentContent>
     </Content>
@@ -210,6 +221,9 @@
     <Import Project="..\packages\Microsoft.Windows.SDK.BuildTools.10.0.28000.2526\build\Microsoft.Windows.SDK.BuildTools.targets" Condition="Exists('..\packages\Microsoft.Windows.SDK.BuildTools.10.0.28000.2526\build\Microsoft.Windows.SDK.BuildTools.targets')" />
     <Import Project="..\packages\Microsoft.Windows.ImplementationLibrary.1.0.260126.7\build\native\Microsoft.Windows.ImplementationLibrary.targets" Condition="Exists('..\packages\Microsoft.Windows.ImplementationLibrary.1.0.260126.7\build\native\Microsoft.Windows.ImplementationLibrary.targets')" />
   </ImportGroup>
+  <Target Name="PrepareBundledFfmpeg" BeforeTargets="PrepareForBuild" Condition="'$(Platform)'=='x64'">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)..\..\..\tools\prepare-winui-ffmpeg.ps1&quot; -Destination &quot;$(ProjectDir)$(WinUiBundledFfmpegPath)&quot;" />
+  </Target>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
       <ErrorText>Tento projekt odkazuje na balíčky NuGet, které nejsou v tomto počítači k dispozici. Když je chcete stáhnout, použijte funkci obnovení balíčků NuGet.  Další informace najdete na adrese http://go.microsoft.com/fwlink/?LinkID=322105. Chybějícím souborem je soubor {0}.</ErrorText>

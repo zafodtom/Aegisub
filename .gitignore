@@ -29,3 +29,6 @@ build*/
 
 # Local Meson/FFmpeg helper generated during Windows builds
 subprojects/checkasm.wrap
+
+# FFmpeg binary is staged locally for WinUI packaging; do not commit vendor binaries.
+/winui/Aegisub.WinUI/Aegisub.WinUI/External/ffmpeg.exe

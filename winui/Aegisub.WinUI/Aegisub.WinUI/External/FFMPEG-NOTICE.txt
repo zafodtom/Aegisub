@@ -1,0 +1,22 @@
+FFmpeg notice
+=============
+
+This application may bundle the ffmpeg executable to provide hardcoded subtitle video export.
+FFmpeg is a separate executable launched by Aegisub Translation Workspace; it is not linked into the application binary.
+
+Windows build provider: Gyan Doshi / CODEX FFMPEG
+https://www.gyan.dev/ffmpeg/builds/
+
+FFmpeg project:
+https://ffmpeg.org/
+
+License information:
+https://ffmpeg.org/legal.html
+
+The Gyan Windows release builds used by this project are distributed under GNU GPL version 3.
+The exact bundled FFmpeg version can be displayed with:
+
+    ffmpeg.exe -version
+
+FFmpeg source code is available from the FFmpeg project repository:
+https://github.com/FFmpeg/FFmpeg
