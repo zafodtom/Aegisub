@@ -3563,13 +3563,100 @@ namespace winrt::Aegisub_WinUI::implementation
         auto const templatePath = m_targetPath.empty()
             ? std::wstring{ m_sourcePath.c_str() }
             : std::wstring{ m_targetPath.c_str() };
-        if (savePath.empty() || templatePath.empty() || m_rows.empty())
+        if (savePath.empty() || m_rows.empty())
         {
-            errorMessage = L"Nejd\u0159\u00EDve na\u010Dt\u011Bte origin\u00E1ln\u00ED nebo p\u0159ipraven\u00E9 \u010Desk\u00E9 titulky.";
+            errorMessage = L"Projekt zatím neobsahuje žádné titulky k uložení.";
             return false;
         }
 
         auto const targetPath = std::filesystem::path(savePath);
+
+        // A completely new project has no subtitle file to use as a formatting
+        // template. In that case write a clean UTF-8 SubRip file directly.
+        if (templatePath.empty())
+        {
+            auto extension = targetPath.extension().wstring();
+            std::transform(extension.begin(), extension.end(), extension.begin(),
+                [](wchar_t value) { return static_cast<wchar_t>(std::towlower(value)); });
+            if (extension != L".srt")
+            {
+                errorMessage = L"Nový projekt bez zdrojového souboru lze zatím uložit jako SubRip (*.srt).";
+                return false;
+            }
+
+            std::ofstream stream(targetPath, std::ios::binary | std::ios::trunc);
+            if (!stream)
+            {
+                errorMessage = L"Výstupní SRT soubor nelze vytvořit.";
+                return false;
+            }
+
+            stream.write("\xEF\xBB\xBF", 3);
+
+            auto srtTimestamp = [](winrt::hstring const& value)
+            {
+                auto result = winrt::to_string(value);
+                auto const separator = result.rfind('.');
+                if (separator != std::string::npos)
+                    result[separator] = ',';
+                return result;
+            };
+
+            for (size_t index = 0; index < m_rows.size(); ++index)
+            {
+                auto& row = m_rows[index];
+                stream << (index + 1) << "\r\n"
+                       << srtTimestamp(row.start) << " --> " << srtTimestamp(row.end) << "\r\n"
+                       << winrt::to_string(row.target) << "\r\n\r\n";
+            }
+
+            if (!stream)
+            {
+                errorMessage = L"SRT soubor se nepodařilo celý zapsat.";
+                return false;
+            }
+            stream.close();
+
+            m_targetEntries.clear();
+            m_targetEntries.reserve(m_rows.size());
+            for (auto& row : m_rows)
+            {
+                row.rawTarget = row.target;
+                row.savedTarget = row.target;
+                row.savedStart = row.start;
+                row.savedEnd = row.end;
+                row.savedWorkflowStatus = row.workflowStatus;
+                row.historyInitialized = true;
+                row.targetModified = false;
+                row.timingModified = false;
+                row.editSequenceKind = 0;
+
+                SubtitleEntry entry;
+                entry.start = row.start;
+                entry.end = row.end;
+                entry.startSeconds = TimestampSeconds(winrt::to_string(row.start));
+                entry.endSeconds = TimestampSeconds(winrt::to_string(row.end));
+                entry.duration = (std::max)(0.0, entry.endSeconds - entry.startSeconds);
+                entry.text = row.target;
+                entry.rawText = row.target;
+                m_targetEntries.push_back(std::move(entry));
+            }
+
+            m_targetPath = winrt::hstring{ savePath };
+            m_structureDirty = false;
+            m_forceSaveAsForRecoveredDraft = false;
+            m_hasTargetFileFingerprint = FileFingerprint(
+                targetPath, m_targetFileSize, m_targetFileTimestamp);
+            m_externalChangeAcknowledged = false;
+            m_workflowStateDirty = false;
+            RefreshProjectFileLabels();
+            SaveWorkspaceState();
+            DeleteWorkspaceDraft();
+            SaveRecentProjectPaths();
+            RefreshRecentProjectAction();
+            SetDirty(false);
+            return true;
+        }
 
         if (PathsReferToSameFile(
             std::wstring_view{ m_sourcePath.c_str(), m_sourcePath.size() }, savePath))
