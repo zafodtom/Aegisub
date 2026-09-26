@@ -396,6 +396,11 @@ namespace winrt::Aegisub_WinUI::implementation
         if (m_timelineSliderUpdating || CurrentMediaDurationSeconds() <= 0.0)
             return;
 
+        auto const now = GetTickCount64();
+        if (now - m_lastTimelineSeekTick < 33)
+            return;
+        m_lastTimelineSeekTick = now;
+
         auto const seconds = args.NewValue();
         SeekMediaToSeconds(seconds);
         SyncSubtitleToPlayback(seconds);
@@ -535,12 +540,18 @@ namespace winrt::Aegisub_WinUI::implementation
 
         auto const center = height * 0.5;
         auto const count = m_waveformPeaks.size();
-        auto const columns = static_cast<size_t>((std::max)(1.0, width));
+
+        // One polygon instead of one XAML Line per screen pixel.
+        // This reduces a typical redraw from 1000–1600 UI elements to a single shape.
+        auto const columns = static_cast<size_t>((std::max)(64.0, (std::min)(width, 1600.0)));
         auto timeToBin = [&](double seconds) {
             auto const normalized = (std::max)(0.0, (std::min)(1.0, seconds / m_waveformDuration));
             return (std::min)(count - 1,
                 static_cast<size_t>(normalized * static_cast<double>(count - 1)));
         };
+
+        std::vector<std::pair<double, double>> envelope;
+        envelope.resize(columns);
 
         for (size_t column = 0; column < columns; ++column)
         {
@@ -559,19 +570,33 @@ namespace winrt::Aegisub_WinUI::implementation
                 maximum = (std::max)(maximum, m_waveformPeaks[sample].second);
             }
 
-            winrt::Microsoft::UI::Xaml::Shapes::Line peak;
-            auto const x = static_cast<double>(column);
-            peak.X1(x);
-            peak.X2(x);
-            peak.Y1((std::max)(0.0, (std::min)(height,
-                center - static_cast<double>(maximum) * center * m_waveformVerticalGain)));
-            peak.Y2((std::max)(0.0, (std::min)(height,
-                center - static_cast<double>(minimum) * center * m_waveformVerticalGain)));
-            peak.Stroke(accent);
-            peak.StrokeThickness(1.0);
-            peak.Opacity(0.78);
-            canvas.Children().Append(peak);
+            auto const upper = (std::max)(0.0, (std::min)(height,
+                center - static_cast<double>(maximum) * center * m_waveformVerticalGain));
+            auto const lower = (std::max)(0.0, (std::min)(height,
+                center - static_cast<double>(minimum) * center * m_waveformVerticalGain));
+            envelope[column] = { upper, lower };
         }
+
+        winrt::Microsoft::UI::Xaml::Shapes::Polygon waveformShape;
+        waveformShape.Fill(accent);
+        waveformShape.Opacity(0.72);
+
+        auto const points = waveformShape.Points();
+        for (size_t column = 0; column < columns; ++column)
+        {
+            auto const x = width * static_cast<double>(column) /
+                static_cast<double>((std::max)(size_t{ 1 }, columns - 1));
+            points.Append(winrt::Windows::Foundation::Point{
+                static_cast<float>(x), static_cast<float>(envelope[column].first) });
+        }
+        for (size_t reverse = columns; reverse-- > 0;)
+        {
+            auto const x = width * static_cast<double>(reverse) /
+                static_cast<double>((std::max)(size_t{ 1 }, columns - 1));
+            points.Append(winrt::Windows::Foundation::Point{
+                static_cast<float>(x), static_cast<float>(envelope[reverse].second) });
+        }
+        canvas.Children().Append(waveformShape);
 
         auto drawBoundary = [&](double seconds, double thickness, double opacity)
             -> winrt::Microsoft::UI::Xaml::Shapes::Line

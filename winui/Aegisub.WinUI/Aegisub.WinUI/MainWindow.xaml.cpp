@@ -1307,8 +1307,6 @@ namespace winrt::Aegisub_WinUI::implementation
         TargetStatusText().Text(hstring{ L"Stav: " + std::wstring(row.status.c_str()) });
         UpdateTableRow(m_currentIndex);
         UpdateMetrics();
-        RefreshSearchSummary();
-        RefreshProgressSummary();
         StatusBarText().Text(row.targetModified
             ? L"Neulo\u017Een\u00E1 zm\u011Bna v aktu\u00E1ln\u00EDm titulku"
             : L"Text odpov\u00EDd\u00E1 ulo\u017Een\u00E9 verzi");
@@ -1593,11 +1591,12 @@ namespace winrt::Aegisub_WinUI::implementation
         winrt::Microsoft::UI::Xaml::Media::SolidColorBrush selectedBrush;
         selectedBrush.Color(winrt::Windows::UI::Color{ 34, 0, 120, 212 });
 
+        Microsoft::UI::Xaml::Media::SolidColorBrush separatorBrush;
+        separatorBrush.Color(Windows::UI::Color{ 42, 128, 128, 128 });
+
         for (int32_t index = 0; index < static_cast<int32_t>(m_rowBorders.size()); ++index)
         {
             auto const& border = m_rowBorders[index];
-            Microsoft::UI::Xaml::Media::SolidColorBrush separatorBrush;
-            separatorBrush.Color(Windows::UI::Color{ 42, 128, 128, 128 });
             border.BorderBrush(separatorBrush);
             border.BorderThickness(Thickness{ 0.0, 0.0, 0.0, 1.0 });
             border.Background(IsSubtitleRowSelected(index) ? selectedBrush : transparentBrush);

@@ -89,6 +89,8 @@ namespace winrt::Aegisub_WinUI::implementation
                 std::chrono::duration<double>{ seconds });
             player.PlaybackSession().Position(position);
             RefreshVideoPositionText();
+            RefreshTimelineSlider();
+            RefreshWaveformPlayhead();
         }
         catch (...) {}
     }
@@ -263,45 +265,51 @@ namespace winrt::Aegisub_WinUI::implementation
 
         winrt::Microsoft::UI::Xaml::DispatcherTimer timer;
         timer.Interval(std::chrono::duration_cast<winrt::Windows::Foundation::TimeSpan>(
-            std::chrono::milliseconds{ 40 }));
+            std::chrono::milliseconds{ 50 }));
         timer.Tick([this](auto const&, auto const&)
         {
-            RefreshVideoPositionText();
-            RefreshWaveformPlayhead();
-            RefreshTimelineSlider();
-
-            auto const playbackSeconds = CurrentVideoSeconds();
             try
             {
                 auto const player = VideoPlayer().MediaPlayer();
-                if (player && playbackSeconds >= 0.0 &&
-                    player.PlaybackSession().PlaybackState() ==
+                if (!player ||
+                    player.PlaybackSession().PlaybackState() !=
                         winrt::Windows::Media::Playback::MediaPlaybackState::Playing)
                 {
-                    SyncSubtitleToPlayback(playbackSeconds);
-                    FollowWaveformPlayback(playbackSeconds);
+                    return;
                 }
-            }
-            catch (...) {}
 
-            if (m_playSelectedUntil >= 0.0)
-            {
-                auto const current = CurrentVideoSeconds();
-                if (current >= m_playSelectedUntil - 0.005)
+                auto const playbackSeconds = CurrentVideoSeconds();
+                if (playbackSeconds < 0.0)
+                    return;
+
+                // Lightweight moving line can update often.
+                RefreshWaveformPlayhead();
+
+                // Text and the whole-video slider do not need frame-rate updates.
+                auto const now = GetTickCount64();
+                if (now - m_lastTimelineUiTick >= 125)
                 {
-                    try
-                    {
-                        auto const player = VideoPlayer().MediaPlayer();
-                        if (player)
-                            player.Pause();
-                    }
-                    catch (...) {}
+                    m_lastTimelineUiTick = now;
+                    RefreshVideoPositionText();
+                    RefreshTimelineSlider();
+                }
+
+                SyncSubtitleToPlayback(playbackSeconds);
+                FollowWaveformPlayback(playbackSeconds);
+
+                if (m_playSelectedUntil >= 0.0 &&
+                    playbackSeconds >= m_playSelectedUntil - 0.005)
+                {
+                    player.Pause();
                     m_playSelectedUntil = -1.0;
                     VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"▶" }));
                     VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Přehrát titulek" }));
+                    RefreshVideoPositionText();
+                    RefreshTimelineSlider();
                     RefreshWaveformPlayhead();
                 }
             }
+            catch (...) {}
         });
         timer.Start();
         m_mediaUiTimer = timer;

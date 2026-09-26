@@ -375,10 +375,19 @@ namespace winrt::Aegisub_WinUI::implementation
         TargetTextBox().TextChanged([this](auto const&, auto const&)
         {
             if (m_loadingSelection || !m_initialized || m_rows.empty()) return;
+
+            // Keep QA local while typing. Full-project QA is reserved for explicit
+            // workflow actions instead of running across every subtitle per keystroke.
             auto& row = m_rows[m_currentIndex];
-            if (row.status != L"Problém") row.workflowStatus = row.status;
-            RefreshQaAll();
-            RefreshCurrentQaVisuals();
+            if (row.status != L"Problém")
+                row.workflowStatus = row.status;
+
+            row.qaIssue = EvaluateQaIssue(m_currentIndex);
+            row.status = row.qaIssue.empty()
+                ? row.workflowStatus
+                : winrt::hstring{ L"Problém" };
+            UpdateTableRow(m_currentIndex);
+            RefreshFeatureMetrics();
         });
         PreviousButton().Click([this](auto const&, auto const&) { RefreshCurrentQaVisuals(); });
         NextButton().Click([this](auto const&, auto const&) { RefreshCurrentQaVisuals(); });

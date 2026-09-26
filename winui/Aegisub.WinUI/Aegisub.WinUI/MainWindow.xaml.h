@@ -350,6 +350,8 @@ namespace winrt::Aegisub_WinUI::implementation
         winrt::Microsoft::UI::Xaml::Shapes::Line m_waveformPlayhead{ nullptr };
         bool m_timelineSliderUpdating{};
         bool m_mediaDrivenSelectionUpdate{};
+        uint64_t m_lastTimelineUiTick{};
+        uint64_t m_lastTimelineSeekTick{};
         winrt::Microsoft::UI::Xaml::DispatcherTimer m_mediaUiTimer{ nullptr };
         double m_playSelectedUntil{-1.0};
         bool m_structureDirty{};
