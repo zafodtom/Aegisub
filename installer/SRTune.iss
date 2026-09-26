@@ -6,6 +6,14 @@
   #define SourceDir "..\dist\SRTune-1.0.0-x64"
 #endif
 
+#ifndef OutputDir
+  #define OutputDir "..\dist"
+#endif
+
+#ifndef OutputBaseFilename
+  #define OutputBaseFilename "SRTune-" + MyAppVersion + "-Setup-x64"
+#endif
+
 #define MyAppName "SRTune"
 #define MyAppExeName "SRTune.exe"
 
@@ -17,8 +25,8 @@ AppPublisher=SRTune Project
 DefaultDirName={localappdata}\Programs\SRTune
 DefaultGroupName=SRTune
 DisableProgramGroupPage=yes
-OutputDir=..\dist
-OutputBaseFilename=SRTune-{#MyAppVersion}-Setup-x64
+OutputDir={#OutputDir}
+OutputBaseFilename={#OutputBaseFilename}
 SetupIconFile=..\winui\Aegisub.WinUI\Aegisub.WinUI\Assets\SRTune.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 Compression=lzma2
