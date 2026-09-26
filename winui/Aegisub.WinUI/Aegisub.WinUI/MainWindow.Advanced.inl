@@ -3,7 +3,7 @@
 #include <filesystem>
 #include <sstream>
 
-namespace winrt::Aegisub_WinUI::implementation
+namespace winrt::SRTune::implementation
 {
     inline void MainWindow::ShowSearchBar(bool replaceMode)
     {
@@ -688,7 +688,7 @@ namespace winrt::Aegisub_WinUI::implementation
         {
             auto const local = WinUiLocalAppDataPath();
             if (local.empty()) return;
-            auto const directory = local / L"Aegisub" / L"TranslationWorkspace" / L"Backups";
+            auto const directory = local / L"SRTune" / L"TranslationWorkspace" / L"Backups";
             auto const targetName = std::filesystem::path(m_targetPath.c_str()).filename().wstring();
             std::vector<std::filesystem::directory_entry> entries;
             std::error_code error;
@@ -714,7 +714,7 @@ namespace winrt::Aegisub_WinUI::implementation
             RestoreSelectedRecoveryButton().IsEnabled(!m_recoveryVersions.empty());
 
             std::wstring draftStatus = L"žádný recovery draft";
-            auto const workspace = local / L"Aegisub" / L"TranslationWorkspace";
+            auto const workspace = local / L"SRTune" / L"TranslationWorkspace";
             std::filesystem::directory_iterator dit(workspace, error), dend;
             std::filesystem::file_time_type newest{};
             bool hasDraft = false;
