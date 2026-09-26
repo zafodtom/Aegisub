@@ -439,17 +439,38 @@ namespace winrt::Aegisub_WinUI::implementation
         if (m_rows.empty())
             return;
 
-        m_rows.erase(m_rows.begin() + m_currentIndex);
+        NormalizeSubtitleSelection();
+        std::vector<int32_t> indices = m_selectedSubtitleIndices;
+        if (indices.empty())
+            indices.push_back(m_currentIndex);
 
-        if (m_currentIndex >= static_cast<int32_t>(m_rows.size()) && m_currentIndex > 0)
-            --m_currentIndex;
+        std::sort(indices.begin(), indices.end());
+        indices.erase(std::unique(indices.begin(), indices.end()), indices.end());
+
+        auto const firstDeleted = indices.front();
+        auto const deletedCount = indices.size();
+
+        for (auto it = indices.rbegin(); it != indices.rend(); ++it)
+        {
+            if (*it >= 0 && *it < static_cast<int32_t>(m_rows.size()))
+                m_rows.erase(m_rows.begin() + *it);
+        }
+
+        if (m_rows.empty())
+            m_currentIndex = 0;
+        else
+            m_currentIndex = (std::min)(firstDeleted, static_cast<int32_t>(m_rows.size()) - 1);
 
         m_selectedSubtitleIndices.clear();
         if (!m_rows.empty())
             m_selectedSubtitleIndices.push_back(m_currentIndex);
         m_selectionAnchorIndex = m_rows.empty() ? -1 : m_currentIndex;
 
-        RefreshAfterStructureEdit(L"Titulek smazán");
+        RefreshAfterStructureEdit(winrt::hstring{
+            deletedCount == 1
+                ? L"Titulek smazán"
+                : L"Smazáno " + std::to_wstring(deletedCount) + L" vybraných titulků" });
+
         if (!m_rows.empty())
             TargetTextBox().Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
     }

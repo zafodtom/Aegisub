@@ -127,6 +127,18 @@ namespace winrt::Aegisub_WinUI::implementation
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void TargetSelectAllMenuItem_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void SearchMenuItem_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void ReplaceMenuItem_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void CloseSearchBarButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void FindAndRemoveButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void RemoveEmptySubtitlesButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void ToggleOriginalPanelMenuItem_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void MergeSelectedSubtitlesButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void JoinNextSubtitleButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
@@ -349,6 +361,7 @@ namespace winrt::Aegisub_WinUI::implementation
         std::vector<winrt::Microsoft::UI::Xaml::Controls::TextBox> m_glossaryTargetBoxes;
         std::wstring m_glossaryPath;
         bool m_glossaryRebuilding{};
+        bool m_originalPanelManuallyHidden{};
         std::wstring m_videoPath;
         std::wstring m_waveformPath;
         std::vector<std::pair<float, float>> m_waveformPeaks;
@@ -359,6 +372,7 @@ namespace winrt::Aegisub_WinUI::implementation
         int m_waveformDragMode{};
         bool m_waveformDragActive{};
         bool m_waveformLeftDragged{};
+        bool m_waveformMiddleDragged{};
         double m_waveformPointerPressX{};
         double m_waveformPointerPressTime{};
         double m_waveformOriginalStart{};
@@ -418,6 +432,9 @@ namespace winrt::Aegisub_WinUI::implementation
         void DeleteWorkspaceDraft();
         void ScheduleWorkspaceDraftSave();
         void RefreshProjectFileLabels();
+        void RefreshOriginalPanelVisibility();
+        void ShowSearchBar(bool replaceMode);
+        void RemoveEmptySubtitleRows();
         void RefreshBackupAction();
         void LoadLastGlossaryFile();
         bool LoadGlossaryFromFile(std::wstring const& path);

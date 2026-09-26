@@ -996,8 +996,10 @@ namespace winrt::Aegisub_WinUI::implementation
         {
             auto const& row = m_rows[m_currentIndex];
             m_waveformPointerPressX = point.Position().X;
+            m_waveformPointerPressTime = pressSeconds;
             m_waveformOriginalStart = WorkflowTimestampSeconds(row.start);
             m_waveformOriginalEnd = WorkflowTimestampSeconds(row.end);
+            m_waveformMiddleDragged = false;
             args.Handled(true);
             return;
         }
@@ -1057,8 +1059,15 @@ namespace winrt::Aegisub_WinUI::implementation
             if (width <= 0.0)
                 return;
 
-            auto const visibleSpan = m_waveformWindowEnd - m_waveformWindowStart;
             auto const deltaPixels = point.Position().X - m_waveformPointerPressX;
+            if (!m_waveformMiddleDragged && std::abs(deltaPixels) < 4.0)
+            {
+                args.Handled(true);
+                return;
+            }
+            m_waveformMiddleDragged = true;
+
+            auto const visibleSpan = m_waveformWindowEnd - m_waveformWindowStart;
             auto const deltaSeconds = deltaPixels / width * visibleSpan;
 
             auto newStart = m_waveformOriginalStart + deltaSeconds;
@@ -1145,6 +1154,35 @@ namespace winrt::Aegisub_WinUI::implementation
             args.Handled(true);
             return;
         }
+
+        if (completedMode == 4 && !m_waveformMiddleDragged)
+        {
+            auto const seconds = WaveformSecondsFromPointer(
+                point.Position().X, WaveformCanvas().ActualWidth(), false);
+            SeekMediaToSeconds(seconds);
+            m_playSelectedUntil = -1.0;
+            try
+            {
+                auto const player = VideoPlayer().MediaPlayer();
+                if (player)
+                {
+                    player.Play();
+                    VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"❚❚" }));
+                    VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Přehrát titulek" }));
+                    WaveformPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"▶ Titulek" }));
+                }
+            }
+            catch (...) {}
+
+            m_waveformMiddleDragged = false;
+            RefreshVideoPositionText();
+            RefreshTimelineSlider();
+            RefreshWaveformPlayhead();
+            args.Handled(true);
+            return;
+        }
+
+        m_waveformMiddleDragged = false;
 
         if (completedMode == 4 || completedMode == 1 || completedMode == 2)
         {

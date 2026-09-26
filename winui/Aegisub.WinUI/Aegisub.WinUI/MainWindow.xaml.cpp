@@ -2810,7 +2810,39 @@ namespace winrt::Aegisub_WinUI::implementation
 
         update(OriginalFileText(), m_sourcePath, L"Soubor nen\u00ED na\u010Dten");
         update(TargetFileText(), m_targetPath, L"Nov\u00FD p\u0159eklad \u00B7 zat\u00EDm neulo\u017Een");
+        RefreshOriginalPanelVisibility();
         RefreshBackupAction();
+    }
+
+    void MainWindow::RefreshOriginalPanelVisibility()
+    {
+        bool const available = !m_sourcePath.empty() && !m_sourceEntries.empty();
+        bool const visible = available && !m_originalPanelManuallyHidden;
+
+        OriginalPanelBorder().Visibility(visible ? Visibility::Visible : Visibility::Collapsed);
+        if (visible)
+        {
+            Grid::SetColumn(TargetPanelBorder(), 1);
+            Grid::SetColumnSpan(TargetPanelBorder(), 1);
+        }
+        else
+        {
+            Grid::SetColumn(TargetPanelBorder(), 0);
+            Grid::SetColumnSpan(TargetPanelBorder(), 2);
+        }
+
+        ToggleOriginalPanelMenuItem().IsEnabled(available);
+        ToggleOriginalPanelMenuItem().Text(visible ? L"Skrýt originál" : L"Zobrazit originál");
+    }
+
+    void MainWindow::ToggleOriginalPanelMenuItem_Click(
+        Windows::Foundation::IInspectable const&,
+        RoutedEventArgs const&)
+    {
+        if (m_sourcePath.empty() || m_sourceEntries.empty())
+            return;
+        m_originalPanelManuallyHidden = !m_originalPanelManuallyHidden;
+        RefreshOriginalPanelVisibility();
     }
 
     void MainWindow::RefreshBackupAction()

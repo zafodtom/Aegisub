@@ -28,6 +28,7 @@
             <RowDefinition Height="300" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <!-- Classic desktop menu; working context lives near the subtitle list. -->
@@ -48,6 +49,9 @@
                 </MenuBarItem>
 
                 <MenuBarItem Title="Úpravy">
+                    <MenuFlyoutItem Text="Najít…    Ctrl+F" Click="SearchMenuItem_Click" />
+                    <MenuFlyoutItem Text="Nahradit…    Ctrl+R" Click="ReplaceMenuItem_Click" />
+                    <MenuFlyoutSeparator />
                     <MenuFlyoutItem Text="Převzít originál" Click="CopyOriginalButton_Click" />
                     <MenuFlyoutItem Text="Zalomit řádek" Click="InsertLineBreakButton_Click" />
                     <MenuFlyoutSeparator />
@@ -68,6 +72,10 @@
                 <MenuBarItem Title="Časování">
                     <MenuFlyoutItem Text="Posunout všechny titulky…" Click="ShiftAllSubtitlesMenuItem_Click" />
                     <MenuFlyoutItem Text="Vložit 1 ms mezeru mezi navazující titulky" Click="InsertSubtitleGapMenuItem_Click" />
+                </MenuBarItem>
+
+                <MenuBarItem Title="Zobrazení">
+                    <MenuFlyoutItem x:Name="ToggleOriginalPanelMenuItem" Text="Skrýt originál" Click="ToggleOriginalPanelMenuItem_Click" />
                 </MenuBarItem>
             </MenuBar>
         </Border>
@@ -165,7 +173,7 @@
                                 ToolTipService.ToolTip="Přehrát / pozastavit aktuální titulek" />
                         <Border Width="22" Height="22" CornerRadius="11" BorderBrush="Gray" BorderThickness="1"
                                 HorizontalAlignment="Right" VerticalAlignment="Center"
-                                ToolTipService.ToolTip="Levé kliknutí = začátek. Levé tažení = vytvořit nový rozsah od–do. Pravé kliknutí/tažení = konec. Prostřední tlačítko + tažení = posunout celý titulek. Shift + tažení = posunout pohled waveformu. H± mění časový zoom, V± výšku vlny.">
+                                ToolTipService.ToolTip="Levé kliknutí = začátek. Levé tažení = vytvořit nový rozsah od–do. Pravé kliknutí/tažení = konec. Prostřední klik = přehrát od tohoto místa. Prostřední tlačítko + tažení = posunout celý titulek. Shift + tažení = posunout pohled waveformu. H± mění časový zoom, V± výšku vlny.">
                             <TextBlock Text="?" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.65" />
                         </Border>
                     </Grid>
@@ -229,7 +237,7 @@
                         <ColumnDefinition Width="340" />
                     </Grid.ColumnDefinitions>
 
-                    <Border Grid.Column="0" Padding="10" BorderBrush="Gray" BorderThickness="1" CornerRadius="4">
+                    <Border x:Name="OriginalPanelBorder" Grid.Column="0" Padding="10" BorderBrush="Gray" BorderThickness="1" CornerRadius="4">
                         <Grid>
                             <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                             <Grid>
@@ -329,24 +337,17 @@
                     </Border>
 
                     <Border Grid.Column="2" Padding="8" BorderBrush="Gray" BorderThickness="1" CornerRadius="4">
-                        <Grid RowSpacing="5">
+                        <Grid RowSpacing="2">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="*" />
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Text="Překladatelský manuál" FontSize="12" FontWeight="SemiBold"
-                                           ToolTipService.ToolTip="Výrazy nalezené v aktuálním originálu jsou řazené nahoru. Ostatní výrazy jsou abecedně. Pořadí se během editace řádku nemění." />
-                                <Button Grid.Column="1" Content="+ řádek" Padding="6,2" FontSize="11" Click="GlossaryAddButton_Click" />
-                            </Grid>
+                            <TextBlock Text="Překladatelský manuál" FontSize="12" FontWeight="SemiBold"
+                                       ToolTipService.ToolTip="Výrazy nalezené v aktuálním originálu jsou řazené nahoru. Ostatní výrazy jsou abecedně. Pořadí se během editace řádku nemění." />
 
-                            <Grid Grid.Row="1" ColumnSpacing="5">
+                            <Grid Grid.Row="1" ColumnSpacing="5" Margin="0,-1,0,0">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="*" />
@@ -369,10 +370,12 @@
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <TextBlock x:Name="GlossaryFileText" Text="bez souboru" FontSize="9" Opacity="0.5" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                                <Button Grid.Column="1" Content="Import…" Padding="6,2" FontSize="11" Click="GlossaryImportButton_Click" />
-                                <Button Grid.Column="2" Content="Export…" Padding="6,2" FontSize="11" Click="GlossaryExportButton_Click" />
+                                <Button Grid.Column="1" Content="+ řádek" Padding="6,2" FontSize="11" Click="GlossaryAddButton_Click" />
+                                <Button Grid.Column="2" Content="Import…" Padding="6,2" FontSize="11" Click="GlossaryImportButton_Click" />
+                                <Button Grid.Column="3" Content="Export…" Padding="6,2" FontSize="11" Click="GlossaryExportButton_Click" />
                             </Grid>
                         </Grid>
                     </Border>
@@ -407,7 +410,66 @@
             </Grid>
         </Border>
 
-        <Grid Grid.Row="3" Margin="10,5,10,8">
+        <Border x:Name="SearchBar" Grid.Row="3" Margin="10,5,10,0" Padding="7,5"
+                BorderBrush="Gray" BorderThickness="1" CornerRadius="5" Visibility="Collapsed">
+            <Grid ColumnSpacing="6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="230" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Text="Najít" VerticalAlignment="Center" />
+                <TextBox x:Name="SearchTextBox" Grid.Column="1" Height="26" MinHeight="26" Padding="5,0"
+                         VerticalContentAlignment="Center"
+                         TextChanged="AdvancedSearchTextBox_TextChanged"
+                         KeyDown="AdvancedSearchTextBox_KeyDown" />
+                <Button x:Name="SearchPreviousButton" Grid.Column="2" Content="↑" Width="30" MinWidth="30"
+                        Click="AdvancedSearchPreviousButton_Click" ToolTipService.ToolTip="Předchozí výskyt" />
+                <Button x:Name="SearchNextButton" Grid.Column="3" Content="↓" Width="30" MinWidth="30"
+                        Click="AdvancedSearchNextButton_Click" ToolTipService.ToolTip="Další výskyt" />
+
+                <ComboBox x:Name="SearchScopeComboBox" Grid.Column="4" Width="105" SelectedIndex="0"
+                          SelectionChanged="SearchScopeComboBox_SelectionChanged">
+                    <ComboBoxItem Content="Překlad" />
+                    <ComboBoxItem Content="Originál" />
+                    <ComboBoxItem Content="Obojí" />
+                </ComboBox>
+
+                <StackPanel Grid.Column="5" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                    <CheckBox x:Name="SearchCaseCheckBox" Content="Aa"
+                              Checked="SearchOptions_Changed" Unchecked="SearchOptions_Changed"
+                              ToolTipService.ToolTip="Rozlišovat velikost písmen" />
+                    <CheckBox x:Name="SearchWholeWordCheckBox" Content="Slovo"
+                              Checked="SearchOptions_Changed" Unchecked="SearchOptions_Changed"
+                              ToolTipService.ToolTip="Pouze celá slova" />
+                </StackPanel>
+
+                <StackPanel x:Name="ReplaceSearchPanel" Grid.Column="6" Orientation="Horizontal" Spacing="5"
+                            VerticalAlignment="Center" Visibility="Collapsed">
+                    <TextBlock Text="Nahradit" VerticalAlignment="Center" />
+                    <TextBox x:Name="ReplaceTextBox" Width="180" Height="26" MinHeight="26" Padding="5,0"
+                             VerticalContentAlignment="Center" />
+                    <Button Content="Nahradit vše" Click="AdvancedReplaceAllButton_Click" />
+                    <Button Content="Najít a odstranit" Click="FindAndRemoveButton_Click"
+                            ToolTipService.ToolTip="Odstranit nalezený text; pokud titulek zůstane prázdný, odstranit i celý řádek" />
+                    <Button Content="Odstranit prázdné" Click="RemoveEmptySubtitlesButton_Click"
+                            ToolTipService.ToolTip="Odstranit všechny prázdné titulky" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="7" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <TextBlock x:Name="SearchResultText" VerticalAlignment="Center" Opacity="0.58" />
+                    <Button Content="✕" Width="30" MinWidth="30" Click="CloseSearchBarButton_Click" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="4" Margin="10,5,10,8">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
             <TextBlock x:Name="StatusBarText" Text="Připraveno" FontSize="10" Opacity="0.5" />
             <TextBlock Grid.Column="1" Text="?" FontSize="10" Opacity="0.42"
@@ -466,14 +528,6 @@
                 <ComboBoxItem x:Name="FilterReadyItem" Content="Připravené" />
                 <ComboBoxItem x:Name="FilterApprovedItem" Content="Schválené" />
             </ComboBox>
-            <TextBox x:Name="SearchTextBox" />
-            <Button x:Name="SearchPreviousButton" />
-            <Button x:Name="SearchNextButton" />
-            <TextBlock x:Name="SearchResultText" />
-            <ComboBox x:Name="SearchScopeComboBox"><ComboBoxItem Content="Překlad" /><ComboBoxItem Content="Originál" /><ComboBoxItem Content="Obojí" /></ComboBox>
-            <CheckBox x:Name="SearchCaseCheckBox" />
-            <CheckBox x:Name="SearchWholeWordCheckBox" />
-            <TextBox x:Name="ReplaceTextBox" />
             <Button x:Name="UndoBulkButton" />
             <ProgressBar x:Name="OverviewProgressBar" />
             <TextBlock x:Name="OverviewFilesText" />

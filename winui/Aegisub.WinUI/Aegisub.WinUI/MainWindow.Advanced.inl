@@ -5,6 +5,173 @@
 
 namespace winrt::Aegisub_WinUI::implementation
 {
+    inline void MainWindow::ShowSearchBar(bool replaceMode)
+    {
+        SearchBar().Visibility(winrt::Microsoft::UI::Xaml::Visibility::Visible);
+        ReplaceSearchPanel().Visibility(replaceMode
+            ? winrt::Microsoft::UI::Xaml::Visibility::Visible
+            : winrt::Microsoft::UI::Xaml::Visibility::Collapsed);
+        SearchTextBox().Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
+        SearchTextBox().SelectAll();
+        RefreshAdvancedSearchSummary();
+    }
+
+    inline void MainWindow::SearchMenuItem_Click(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        ShowSearchBar(false);
+    }
+
+    inline void MainWindow::ReplaceMenuItem_Click(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        ShowSearchBar(true);
+    }
+
+    inline void MainWindow::CloseSearchBarButton_Click(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        SearchBar().Visibility(winrt::Microsoft::UI::Xaml::Visibility::Collapsed);
+        TargetTextBox().Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
+    }
+
+    inline void MainWindow::RemoveEmptySubtitleRows()
+    {
+        if (m_rows.empty())
+            return;
+
+        size_t removed = 0;
+        for (int32_t index = static_cast<int32_t>(m_rows.size()) - 1; index >= 0; --index)
+        {
+            if (!IsTranslationEmpty(m_rows[index].target))
+                continue;
+            m_rows.erase(m_rows.begin() + index);
+            ++removed;
+        }
+
+        if (removed == 0)
+        {
+            StatusBarText().Text(L"Nejsou žádné prázdné titulky k odstranění");
+            return;
+        }
+
+        if (m_rows.empty())
+            m_currentIndex = 0;
+        else
+            m_currentIndex = (std::max)(0, (std::min)(
+                m_currentIndex, static_cast<int32_t>(m_rows.size()) - 1));
+
+        m_selectedSubtitleIndices.clear();
+        if (!m_rows.empty())
+            m_selectedSubtitleIndices.push_back(m_currentIndex);
+        m_selectionAnchorIndex = m_rows.empty() ? -1 : m_currentIndex;
+
+        RefreshAfterStructureEdit(winrt::hstring{
+            L"Odstraněno " + std::to_wstring(removed) + L" prázdných titulků" });
+        RefreshAdvancedSearchSummary();
+    }
+
+    inline void MainWindow::RemoveEmptySubtitlesButton_Click(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        RemoveEmptySubtitleRows();
+    }
+
+    inline void MainWindow::FindAndRemoveButton_Click(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        std::wstring const query{ SearchTextBox().Text().c_str() };
+        if (query.empty())
+        {
+            StatusBarText().Text(L"Najít a odstranit · nejprve zadejte hledaný text");
+            SearchTextBox().Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
+            return;
+        }
+
+        auto options = CurrentSearchOptions();
+        if (options.scope == agi::winui::SearchScope::source)
+        {
+            StatusBarText().Text(L"Najít a odstranit pracuje s překladem; zvolte Překlad nebo Obojí");
+            return;
+        }
+
+        std::vector<size_t> affected;
+        size_t occurrences = 0;
+        for (auto const index : VisibleRowIndices())
+        {
+            auto const& row = m_rows[index];
+            auto const count = agi::winui::CountSearchMatches(
+                std::wstring_view{ row.target.c_str(), row.target.size() }, query, options);
+            if (!count)
+                continue;
+            affected.push_back(index);
+            occurrences += count;
+        }
+
+        if (affected.empty())
+        {
+            StatusBarText().Text(L"Najít a odstranit · žádná shoda");
+            return;
+        }
+
+        std::vector<int32_t> emptyAfter;
+        for (auto const index : affected)
+        {
+            auto& row = m_rows[index];
+            auto const replaced = agi::winui::ReplaceSearchMatches(
+                std::wstring_view{ row.target.c_str(), row.target.size() }, query, L"", options);
+            row.target = winrt::hstring{ replaced };
+            row.rawTarget = row.target;
+            row.workflowStatus = L"Upraveno";
+            row.status = L"Upraveno";
+            row.targetModified = true;
+            if (IsTranslationEmpty(row.target))
+                emptyAfter.push_back(static_cast<int32_t>(index));
+        }
+
+        for (auto it = emptyAfter.rbegin(); it != emptyAfter.rend(); ++it)
+            m_rows.erase(m_rows.begin() + *it);
+
+        if (m_rows.empty())
+            m_currentIndex = 0;
+        else
+            m_currentIndex = (std::max)(0, (std::min)(
+                m_currentIndex, static_cast<int32_t>(m_rows.size()) - 1));
+
+        m_selectedSubtitleIndices.clear();
+        if (!m_rows.empty())
+            m_selectedSubtitleIndices.push_back(m_currentIndex);
+        m_selectionAnchorIndex = m_rows.empty() ? -1 : m_currentIndex;
+
+        if (!emptyAfter.empty())
+        {
+            RefreshAfterStructureEdit(winrt::hstring{
+                L"Odstraněno " + std::to_wstring(occurrences) + L" výskytů · " +
+                std::to_wstring(emptyAfter.size()) + L" prázdných titulků odstraněno" });
+        }
+        else
+        {
+            SyncTargetEntriesFromRows();
+            m_workflowStateDirty = true;
+            UpdateDirtyFromRows();
+            RefreshQaAll();
+            RebuildSubtitleGrid();
+            if (!m_rows.empty())
+                LoadCurrentRow();
+            RenderWaveform();
+            ScheduleWorkspaceDraftSave();
+            StatusBarText().Text(winrt::hstring{
+                L"Odstraněno " + std::to_wstring(occurrences) + L" výskytů" });
+        }
+
+        RefreshAdvancedSearchSummary();
+    }
+
     inline bool MainWindow::RowMatchesAdvancedSearch(SubtitleRowData const& row, std::wstring_view query)
     {
         return agi::winui::SearchRowMatches(
@@ -179,6 +346,13 @@ namespace winrt::Aegisub_WinUI::implementation
         winrt::Windows::Foundation::IInspectable const&,
         winrt::Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const& args)
     {
+        if (args.Key() == winrt::Windows::System::VirtualKey::Escape)
+        {
+            args.Handled(true);
+            SearchBar().Visibility(winrt::Microsoft::UI::Xaml::Visibility::Collapsed);
+            TargetTextBox().Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
+            return;
+        }
         if (args.Key() != winrt::Windows::System::VirtualKey::Enter) return;
         bool const shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
         args.Handled(true);

@@ -329,6 +329,10 @@ namespace winrt::Aegisub_WinUI::implementation
         }
         if (key == winrt::Windows::System::VirtualKey::Up) { args.Handled(true); MoveCurrentBy(-1); return; }
         if (key == winrt::Windows::System::VirtualKey::Down) { args.Handled(true); MoveCurrentBy(1); return; }
+        if (control && key == winrt::Windows::System::VirtualKey::F)
+        { args.Handled(true); ShowSearchBar(false); return; }
+        if (control && key == winrt::Windows::System::VirtualKey::R)
+        { args.Handled(true); ShowSearchBar(true); return; }
         if (control && key == winrt::Windows::System::VirtualKey::S)
         { args.Handled(true); if (shift) SaveAsFromShortcut(); else SaveFromShortcut(); return; }
         if (control && key == winrt::Windows::System::VirtualKey::Z)
@@ -365,7 +369,9 @@ namespace winrt::Aegisub_WinUI::implementation
         { args.Handled(true); if (shift) SaveAsFromShortcut(); else SaveFromShortcut(); }
         else if (control && key == winrt::Windows::System::VirtualKey::O) { args.Handled(true); OpenProjectFiles(); }
         else if (control && key == winrt::Windows::System::VirtualKey::F)
-        { args.Handled(true); SearchTextBox().Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic); SearchTextBox().SelectAll(); }
+        { args.Handled(true); ShowSearchBar(false); }
+        else if (control && key == winrt::Windows::System::VirtualKey::R)
+        { args.Handled(true); ShowSearchBar(true); }
         else if (key == winrt::Windows::System::VirtualKey::F3) { args.Handled(true); MoveToSearchResult(shift ? -1 : 1); }
         else if (key == winrt::Windows::System::VirtualKey::F6) { args.Handled(true); MoveToReview(shift ? -1 : 1); }
         else if (key == winrt::Windows::System::VirtualKey::F7) { args.Handled(true); MoveToUntranslated(shift ? -1 : 1); }

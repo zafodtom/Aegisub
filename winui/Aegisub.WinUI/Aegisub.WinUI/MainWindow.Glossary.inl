@@ -292,7 +292,7 @@ namespace winrt::Aegisub_WinUI::implementation
 
             winrt::Microsoft::UI::Xaml::Controls::TextBox sourceBox;
             sourceBox.Text(m_glossaryEntries[index].source);
-            sourceBox.FontSize(10.5);
+            sourceBox.FontSize(12.0);
             sourceBox.Height(22.0);
             sourceBox.MinHeight(22.0);
             sourceBox.Padding(winrt::Microsoft::UI::Xaml::Thickness{ 4.0, 0.0, 4.0, 0.0 });
@@ -302,7 +302,7 @@ namespace winrt::Aegisub_WinUI::implementation
 
             winrt::Microsoft::UI::Xaml::Controls::TextBox targetBox;
             targetBox.Text(m_glossaryEntries[index].target);
-            targetBox.FontSize(10.5);
+            targetBox.FontSize(12.0);
             targetBox.Height(22.0);
             targetBox.MinHeight(22.0);
             targetBox.Padding(winrt::Microsoft::UI::Xaml::Thickness{ 4.0, 0.0, 4.0, 0.0 });
