@@ -394,6 +394,10 @@ namespace winrt::Aegisub_WinUI::implementation
         { args.Handled(true); ShowSearchBar(false); }
         else if (control && key == winrt::Windows::System::VirtualKey::R)
         { args.Handled(true); ShowSearchBar(true); }
+        else if (control && key == winrt::Windows::System::VirtualKey::Z)
+        { args.Handled(true); ApplyEditHistory(shift); }
+        else if (control && key == winrt::Windows::System::VirtualKey::Y)
+        { args.Handled(true); ApplyEditHistory(true); }
         else if (key == winrt::Windows::System::VirtualKey::F3) { args.Handled(true); MoveToSearchResult(shift ? -1 : 1); }
         else if (key == winrt::Windows::System::VirtualKey::F6) { args.Handled(true); MoveToReview(shift ? -1 : 1); }
         else if (key == winrt::Windows::System::VirtualKey::F7) { args.Handled(true); MoveToUntranslated(shift ? -1 : 1); }
