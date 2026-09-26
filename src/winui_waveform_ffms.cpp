@@ -117,9 +117,6 @@ bool WriteWinUiWaveform(
     auto const samples = original.NumSamples;
     auto const sampleRate = original.SampleRate;
     auto const actualBins = static_cast<size_t>((std::min<int64_t>)(samples, static_cast<int64_t>(bins)));
-    auto const samplesPerBin = (samples + static_cast<int64_t>(actualBins) - 1) /
-        static_cast<int64_t>(actualBins);
-
     std::ofstream stream(static_cast<std::filesystem::path const&>(output),
         std::ios::binary | std::ios::trunc);
     if (!stream)
@@ -176,26 +173,6 @@ bool WriteWinUiWaveform(
                    << static_cast<double>(minimum) / 32768.0 << '\t'
                    << static_cast<double>(maximum) / 32767.0 << '\n';
         }
-    }
-
-    FFMS_DestroyAudioSource(audio);
-            FFMS_DestroyIndex(index);
-            error = std::string("Audio decoding failed: ") + errorInfo.Buffer;
-            return false;
-        }
-
-        int16_t minimum = 0;
-        int16_t maximum = 0;
-        for (int64_t sample = 0; sample < count; ++sample)
-        {
-            minimum = (std::min)(minimum, buffer[static_cast<size_t>(sample)]);
-            maximum = (std::max)(maximum, buffer[static_cast<size_t>(sample)]);
-        }
-
-        stream << std::fixed << std::setprecision(6)
-               << static_cast<double>(minimum) / 32768.0 << '\t'
-               << static_cast<double>(maximum) / 32767.0 << '\n';
-        position += count;
     }
 
     FFMS_DestroyAudioSource(audio);
