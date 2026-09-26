@@ -288,7 +288,9 @@ namespace winrt::Aegisub_WinUI::implementation
             winrt::Microsoft::UI::Xaml::Controls::Grid::SetRow(targetBox, static_cast<int32_t>(visual));
             winrt::Microsoft::UI::Xaml::Controls::Grid::SetColumn(targetBox, 1);
 
-            sourceBox.TextChanged([this, index](auto const& sender, auto const&)
+            sourceBox.TextChanged([this, index](
+                winrt::Windows::Foundation::IInspectable const& sender,
+                winrt::Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&)
             {
                 if (m_glossaryRebuilding || index >= m_glossaryEntries.size())
                     return;
@@ -297,7 +299,9 @@ namespace winrt::Aegisub_WinUI::implementation
                 EnsureGlossaryAutoSavePath();
                 SaveGlossaryToFile(m_glossaryPath);
             });
-            targetBox.TextChanged([this, index](auto const& sender, auto const&)
+            targetBox.TextChanged([this, index](
+                winrt::Windows::Foundation::IInspectable const& sender,
+                winrt::Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&)
             {
                 if (m_glossaryRebuilding || index >= m_glossaryEntries.size())
                     return;
