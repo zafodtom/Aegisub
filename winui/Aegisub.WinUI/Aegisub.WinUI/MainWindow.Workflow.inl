@@ -69,6 +69,8 @@ namespace winrt::Aegisub_WinUI::implementation
         auto const end = WorkflowTimestampSeconds(row.end);
         auto const nextStart = index + 1 < static_cast<int32_t>(m_rows.size())
             ? WorkflowTimestampSeconds(m_rows[index + 1].start) : -1.0;
+        auto const previousEnd = index > 0
+            ? WorkflowTimestampSeconds(m_rows[index - 1].end) : -1.0;
 
         // Core translator QA: keep only directly actionable checks.
         auto settings = m_workspaceSettings.qa;
@@ -127,6 +129,9 @@ namespace winrt::Aegisub_WinUI::implementation
                     break;
             }
         }
+
+        if (previousEnd >= 0.0 && start < previousEnd - 0.0005)
+            addIssue(L"časový překryv s předchozím titulkem");
 
         return winrt::hstring{ issues };
     }
