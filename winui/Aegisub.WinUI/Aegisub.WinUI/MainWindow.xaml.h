@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <cwctype>
 #include <iomanip>
+#include <numeric>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -22,6 +23,7 @@
 #include <winrt/Windows.Media.Playback.h>
 #include <winrt/Windows.Storage.h>
 #include <winrt/Windows.System.h>
+#include <winrt/Windows.UI.Text.h>
 #include <winrt/Microsoft.UI.Input.h>
 
 namespace winrt::Aegisub_WinUI::implementation

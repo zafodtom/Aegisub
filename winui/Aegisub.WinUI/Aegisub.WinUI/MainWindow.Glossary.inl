@@ -284,7 +284,8 @@ namespace winrt::Aegisub_WinUI::implementation
             {
                 if (m_glossaryRebuilding || index >= m_glossaryEntries.size())
                     return;
-                m_glossaryEntries[index].source = sender.Text();
+                m_glossaryEntries[index].source =
+                    sender.as<winrt::Microsoft::UI::Xaml::Controls::TextBox>().Text();
                 EnsureGlossaryAutoSavePath();
                 SaveGlossaryToFile(m_glossaryPath);
             });
@@ -292,7 +293,8 @@ namespace winrt::Aegisub_WinUI::implementation
             {
                 if (m_glossaryRebuilding || index >= m_glossaryEntries.size())
                     return;
-                m_glossaryEntries[index].target = sender.Text();
+                m_glossaryEntries[index].target =
+                    sender.as<winrt::Microsoft::UI::Xaml::Controls::TextBox>().Text();
                 EnsureGlossaryAutoSavePath();
                 SaveGlossaryToFile(m_glossaryPath);
             });
