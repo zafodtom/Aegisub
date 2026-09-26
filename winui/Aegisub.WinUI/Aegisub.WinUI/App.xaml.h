@@ -2,7 +2,7 @@
 
 #include "App.xaml.g.h"
 
-namespace winrt::Aegisub_WinUI::implementation
+namespace winrt::SRTune::implementation
 {
     struct App : AppT<App>
     {
