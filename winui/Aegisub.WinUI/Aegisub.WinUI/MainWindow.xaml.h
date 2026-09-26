@@ -347,6 +347,10 @@ namespace winrt::Aegisub_WinUI::implementation
         int32_t m_waveformViewportSubtitleIndex{-1};
         int m_waveformDragMode{};
         bool m_waveformDragActive{};
+        bool m_waveformLeftDragged{};
+        double m_waveformPointerPressX{};
+        double m_waveformOriginalStart{};
+        double m_waveformOriginalEnd{};
         double m_waveformPanStartX{};
         double m_waveformPanWindowStart{};
         double m_waveformPanWindowEnd{};
@@ -496,6 +500,7 @@ namespace winrt::Aegisub_WinUI::implementation
         void CenterWaveformOnCurrentSubtitle();
         void RefreshWaveformPlayhead();
         void RefreshWaveformTimingOverlay();
+        void PreviewWaveformRange(double start, double end);
         void PreviewWaveformBoundary(double seconds);
         double WaveformSecondsFromPointer(double x, double width, bool allowAutoPan);
         void ZoomWaveformHorizontal(double factor);

@@ -820,20 +820,19 @@ namespace winrt::Aegisub_WinUI::implementation
             clampedX / width * (m_waveformWindowEnd - m_waveformWindowStart);
     }
 
-    inline void MainWindow::PreviewWaveformBoundary(double seconds)
+    inline void MainWindow::PreviewWaveformRange(double start, double end)
     {
-        if (m_rows.empty() || m_waveformDragMode == 0)
+        if (m_rows.empty())
+            return;
+
+        start = (std::max)(0.0, start);
+        if (m_waveformDuration > 0.0)
+            end = (std::min)(m_waveformDuration, end);
+
+        if (end <= start + 0.01)
             return;
 
         auto& row = m_rows[m_currentIndex];
-        auto start = WorkflowTimestampSeconds(row.start);
-        auto end = WorkflowTimestampSeconds(row.end);
-
-        if (m_waveformDragMode == 1)
-            start = (std::max)(0.0, (std::min)(seconds, end - 0.01));
-        else
-            end = (std::max)(start + 0.01, seconds);
-
         row.start = FormatWinUiTiming(start);
         row.end = FormatWinUiTiming(end);
         row.duration = end - start;
@@ -845,6 +844,23 @@ namespace winrt::Aegisub_WinUI::implementation
         RefreshTimingEditor();
         UpdateMetrics();
         RefreshWaveformTimingOverlay();
+    }
+
+    inline void MainWindow::PreviewWaveformBoundary(double seconds)
+    {
+        if (m_rows.empty() || m_waveformDragMode == 0)
+            return;
+
+        auto const& row = m_rows[m_currentIndex];
+        auto start = WorkflowTimestampSeconds(row.start);
+        auto end = WorkflowTimestampSeconds(row.end);
+
+        if (m_waveformDragMode == 1)
+            start = (std::max)(0.0, (std::min)(seconds, end - 0.01));
+        else
+            end = (std::max)(start + 0.01, seconds);
+
+        PreviewWaveformRange(start, end);
     }
 
     inline void MainWindow::SeekMediaToSeconds(double seconds)
@@ -967,6 +983,21 @@ namespace winrt::Aegisub_WinUI::implementation
             return;
         }
 
+        if (m_waveformDragMode == 1)
+        {
+            auto const& row = m_rows[m_currentIndex];
+            m_waveformPointerPressX = point.Position().X;
+            m_waveformOriginalStart = WorkflowTimestampSeconds(row.start);
+            m_waveformOriginalEnd = WorkflowTimestampSeconds(row.end);
+            m_waveformLeftDragged = false;
+
+            // Do not change the start yet. A simple click is resolved on release;
+            // movement beyond the threshold becomes a whole-subtitle drag.
+            args.Handled(true);
+            return;
+        }
+
+        // Right button keeps direct end-boundary editing.
         auto const seconds = WaveformSecondsFromPointer(
             point.Position().X, WaveformCanvas().ActualWidth(), false);
         PreviewWaveformBoundary(seconds);
@@ -1004,6 +1035,49 @@ namespace winrt::Aegisub_WinUI::implementation
             return;
         }
 
+        if (m_waveformDragMode == 1)
+        {
+            auto const width = WaveformCanvas().ActualWidth();
+            if (width <= 0.0)
+                return;
+
+            auto const deltaPixels = point.Position().X - m_waveformPointerPressX;
+            if (!m_waveformLeftDragged && std::abs(deltaPixels) < 4.0)
+            {
+                args.Handled(true);
+                return;
+            }
+
+            m_waveformLeftDragged = true;
+
+            auto const visibleSpan = m_waveformWindowEnd - m_waveformWindowStart;
+            auto const duration = m_waveformOriginalEnd - m_waveformOriginalStart;
+            auto deltaSeconds = deltaPixels / width * visibleSpan;
+
+            auto newStart = m_waveformOriginalStart + deltaSeconds;
+            auto newEnd = m_waveformOriginalEnd + deltaSeconds;
+
+            if (newStart < 0.0)
+            {
+                newEnd -= newStart;
+                newStart = 0.0;
+            }
+            if (newEnd > m_waveformDuration)
+            {
+                auto const overflow = newEnd - m_waveformDuration;
+                newStart -= overflow;
+                newEnd = m_waveformDuration;
+                newStart = (std::max)(0.0, newStart);
+            }
+
+            // Preserve the original subtitle duration while moving.
+            if (duration > 0.0 && newEnd - newStart > 0.0)
+                PreviewWaveformRange(newStart, newEnd);
+
+            args.Handled(true);
+            return;
+        }
+
         auto const seconds = WaveformSecondsFromPointer(
             point.Position().X, WaveformCanvas().ActualWidth(), true);
         PreviewWaveformBoundary(seconds);
@@ -1018,9 +1092,20 @@ namespace winrt::Aegisub_WinUI::implementation
             return;
 
         auto const completedMode = m_waveformDragMode;
+        auto const point = args.GetCurrentPoint(WaveformCanvas());
+
+        // A left press without real movement is a start-boundary click.
+        if (completedMode == 1 && !m_waveformLeftDragged)
+        {
+            auto const seconds = WaveformSecondsFromPointer(
+                point.Position().X, WaveformCanvas().ActualWidth(), false);
+            PreviewWaveformBoundary(seconds);
+        }
+
         WaveformCanvas().ReleasePointerCapture(args.Pointer());
         m_waveformDragActive = false;
         m_waveformDragMode = 0;
+        m_waveformLeftDragged = false;
 
         if (completedMode == 3)
         {
@@ -1029,7 +1114,7 @@ namespace winrt::Aegisub_WinUI::implementation
             return;
         }
 
-        // Full model/QA/list synchronization only once after a timing drag finishes.
+        // Commit timing once after click/drag finishes.
         ApplyCurrentTimingFromEditors();
         RenderWaveform();
         args.Handled(true);

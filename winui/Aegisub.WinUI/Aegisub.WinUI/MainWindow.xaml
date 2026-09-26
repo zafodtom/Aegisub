@@ -148,17 +148,17 @@
                                 PointerReleased="WaveformCanvas_PointerReleased" />
                     </Border>
                     <Grid Grid.Row="4">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock x:Name="WaveformRangeText" Text="Lokální pohled kolem aktuálního titulku" FontFamily="Consolas" FontSize="10" Opacity="0.55" VerticalAlignment="Center" />
-                        <Button x:Name="WaveformPlaySelectedButton" Grid.Column="1" Content="▶ Titulek" MinHeight="22" Height="22" Padding="7,0"
-                                Click="VideoPlaySelectedButton_Click" ToolTipService.ToolTip="Přehrát / pozastavit aktuální titulek" />
-                        <Border Grid.Column="2" Width="22" Height="22" CornerRadius="11" BorderBrush="Gray" BorderThickness="1"
-                                Margin="5,0,0,0"
-                                ToolTipService.ToolTip="Levé = začátek · pravé = konec · Shift+levé nebo prostřední tlačítko = posun waveformu. H± mění časový zoom, V± výšku vlny.">
+                        <TextBlock x:Name="WaveformRangeText" Text="Lokální pohled kolem aktuálního titulku"
+                                   FontFamily="Consolas" FontSize="10" Opacity="0.55"
+                                   VerticalAlignment="Center" HorizontalAlignment="Left" />
+                        <Button x:Name="WaveformPlaySelectedButton" Content="▶ Titulek"
+                                Width="190" MinWidth="190" MinHeight="26" Height="26" Padding="10,0"
+                                HorizontalAlignment="Center" VerticalAlignment="Center"
+                                Click="VideoPlaySelectedButton_Click"
+                                ToolTipService.ToolTip="Přehrát / pozastavit aktuální titulek" />
+                        <Border Width="22" Height="22" CornerRadius="11" BorderBrush="Gray" BorderThickness="1"
+                                HorizontalAlignment="Right" VerticalAlignment="Center"
+                                ToolTipService.ToolTip="Levé kliknutí = změnit začátek. Levé tažení = posunout celý titulek se zachováním délky. Pravé = konec. Shift+levé nebo prostřední = posun pohledu waveformu. H± mění časový zoom, V± výšku vlny.">
                             <TextBlock Text="?" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.65" />
                         </Border>
                     </Grid>
@@ -315,7 +315,7 @@
                                            TextTrimming="CharacterEllipsis" Visibility="Collapsed" />
                                 <StackPanel Grid.Column="4" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="6">
                                     <Button Content="Převzít originál" Padding="6,2" FontSize="11" Click="CopyOriginalButton_Click" />
-                                    <Button Content="Rozdělit řádky" Padding="6,2" FontSize="11" Click="InsertLineBreakButton_Click" />
+                                    <Button Content="Zalomit řádek" Padding="6,2" FontSize="11" Click="InsertLineBreakButton_Click" />
                                 </StackPanel>
                             </Grid>
                         </Grid>

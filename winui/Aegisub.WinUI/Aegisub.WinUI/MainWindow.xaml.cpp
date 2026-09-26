@@ -1685,6 +1685,10 @@ namespace winrt::Aegisub_WinUI::implementation
 
         m_rowTargetTexts[index].Text(m_rows[index].target);
         m_rowStatusTexts[index].Text(m_rows[index].status);
+        if (!m_rows[index].qaIssue.empty())
+            ToolTipService::SetToolTip(m_rowStatusTexts[index], winrt::box_value(m_rows[index].qaIssue));
+        else
+            ToolTipService::SetToolTip(m_rowStatusTexts[index], nullptr);
     }
 
     int32_t MainWindow::RowIndexFromSender(
@@ -1885,6 +1889,12 @@ namespace winrt::Aegisub_WinUI::implementation
             auto const originalText = addText(row.original, visualRow, 3, true, 8.0);
             auto const targetText = addText(row.target, visualRow, 4, true, 8.0);
             auto const statusText = addText(row.status, visualRow, 5, true, 8.0);
+            statusText.IsHitTestVisible(true);
+            if (!row.qaIssue.empty())
+                ToolTipService::SetToolTip(statusText, winrt::box_value(row.qaIssue));
+            else
+                ToolTipService::SetToolTip(statusText, nullptr);
+
             visuals.push_back(numberText.as<UIElement>());
             visuals.push_back(startText.as<UIElement>());
             visuals.push_back(endText.as<UIElement>());
