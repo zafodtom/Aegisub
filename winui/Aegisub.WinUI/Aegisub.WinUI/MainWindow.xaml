@@ -52,6 +52,9 @@
                     <MenuFlyoutSeparator />
                     <MenuFlyoutItem Text="Uložit" Click="SaveButton_Click" />
                     <MenuFlyoutItem Text="Uložit jako…" Click="SaveAsButton_Click" />
+                    <MenuFlyoutSeparator />
+                    <MenuFlyoutItem x:Name="BurnSubtitlesMenuItem" Text="Vypálit překlad do videa…" Click="BurnSubtitlesMenuItem_Click" />
+                    <MenuFlyoutSeparator />
                     <MenuFlyoutItem x:Name="RestoreBackupButton" Text="Obnovit poslední zálohu…" IsEnabled="False" Click="RestoreBackupButton_Click" />
                 </MenuBarItem>
 

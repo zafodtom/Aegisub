@@ -51,6 +51,8 @@ namespace winrt::Aegisub_WinUI::implementation
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void SaveAsButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void BurnSubtitlesMenuItem_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void RestoreBackupButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void NewProjectMenuItem_Click(winrt::Windows::Foundation::IInspectable const& sender,
@@ -423,6 +425,7 @@ namespace winrt::Aegisub_WinUI::implementation
         double m_playSelectedUntil{-1.0};
         bool m_structureDirty{};
         bool m_featureStateLoaded{};
+        bool m_videoBurnInProgress{};
 
         static constexpr size_t kMaxCpl = 42;
         static constexpr double kMaxCps = 20.0;
@@ -552,6 +555,7 @@ namespace winrt::Aegisub_WinUI::implementation
         void SeekVideoToCurrentSubtitle();
         void AdjustVideoPosition(double deltaSeconds);
         void RefreshVideoPositionText();
+        void StartBurnSubtitlesToVideo(std::wstring const& outputPath);
         bool LoadWaveformForMedia(std::wstring const& filename);
         void RenderWaveform();
         void RenderWholeTimeline();
