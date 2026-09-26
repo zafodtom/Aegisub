@@ -22,6 +22,7 @@
 #include <winrt/Windows.Media.Playback.h>
 #include <winrt/Windows.Storage.h>
 #include <winrt/Windows.System.h>
+#include <winrt/Microsoft.UI.Input.h>
 
 namespace winrt::Aegisub_WinUI::implementation
 {
