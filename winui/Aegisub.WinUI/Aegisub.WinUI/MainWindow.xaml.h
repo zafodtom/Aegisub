@@ -173,6 +173,14 @@ namespace winrt::Aegisub_WinUI::implementation
             winrt::Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args);
         void WaveformCanvas_PointerReleased(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args);
+        void WaveformHorizontalZoomOutButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void WaveformHorizontalZoomInButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void WaveformVerticalZoomOutButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void WaveformVerticalZoomInButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void RecentProjectsButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
 
@@ -306,6 +314,12 @@ namespace winrt::Aegisub_WinUI::implementation
         int32_t m_waveformViewportSubtitleIndex{-1};
         int m_waveformDragMode{};
         bool m_waveformDragActive{};
+        uint64_t m_lastWaveformAutoPanTick{};
+        double m_waveformHorizontalZoom{1.0};
+        double m_waveformVerticalGain{1.0};
+        winrt::Microsoft::UI::Xaml::Shapes::Rectangle m_waveformActiveSelection{ nullptr };
+        winrt::Microsoft::UI::Xaml::Shapes::Line m_waveformActiveStartMarker{ nullptr };
+        winrt::Microsoft::UI::Xaml::Shapes::Line m_waveformActiveEndMarker{ nullptr };
         winrt::Microsoft::UI::Xaml::Shapes::Line m_waveformPlayhead{ nullptr };
         winrt::Microsoft::UI::Xaml::DispatcherTimer m_mediaUiTimer{ nullptr };
         double m_playSelectedUntil{-1.0};
@@ -412,8 +426,11 @@ namespace winrt::Aegisub_WinUI::implementation
         void RenderWaveform();
         void CenterWaveformOnCurrentSubtitle();
         void RefreshWaveformPlayhead();
+        void RefreshWaveformTimingOverlay();
         void PreviewWaveformBoundary(double seconds);
         double WaveformSecondsFromPointer(double x, double width, bool allowAutoPan);
+        void ZoomWaveformHorizontal(double factor);
+        void ZoomWaveformVertical(double factor);
         void SeekMediaToSeconds(double seconds);
         void StartMediaUiTimer();
         void CaptureRecoveryHistorySnapshot() const;

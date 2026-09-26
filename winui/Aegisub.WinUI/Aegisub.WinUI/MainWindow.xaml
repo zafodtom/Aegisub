@@ -99,13 +99,24 @@
                         <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
-                    <Grid>
-                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
                         <StackPanel Orientation="Horizontal" Spacing="10">
                             <TextBlock Text="Zvuková vlna" FontWeight="SemiBold" />
                             <TextBlock x:Name="WaveformFileText" Text="otevři video nebo audio" FontSize="10" Opacity="0.5" VerticalAlignment="Center" />
                         </StackPanel>
-                        <Button Grid.Column="1" Content="Audio…" Padding="7,2" Click="OpenAudioButton_Click" />
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="Zoom" FontSize="10" Opacity="0.55" VerticalAlignment="Center" />
+                            <Button Content="H−" MinWidth="32" Padding="5,2" Click="WaveformHorizontalZoomOutButton_Click" ToolTipService.ToolTip="Horizontálně zmenšit · zobrazit více času" />
+                            <Button Content="H+" MinWidth="32" Padding="5,2" Click="WaveformHorizontalZoomInButton_Click" ToolTipService.ToolTip="Horizontálně zvětšit · zobrazit méně času" />
+                            <Button Content="V−" MinWidth="32" Padding="5,2" Click="WaveformVerticalZoomOutButton_Click" ToolTipService.ToolTip="Snížit výšku zvukové vlny" />
+                            <Button Content="V+" MinWidth="32" Padding="5,2" Click="WaveformVerticalZoomInButton_Click" ToolTipService.ToolTip="Zvýšit výšku zvukové vlny" />
+                        </StackPanel>
+                        <Button Grid.Column="2" Content="Audio…" Padding="7,2" Click="OpenAudioButton_Click" />
                     </Grid>
                     <Border Grid.Row="1" Background="#08000000" CornerRadius="3">
                         <Canvas x:Name="WaveformCanvas" Background="Transparent"
