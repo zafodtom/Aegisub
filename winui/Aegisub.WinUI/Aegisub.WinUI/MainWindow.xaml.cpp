@@ -109,7 +109,7 @@ namespace
     {
         MessageBoxW(
             GetActiveWindow(),
-            L"Origin\u00E1l a \u010Desk\u00FD p\u0159eklad mus\u00ED b\u00FDt dva r\u016Fzn\u00E9 soubory.\n\n"
+            L"Origin\u00E1l a p\u0159eklad mus\u00ED b\u00FDt dva r\u016Fzn\u00E9 soubory.\n\n"
             L"Zvolen\u00FD soubor nebyl otev\u0159en, aby nemohlo doj\u00EDt k p\u0159eps\u00E1n\u00ED origin\u00E1lu.",
             L"Stejn\u00FD soubor nelze pou\u017E\u00EDt dvakr\u00E1t",
             MB_OK | MB_ICONWARNING);
@@ -645,7 +645,7 @@ namespace winrt::Aegisub_WinUI::implementation
         if (backupPath.empty() || !std::filesystem::exists(backupPath))
         {
             RefreshBackupAction();
-            MessageBoxW(GetActiveWindow(), L"Pro aktu\u00E1ln\u00ED \u010Desk\u00FD soubor nebyla nalezena z\u00E1loha.",
+            MessageBoxW(GetActiveWindow(), L"Pro aktu\u00E1ln\u00ED soubor p\u0159ekladu nebyla nalezena z\u00E1loha.",
                 L"Z\u00E1loha nen\u00ED k dispozici", MB_OK | MB_ICONINFORMATION);
             return;
         }
@@ -946,7 +946,7 @@ namespace winrt::Aegisub_WinUI::implementation
     {
         if (m_targetPath.empty())
         {
-            MessageBoxW(GetActiveWindow(), L"Nejd\u0159\u00EDve otev\u0159ete \u010Desk\u00FD soubor titulk\u016F.",
+            MessageBoxW(GetActiveWindow(), L"Nejd\u0159\u00EDve otev\u0159ete soubor p\u0159ekladu.",
                 L"Obnovovac\u00ED data", MB_OK | MB_ICONINFORMATION);
             return;
         }
@@ -998,7 +998,7 @@ namespace winrt::Aegisub_WinUI::implementation
         if (m_targetPath.empty())
             return;
         if (MessageBoxW(GetActiveWindow(),
-                L"Odstranit z\u00E1lohu a pracovn\u00ED koncept aktu\u00E1ln\u00EDho \u010Desk\u00E9ho souboru?\n\n"
+                L"Odstranit z\u00E1lohu a pracovn\u00ED koncept aktu\u00E1ln\u00EDho souboru p\u0159ekladu?\n\n"
                 L"Ulo\u017Een\u00E9 titulky z\u016Fstanou beze zm\u011Bny.",
                 L"Odstranit obnovovac\u00ED data?", MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2) != IDYES)
         {
@@ -1127,7 +1127,7 @@ namespace winrt::Aegisub_WinUI::implementation
             details += L"\n\u2026 a dal\u0161\u00EDch " + std::to_wstring(rowCount - 12) + L" titulk\u016F";
 
         std::wstring message = occurrenceCount == 0
-            ? L"Ve zobrazen\u00FDch \u010Desk\u00FDch titulc\u00EDch nebyla nalezena \u017E\u00E1dn\u00E1 shoda."
+            ? L"Ve zobrazen\u00E9m p\u0159ekladu nebyla nalezena \u017E\u00E1dn\u00E1 shoda."
             : L"Nalezeno " + std::to_wstring(occurrenceCount) + L" v\u00FDskyt\u016F v " +
                 std::to_wstring(rowCount) + L" titulc\u00EDch." + details;
         MessageBoxW(GetActiveWindow(), message.c_str(), L"N\u00E1hled nahrazen\u00ED",
@@ -1639,19 +1639,27 @@ namespace winrt::Aegisub_WinUI::implementation
 
         if (m_sourcePath.empty())
         {
-            StatusBarText().Text(L"Uk\u00E1zkov\u00E1 data \u00B7 tla\u010D\u00EDtko Otev\u0159\u00EDt projekt na\u010Dte origin\u00E1l a \u010De\u0161tinu");
+            if (m_targetPath.empty())
+                StatusBarText().Text(L"Samostatn\u00FD projekt titulk\u016F");
+            else
+            {
+                auto const targetName = std::filesystem::path(m_targetPath.c_str()).filename().wstring();
+                StatusBarText().Text(hstring{ L"P\u0159eklad: " + targetName });
+            }
         }
         else if (m_targetPath.empty())
         {
             auto const sourceName = std::filesystem::path(m_sourcePath.c_str()).filename().wstring();
-            StatusBarText().Text(hstring{ L"Origin\u00E1l: " + sourceName + L" \u00B7 \u010De\u0161tina nen\u00ED na\u010Dtena" });
+            StatusBarText().Text(hstring{
+                L"Origin\u00E1l: " + sourceName + L" \u00B7 p\u0159eklad nen\u00ED na\u010Dten" });
         }
         else
         {
             auto const sourceName = std::filesystem::path(m_sourcePath.c_str()).filename().wstring();
             auto const targetName = std::filesystem::path(m_targetPath.c_str()).filename().wstring();
             StatusBarText().Text(hstring{
-                L"Origin\u00E1l: " + sourceName + L" \u00B7 \u010Ce\u0161tina: " + targetName + L" \u00B7 p\u00E1rov\u00E1n\u00ED podle \u010Dasu" });
+                L"Origin\u00E1l: " + sourceName + L" \u00B7 P\u0159eklad: " + targetName +
+                L" \u00B7 p\u00E1rov\u00E1n\u00ED podle \u010Dasu" });
         }
 
         m_loadingSelection = false;
@@ -2309,7 +2317,7 @@ namespace winrt::Aegisub_WinUI::implementation
 
         m_externalChangeAcknowledged = true;
         auto const result = MessageBoxW(GetActiveWindow(),
-            L"Otev\u0159en\u00FD \u010Desk\u00FD soubor zm\u011Bnila jin\u00E1 aplikace.\n\n"
+            L"Otev\u0159en\u00FD soubor p\u0159ekladu zm\u011Bnila jin\u00E1 aplikace.\n\n"
             L"Ano = na\u010D\u00EDst zm\u011Bn\u011Bn\u00FD soubor\n"
             L"Ne = ulo\u017Eit rozpracovanou verzi pod jin\u00FDm n\u00E1zvem\n"
             L"Storno = pokra\u010Dovat bez na\u010Dten\u00ED",
@@ -2337,7 +2345,7 @@ namespace winrt::Aegisub_WinUI::implementation
             DeleteWorkspaceDraft();
             m_targetEntries = std::move(entries);
             RefreshLoadedProject();
-            StatusBarText().Text(L"Extern\u011B zm\u011Bn\u011Bn\u00FD \u010Desk\u00FD soubor byl znovu na\u010Dten");
+            StatusBarText().Text(L"Extern\u011B zm\u011Bn\u011Bn\u00FD soubor p\u0159ekladu byl znovu na\u010Dten");
             return;
         }
 
@@ -2506,7 +2514,7 @@ namespace winrt::Aegisub_WinUI::implementation
         dialog.lpstrFilter = filter;
         dialog.lpstrFile = buffer;
         dialog.nMaxFile = static_cast<DWORD>(std::size(buffer));
-        dialog.lpstrTitle = L"Ulo\u017Eit \u010Desk\u00E9 titulky jako";
+        dialog.lpstrTitle = L"Ulo\u017Eit p\u0159eklad jako";
         dialog.lpstrDefExt = L"srt";
         dialog.Flags = OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR | OFN_OVERWRITEPROMPT;
 
@@ -2539,7 +2547,7 @@ namespace winrt::Aegisub_WinUI::implementation
         }
 
         std::wstring targetFilename;
-        if (!SelectSubtitleFile(L"Otev\u0159\u00EDt p\u0159ipraven\u00E9 \u010Desk\u00E9 titulky", targetFilename))
+        if (!SelectSubtitleFile(L"Otev\u0159\u00EDt p\u0159eklad", targetFilename))
         {
             return;
         }
@@ -2602,11 +2610,11 @@ namespace winrt::Aegisub_WinUI::implementation
 
     void MainWindow::OpenTargetFile()
     {
-        if (!ConfirmSaveBefore(L"otev\u0159en\u00EDm jin\u00E9ho \u010Desk\u00E9ho p\u0159ekladu"))
+        if (!ConfirmSaveBefore(L"otev\u0159en\u00EDm jin\u00E9ho p\u0159ekladu"))
             return;
 
         std::wstring filename;
-        if (!SelectSubtitleFile(L"Otev\u0159\u00EDt p\u0159ipraven\u00E9 \u010Desk\u00E9 titulky", filename))
+        if (!SelectSubtitleFile(L"Otev\u0159\u00EDt p\u0159eklad", filename))
             return;
         if (PathsReferToSameFile(filename, std::wstring_view{ m_sourcePath.c_str(), m_sourcePath.size() }))
         {
@@ -2670,7 +2678,7 @@ namespace winrt::Aegisub_WinUI::implementation
         {
             StatusBarText().Text(hstring{
                 L"Pozor: origin\u00E1l " + std::to_wstring(m_sourceEntries.size()) +
-                L" titulk\u016F \u00B7 \u010De\u0161tina " + std::to_wstring(m_targetEntries.size()) +
+                L" titulk\u016F \u00B7 p\u0159eklad " + std::to_wstring(m_targetEntries.size()) +
                 L" \u00B7 zkontrolujte p\u00E1rov\u00E1n\u00ED podle \u010Dasu" });
         }
         if (restoredDraft)
@@ -3052,7 +3060,7 @@ namespace winrt::Aegisub_WinUI::implementation
         else
         {
             ToolTipService::SetToolTip(button, box_value(
-                L"Pro otev\u0159en\u00FD \u010Desk\u00FD soubor zat\u00EDm nen\u00ED dostupn\u00E1 z\u00E1loha"));
+                L"Pro otev\u0159en\u00FD soubor p\u0159ekladu zat\u00EDm nen\u00ED dostupn\u00E1 z\u00E1loha"));
         }
     }
 
@@ -3645,7 +3653,7 @@ namespace winrt::Aegisub_WinUI::implementation
         if (PathsReferToSameFile(
             std::wstring_view{ m_sourcePath.c_str(), m_sourcePath.size() }, savePath))
         {
-            errorMessage = L"\u010Cesk\u00FD p\u0159eklad nelze ulo\u017Eit p\u0159es soubor origin\u00E1lu. Zvolte jin\u00FD n\u00E1zev souboru.";
+            errorMessage = L"P\u0159eklad nelze ulo\u017Eit p\u0159es soubor origin\u00E1lu. Zvolte jin\u00FD n\u00E1zev souboru.";
             return false;
         }
 
@@ -3661,15 +3669,15 @@ namespace winrt::Aegisub_WinUI::implementation
             {
                 m_lastSaveDetectedExternalChange = true;
                 errorMessage = m_forceSaveAsForRecoveredDraft
-                    ? L"Obnoven\u00FD koncept poch\u00E1z\u00ED ze star\u0161\u00ED verze \u010Desk\u00E9ho souboru. Aegisub jej proto nep\u0159epsal."
-                    : L"Otev\u0159en\u00FD \u010Desk\u00FD soubor od posledn\u00EDho na\u010Dten\u00ED zm\u011Bnila jin\u00E1 aplikace. Aegisub jej proto nep\u0159epsal.";
+                    ? L"Obnoven\u00FD koncept poch\u00E1z\u00ED ze star\u0161\u00ED verze souboru p\u0159ekladu. Aegisub jej proto nep\u0159epsal."
+                    : L"Otev\u0159en\u00FD soubor p\u0159ekladu od posledn\u00EDho na\u010Dten\u00ED zm\u011Bnila jin\u00E1 aplikace. Aegisub jej proto nep\u0159epsal.";
                 return false;
             }
         }
 
         if (!m_targetEntries.empty() && m_rows.size() != m_targetEntries.size())
         {
-            errorMessage = L"Po\u010Det pracovn\u00EDch \u0159\u00E1dk\u016F neodpov\u00EDd\u00E1 \u010Desk\u00E9mu souboru.";
+            errorMessage = L"Po\u010Det pracovn\u00EDch \u0159\u00E1dk\u016F neodpov\u00EDd\u00E1 souboru p\u0159ekladu.";
             return false;
         }
 
@@ -3746,7 +3754,7 @@ namespace winrt::Aegisub_WinUI::implementation
             {
                 std::filesystem::remove(tempOutput, fileError);
                 errorMessage = L"Nepoda\u0159ilo se zjistit syst\u00E9mov\u00FD adres\u00E1\u0159 pro bezpe\u010Dnostn\u00ED z\u00E1lohu. "
-                    L"P\u016Fvodn\u00ED \u010Desk\u00FD soubor nebyl zm\u011Bn\u011Bn.";
+                    L"P\u016Fvodn\u00ED soubor p\u0159ekladu nebyl zm\u011Bn\u011Bn.";
                 return false;
             }
             fileError.clear();
@@ -3755,7 +3763,7 @@ namespace winrt::Aegisub_WinUI::implementation
             {
                 std::filesystem::remove(tempOutput, fileError);
                 errorMessage = L"Nepoda\u0159ilo se p\u0159ipravit syst\u00E9mov\u00FD adres\u00E1\u0159 pro bezpe\u010Dnostn\u00ED z\u00E1lohu. "
-                    L"P\u016Fvodn\u00ED \u010Desk\u00FD soubor nebyl zm\u011Bn\u011Bn.";
+                    L"P\u016Fvodn\u00ED soubor p\u0159ekladu nebyl zm\u011Bn\u011Bn.";
                 return false;
             }
             auto backupTemp = backupPath;
@@ -3770,7 +3778,7 @@ namespace winrt::Aegisub_WinUI::implementation
                 std::filesystem::remove(backupTemp, fileError);
                 std::filesystem::remove(tempOutput, fileError);
                 errorMessage = L"Nepoda\u0159ilo se vytvo\u0159it bezpe\u010Dnostn\u00ED z\u00E1lohu v LocalAppData. "
-                    L"P\u016Fvodn\u00ED \u010Desk\u00FD soubor nebyl zm\u011Bn\u011Bn.";
+                    L"P\u016Fvodn\u00ED soubor p\u0159ekladu nebyl zm\u011Bn\u011Bn.";
                 return false;
             }
             m_lastSaveCreatedBackup = true;
@@ -3782,7 +3790,7 @@ namespace winrt::Aegisub_WinUI::implementation
             targetPath.c_str(),
             MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
         {
-            errorMessage = L"Do\u010Dasn\u00FD soubor se poda\u0159ilo vytvo\u0159it, ale nepoda\u0159ilo se nahradit p\u016Fvodn\u00ED \u010Desk\u00FD soubor.";
+            errorMessage = L"Do\u010Dasn\u00FD soubor se poda\u0159ilo vytvo\u0159it, ale nepoda\u0159ilo se nahradit p\u016Fvodn\u00ED soubor p\u0159ekladu.";
             std::filesystem::remove(tempOutput, fileError);
             return false;
         }
