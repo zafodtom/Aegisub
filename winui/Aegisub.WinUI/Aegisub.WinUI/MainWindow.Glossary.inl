@@ -2,7 +2,7 @@
 
 #include <fstream>
 
-namespace winrt::Aegisub_WinUI::implementation
+namespace winrt::SRTune::implementation
 {
     inline std::wstring GlossaryLower(std::wstring value)
     {
@@ -25,7 +25,7 @@ namespace winrt::Aegisub_WinUI::implementation
         auto root = WinUiLocalAppDataPath();
         if (root.empty())
             return {};
-        return root / L"Aegisub" / L"translation-manual.last";
+        return root / L"SRTune" / L"translation-manual.last";
     }
 
     inline std::filesystem::path GlossaryDefaultPath()
@@ -33,7 +33,7 @@ namespace winrt::Aegisub_WinUI::implementation
         auto root = WinUiLocalAppDataPath();
         if (root.empty())
             return {};
-        return root / L"Aegisub" / L"translation-manual.tsv";
+        return root / L"SRTune" / L"translation-manual.tsv";
     }
 
     inline std::string GlossaryCleanField(winrt::hstring const& value)
