@@ -966,13 +966,22 @@ namespace winrt::Aegisub_WinUI::implementation
         bool const left = properties.IsLeftButtonPressed();
         bool const right = properties.IsRightButtonPressed();
 
-        m_waveformDragMode = (middle || (shift && left)) ? 3 :
-            (right ? 2 : (left ? 1 : 0));
+        // Modes:
+        // 1 = left click/new-range drag
+        // 2 = right end-boundary drag
+        // 3 = waveform viewport pan (Shift + drag)
+        // 4 = whole-subtitle move (middle-button drag)
+        m_waveformDragMode = shift ? 3 :
+            (middle ? 4 : (right ? 2 : (left ? 1 : 0)));
         if (m_waveformDragMode == 0)
             return;
 
         m_waveformDragActive = WaveformCanvas().CapturePointer(args.Pointer());
         m_lastWaveformAutoPanTick = 0;
+
+        auto const width = WaveformCanvas().ActualWidth();
+        auto const pressSeconds = WaveformSecondsFromPointer(
+            point.Position().X, width, false);
 
         if (m_waveformDragMode == 3)
         {
@@ -983,24 +992,32 @@ namespace winrt::Aegisub_WinUI::implementation
             return;
         }
 
-        if (m_waveformDragMode == 1)
+        if (m_waveformDragMode == 4)
         {
             auto const& row = m_rows[m_currentIndex];
             m_waveformPointerPressX = point.Position().X;
             m_waveformOriginalStart = WorkflowTimestampSeconds(row.start);
             m_waveformOriginalEnd = WorkflowTimestampSeconds(row.end);
-            m_waveformLeftDragged = false;
-
-            // Do not change the start yet. A simple click is resolved on release;
-            // movement beyond the threshold becomes a whole-subtitle drag.
             args.Handled(true);
             return;
         }
 
-        // Right button keeps direct end-boundary editing.
-        auto const seconds = WaveformSecondsFromPointer(
-            point.Position().X, WaveformCanvas().ActualWidth(), false);
-        PreviewWaveformBoundary(seconds);
+        if (m_waveformDragMode == 1)
+        {
+            auto const& row = m_rows[m_currentIndex];
+            m_waveformPointerPressX = point.Position().X;
+            m_waveformPointerPressTime = pressSeconds;
+            m_waveformOriginalStart = WorkflowTimestampSeconds(row.start);
+            m_waveformOriginalEnd = WorkflowTimestampSeconds(row.end);
+            m_waveformLeftDragged = false;
+
+            // Wait for movement. No movement = simple start click.
+            args.Handled(true);
+            return;
+        }
+
+        // Right click immediately sets the end and continued dragging keeps moving it.
+        PreviewWaveformBoundary(pressSeconds);
         args.Handled(true);
     }
 
@@ -1012,10 +1029,10 @@ namespace winrt::Aegisub_WinUI::implementation
             return;
 
         auto const point = args.GetCurrentPoint(WaveformCanvas());
+        auto const width = WaveformCanvas().ActualWidth();
 
         if (m_waveformDragMode == 3)
         {
-            auto const width = WaveformCanvas().ActualWidth();
             auto const span = m_waveformPanWindowEnd - m_waveformPanWindowStart;
             if (width > 0.0 && span > 0.0)
             {
@@ -1035,9 +1052,38 @@ namespace winrt::Aegisub_WinUI::implementation
             return;
         }
 
+        if (m_waveformDragMode == 4)
+        {
+            if (width <= 0.0)
+                return;
+
+            auto const visibleSpan = m_waveformWindowEnd - m_waveformWindowStart;
+            auto const deltaPixels = point.Position().X - m_waveformPointerPressX;
+            auto const deltaSeconds = deltaPixels / width * visibleSpan;
+
+            auto newStart = m_waveformOriginalStart + deltaSeconds;
+            auto newEnd = m_waveformOriginalEnd + deltaSeconds;
+            auto const duration = m_waveformOriginalEnd - m_waveformOriginalStart;
+
+            if (newStart < 0.0)
+            {
+                newStart = 0.0;
+                newEnd = duration;
+            }
+
+            if (newEnd > m_waveformDuration)
+            {
+                newEnd = m_waveformDuration;
+                newStart = (std::max)(0.0, newEnd - duration);
+            }
+
+            PreviewWaveformRange(newStart, newEnd);
+            args.Handled(true);
+            return;
+        }
+
         if (m_waveformDragMode == 1)
         {
-            auto const width = WaveformCanvas().ActualWidth();
             if (width <= 0.0)
                 return;
 
@@ -1050,36 +1096,22 @@ namespace winrt::Aegisub_WinUI::implementation
 
             m_waveformLeftDragged = true;
 
-            auto const visibleSpan = m_waveformWindowEnd - m_waveformWindowStart;
-            auto const duration = m_waveformOriginalEnd - m_waveformOriginalStart;
-            auto deltaSeconds = deltaPixels / width * visibleSpan;
+            auto const currentSeconds = WaveformSecondsFromPointer(
+                point.Position().X, width, true);
 
-            auto newStart = m_waveformOriginalStart + deltaSeconds;
-            auto newEnd = m_waveformOriginalEnd + deltaSeconds;
+            auto const newStart = (std::min)(m_waveformPointerPressTime, currentSeconds);
+            auto const newEnd = (std::max)(m_waveformPointerPressTime, currentSeconds);
 
-            if (newStart < 0.0)
-            {
-                newEnd -= newStart;
-                newStart = 0.0;
-            }
-            if (newEnd > m_waveformDuration)
-            {
-                auto const overflow = newEnd - m_waveformDuration;
-                newStart -= overflow;
-                newEnd = m_waveformDuration;
-                newStart = (std::max)(0.0, newStart);
-            }
-
-            // Preserve the original subtitle duration while moving.
-            if (duration > 0.0 && newEnd - newStart > 0.0)
+            if (newEnd > newStart + 0.01)
                 PreviewWaveformRange(newStart, newEnd);
 
             args.Handled(true);
             return;
         }
 
+        // Right-button drag continuously moves only the end boundary.
         auto const seconds = WaveformSecondsFromPointer(
-            point.Position().X, WaveformCanvas().ActualWidth(), true);
+            point.Position().X, width, true);
         PreviewWaveformBoundary(seconds);
         args.Handled(true);
     }
@@ -1094,9 +1126,9 @@ namespace winrt::Aegisub_WinUI::implementation
         auto const completedMode = m_waveformDragMode;
         auto const point = args.GetCurrentPoint(WaveformCanvas());
 
-        // A left press without real movement is a start-boundary click.
         if (completedMode == 1 && !m_waveformLeftDragged)
         {
+            // Plain left click: only move the start boundary.
             auto const seconds = WaveformSecondsFromPointer(
                 point.Position().X, WaveformCanvas().ActualWidth(), false);
             PreviewWaveformBoundary(seconds);
@@ -1114,9 +1146,12 @@ namespace winrt::Aegisub_WinUI::implementation
             return;
         }
 
-        // Commit timing once after click/drag finishes.
-        ApplyCurrentTimingFromEditors();
-        RenderWaveform();
+        if (completedMode == 4 || completedMode == 1 || completedMode == 2)
+        {
+            ApplyCurrentTimingFromEditors();
+            RenderWaveform();
+        }
+
         args.Handled(true);
     }
 

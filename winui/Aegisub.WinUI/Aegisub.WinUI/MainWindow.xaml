@@ -158,7 +158,7 @@
                                 ToolTipService.ToolTip="Přehrát / pozastavit aktuální titulek" />
                         <Border Width="22" Height="22" CornerRadius="11" BorderBrush="Gray" BorderThickness="1"
                                 HorizontalAlignment="Right" VerticalAlignment="Center"
-                                ToolTipService.ToolTip="Levé kliknutí = změnit začátek. Levé tažení = posunout celý titulek se zachováním délky. Pravé = konec. Shift+levé nebo prostřední = posun pohledu waveformu. H± mění časový zoom, V± výšku vlny.">
+                                ToolTipService.ToolTip="Levé kliknutí = začátek. Levé tažení = vytvořit nový rozsah od–do. Pravé kliknutí/tažení = konec. Prostřední tlačítko + tažení = posunout celý titulek. Shift + tažení = posunout pohled waveformu. H± mění časový zoom, V± výšku vlny.">
                             <TextBlock Text="?" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.65" />
                         </Border>
                     </Grid>

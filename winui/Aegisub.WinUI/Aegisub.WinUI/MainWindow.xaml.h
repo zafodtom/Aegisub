@@ -349,6 +349,7 @@ namespace winrt::Aegisub_WinUI::implementation
         bool m_waveformDragActive{};
         bool m_waveformLeftDragged{};
         double m_waveformPointerPressX{};
+        double m_waveformPointerPressTime{};
         double m_waveformOriginalStart{};
         double m_waveformOriginalEnd{};
         double m_waveformPanStartX{};
