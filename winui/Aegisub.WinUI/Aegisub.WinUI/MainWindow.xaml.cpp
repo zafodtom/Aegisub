@@ -550,6 +550,17 @@ namespace winrt::SRTune::implementation
         }
 
         m_initialized = true;
+
+        wchar_t modulePath[32768]{};
+        auto const modulePathLength = GetModuleFileNameW(
+            nullptr, modulePath, static_cast<DWORD>(std::size(modulePath)));
+        if (modulePathLength && modulePathLength < std::size(modulePath))
+        {
+            auto const iconPath = std::filesystem::path{ modulePath }.parent_path() / L"SRTune.ico";
+            if (std::filesystem::exists(iconPath))
+                AppWindow().SetIcon(iconPath.wstring());
+        }
+
         InitializeDynamicSubtitleGrid();
         if (m_selectedSubtitleIndices.empty() && !m_rows.empty())
         {
