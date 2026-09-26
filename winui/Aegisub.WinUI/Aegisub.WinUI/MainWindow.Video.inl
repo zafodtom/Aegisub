@@ -52,9 +52,10 @@ namespace winrt::Aegisub_WinUI::implementation
         return result;
     }
 
+    template<typename Rows>
     inline bool WriteWinUiBurnSrt(
         std::filesystem::path const& output,
-        std::vector<MainWindow::SubtitleRowData> const& rows)
+        Rows const& rows)
     {
         std::ofstream stream(output, std::ios::binary | std::ios::trunc);
         if (!stream)
