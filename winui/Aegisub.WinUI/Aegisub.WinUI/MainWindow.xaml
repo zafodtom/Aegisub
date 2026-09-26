@@ -9,21 +9,20 @@
     mc:Ignorable="d"
     Title="Aegisub">
 
-    <Window.Resources>
-        <Style TargetType="Button">
-            <Setter Property="FontSize" Value="11" />
-            <Setter Property="MinHeight" Value="28" />
-            <Setter Property="Padding" Value="7,3" />
-        </Style>
-        <Style TargetType="TextBlock">
-            <Setter Property="FontSize" Value="10.5" />
-        </Style>
-        <Style TargetType="TextBox">
-            <Setter Property="FontSize" Value="11" />
-        </Style>
-    </Window.Resources>
-
     <Grid x:Name="RootGrid" Loaded="RootGrid_Loaded" AllowDrop="True" DragOver="RootGrid_DragOver" Drop="RootGrid_Drop">
+        <Grid.Resources>
+            <Style TargetType="Button">
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="MinHeight" Value="28" />
+                <Setter Property="Padding" Value="7,3" />
+            </Style>
+            <Style TargetType="TextBlock">
+                <Setter Property="FontSize" Value="10.5" />
+            </Style>
+            <Style TargetType="TextBox">
+                <Setter Property="FontSize" Value="11" />
+            </Style>
+        </Grid.Resources>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="300" />
