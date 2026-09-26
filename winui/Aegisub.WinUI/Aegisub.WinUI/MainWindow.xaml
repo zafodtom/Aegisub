@@ -315,14 +315,15 @@
                             </Grid>
 
                             <TextBox x:Name="TargetTextBox" Grid.Row="2" Padding="8" AcceptsReturn="True" TextWrapping="Wrap" FontSize="16"
+                                     Language="cs-CZ" IsSpellCheckEnabled="True" IsTextPredictionEnabled="False"
                                      SelectionChanged="SubtitleEditor_SelectionChanged"
                                      Loaded="TargetTextBox_WorkflowLoaded" TextChanged="TargetTextBox_TextChanged">
                                 <TextBox.ContextFlyout>
-                                    <MenuFlyout>
-                                        <MenuFlyoutItem Text="Rozdělit v kurzoru" Click="SplitSubtitleButton_Click" />
-                                        <MenuFlyoutSeparator />
-                                        <MenuFlyoutItem Text="Vybrat vše" Click="TargetSelectAllMenuItem_Click" />
-                                    </MenuFlyout>
+                                    <TextCommandBarFlyout>
+                                        <TextCommandBarFlyout.SecondaryCommands>
+                                            <AppBarButton Label="Rozdělit v kurzoru" Click="SplitSubtitleButton_Click" />
+                                        </TextCommandBarFlyout.SecondaryCommands>
+                                    </TextCommandBarFlyout>
                                 </TextBox.ContextFlyout>
                             </TextBox>
 
