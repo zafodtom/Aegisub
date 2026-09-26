@@ -145,7 +145,7 @@ namespace
         std::wostringstream filename;
         filename << std::hex << std::setfill(L'0') << std::setw(16) << hash << L".state";
         return std::filesystem::path(localAppData.data()) /
-            L"Aegisub" / L"TranslationWorkspace" / filename.str();
+            L"SRTune" / L"TranslationWorkspace" / filename.str();
     }
 
     std::filesystem::path WorkspaceBackupPath(std::filesystem::path const& targetPath)
@@ -175,7 +175,7 @@ namespace
         if (GetEnvironmentVariableW(L"LOCALAPPDATA", localAppData.data(), required) == 0)
             return {};
         return std::filesystem::path(localAppData.data()) /
-            L"Aegisub" / L"TranslationWorkspace" / L"last-project.tsv";
+            L"SRTune" / L"TranslationWorkspace" / L"last-project.tsv";
     }
 
     std::wstring FormatFileWriteTime(std::filesystem::path const& path)
@@ -269,7 +269,7 @@ namespace
         std::filesystem::path const& currentDraft)
     {
         if (directory.filename() != L"TranslationWorkspace" ||
-            directory.parent_path().filename() != L"Aegisub")
+            directory.parent_path().filename() != L"SRTune")
         {
             return;
         }
@@ -528,7 +528,7 @@ namespace
     }
 }
 
-namespace winrt::Aegisub_WinUI::implementation
+namespace winrt::SRTune::implementation
 {
     int32_t MainWindow::MyProperty()
     {
@@ -662,7 +662,7 @@ namespace winrt::Aegisub_WinUI::implementation
         }
 
         auto validationPath = std::filesystem::temp_directory_path() /
-            (L"aegisub-winui-restore-" + std::to_wstring(GetCurrentProcessId()) + L"-" +
+            (L"srtune-restore-" + std::to_wstring(GetCurrentProcessId()) + L"-" +
                 std::to_wstring(GetTickCount64()) + targetPath.extension().wstring());
         std::error_code fileError;
         std::filesystem::remove(validationPath, fileError);
@@ -2178,8 +2178,8 @@ namespace winrt::Aegisub_WinUI::implementation
     {
         m_hasUnsavedChanges = dirty;
         Title(dirty
-            ? L"Aegisub *"
-            : L"Aegisub");
+            ? L"SRTune *"
+            : L"SRTune");
     }
 
     bool MainWindow::ConfirmSaveBefore(std::wstring const& action)
@@ -2196,7 +2196,7 @@ namespace winrt::Aegisub_WinUI::implementation
         auto const result = MessageBoxW(
             GetActiveWindow(),
             message.c_str(),
-            L"Aegisub",
+            L"SRTune",
             MB_YESNOCANCEL | MB_ICONWARNING);
 
         if (result == IDCANCEL)
@@ -2537,7 +2537,7 @@ namespace winrt::Aegisub_WinUI::implementation
         std::wstring errorMessage;
         if (!ReadSubtitleFile(sourceFilename, sourceEntries, errorMessage))
         {
-            MessageBoxW(GetActiveWindow(), errorMessage.c_str(), L"Aegisub", MB_OK | MB_ICONERROR);
+            MessageBoxW(GetActiveWindow(), errorMessage.c_str(), L"SRTune", MB_OK | MB_ICONERROR);
             return;
         }
 
@@ -2555,7 +2555,7 @@ namespace winrt::Aegisub_WinUI::implementation
         std::vector<SubtitleEntry> targetEntries;
         if (!ReadSubtitleFile(targetFilename, targetEntries, errorMessage))
         {
-            MessageBoxW(GetActiveWindow(), errorMessage.c_str(), L"Aegisub", MB_OK | MB_ICONERROR);
+            MessageBoxW(GetActiveWindow(), errorMessage.c_str(), L"SRTune", MB_OK | MB_ICONERROR);
             return;
         }
 
@@ -2584,7 +2584,7 @@ namespace winrt::Aegisub_WinUI::implementation
         std::wstring errorMessage;
         if (!ReadSubtitleFile(filename, entries, errorMessage))
         {
-            MessageBoxW(GetActiveWindow(), errorMessage.c_str(), L"Aegisub", MB_OK | MB_ICONERROR);
+            MessageBoxW(GetActiveWindow(), errorMessage.c_str(), L"SRTune", MB_OK | MB_ICONERROR);
             return;
         }
 
@@ -2592,7 +2592,7 @@ namespace winrt::Aegisub_WinUI::implementation
         if (!m_targetPath.empty()
             && !ReadSubtitleFile(m_targetPath.c_str(), refreshedTargetEntries, errorMessage))
         {
-            MessageBoxW(GetActiveWindow(), errorMessage.c_str(), L"Aegisub", MB_OK | MB_ICONERROR);
+            MessageBoxW(GetActiveWindow(), errorMessage.c_str(), L"SRTune", MB_OK | MB_ICONERROR);
             return;
         }
 
@@ -2621,7 +2621,7 @@ namespace winrt::Aegisub_WinUI::implementation
         std::wstring errorMessage;
         if (!ReadSubtitleFile(filename, entries, errorMessage))
         {
-            MessageBoxW(GetActiveWindow(), errorMessage.c_str(), L"Aegisub", MB_OK | MB_ICONERROR);
+            MessageBoxW(GetActiveWindow(), errorMessage.c_str(), L"SRTune", MB_OK | MB_ICONERROR);
             return;
         }
 
@@ -3305,7 +3305,7 @@ namespace winrt::Aegisub_WinUI::implementation
         }
 
         auto output = std::filesystem::temp_directory_path();
-        output /= L"aegisub-winui-read-" + std::to_wstring(GetCurrentProcessId()) + L"-" + std::to_wstring(GetTickCount64()) + L".tsv";
+        output /= L"srtune-read-" + std::to_wstring(GetCurrentProcessId()) + L"-" + std::to_wstring(GetTickCount64()) + L".tsv";
 
         std::error_code fileError;
         std::filesystem::remove(output, fileError);
@@ -3320,14 +3320,14 @@ namespace winrt::Aegisub_WinUI::implementation
 
         if (!std::filesystem::exists(output))
         {
-            errorMessage = L"Aegisub bridge nevytvo\u0159il v\u00FDstupn\u00ED soubor. K\u00F3d: " + std::to_wstring(exitCode) + L".";
+            errorMessage = L"SRTune bridge nevytvo\u0159il v\u00FDstupn\u00ED soubor. K\u00F3d: " + std::to_wstring(exitCode) + L".";
             return false;
         }
 
         std::ifstream stream(output, std::ios::binary);
         if (!stream)
         {
-            errorMessage = L"V\u00FDstup Aegisub bridge nelze otev\u0159\u00EDt.";
+            errorMessage = L"V\u00FDstup SRTune bridge nelze otev\u0159\u00EDt.";
             std::filesystem::remove(output, fileError);
             return false;
         }
@@ -3335,7 +3335,7 @@ namespace winrt::Aegisub_WinUI::implementation
         std::string line;
         if (!std::getline(stream, line))
         {
-            errorMessage = L"Aegisub bridge vr\u00E1til pr\u00E1zdn\u00FD v\u00FDstup.";
+            errorMessage = L"SRTune bridge vr\u00E1til pr\u00E1zdn\u00FD v\u00FDstup.";
             std::filesystem::remove(output, fileError);
             return false;
         }
@@ -3356,14 +3356,14 @@ namespace winrt::Aegisub_WinUI::implementation
         bool const protocolV2 = line == "AEGISUB-WINUI-BRIDGE\t2";
         if (!protocolV1 && !protocolV2)
         {
-            errorMessage = L"Aegisub bridge vr\u00E1til nezn\u00E1m\u00FD form\u00E1t dat.";
+            errorMessage = L"SRTune bridge vr\u00E1til nezn\u00E1m\u00FD form\u00E1t dat.";
             std::filesystem::remove(output, fileError);
             return false;
         }
 
         if (exitCode != 0)
         {
-            errorMessage = L"Aegisub bridge skon\u010Dil s chybou " + std::to_wstring(exitCode) + L".";
+            errorMessage = L"SRTune bridge skon\u010Dil s chybou " + std::to_wstring(exitCode) + L".";
             std::filesystem::remove(output, fileError);
             return false;
         }
@@ -3667,8 +3667,8 @@ namespace winrt::Aegisub_WinUI::implementation
             {
                 m_lastSaveDetectedExternalChange = true;
                 errorMessage = m_forceSaveAsForRecoveredDraft
-                    ? L"Obnoven\u00FD koncept poch\u00E1z\u00ED ze star\u0161\u00ED verze souboru p\u0159ekladu. Aegisub jej proto nep\u0159epsal."
-                    : L"Otev\u0159en\u00FD soubor p\u0159ekladu od posledn\u00EDho na\u010Dten\u00ED zm\u011Bnila jin\u00E1 aplikace. Aegisub jej proto nep\u0159epsal.";
+                    ? L"Obnoven\u00FD koncept poch\u00E1z\u00ED ze star\u0161\u00ED verze souboru p\u0159ekladu. SRTune jej proto nep\u0159epsal."
+                    : L"Otev\u0159en\u00FD soubor p\u0159ekladu od posledn\u00EDho na\u010Dten\u00ED zm\u011Bnila jin\u00E1 aplikace. SRTune jej proto nep\u0159epsal.";
                 return false;
             }
         }
@@ -3687,7 +3687,7 @@ namespace winrt::Aegisub_WinUI::implementation
         }
 
         auto updateFile = std::filesystem::temp_directory_path();
-        updateFile /= L"aegisub-winui-write-" + std::to_wstring(GetCurrentProcessId()) + L"-" + std::to_wstring(GetTickCount64()) + L".tsv";
+        updateFile /= L"srtune-write-" + std::to_wstring(GetCurrentProcessId()) + L"-" + std::to_wstring(GetTickCount64()) + L".tsv";
 
         auto tempOutput = targetPath.parent_path();
         tempOutput /= targetPath.filename().wstring() +
@@ -3723,7 +3723,7 @@ namespace winrt::Aegisub_WinUI::implementation
         if (!RunProcess(commandLine, exitCode))
         {
             std::filesystem::remove(updateFile, fileError);
-            errorMessage = L"Nepoda\u0159ilo se spustit Aegisub bridge pro ulo\u017Een\u00ED.";
+            errorMessage = L"Nepoda\u0159ilo se spustit SRTune bridge pro ulo\u017Een\u00ED.";
             return false;
         }
 
@@ -3733,7 +3733,7 @@ namespace winrt::Aegisub_WinUI::implementation
         {
             if (!ReadBridgeError(tempOutput, errorMessage))
             {
-                errorMessage = L"Aegisub bridge skon\u010Dil p\u0159i ukl\u00E1d\u00E1n\u00ED s chybou " + std::to_wstring(exitCode) + L".";
+                errorMessage = L"SRTune bridge skon\u010Dil p\u0159i ukl\u00E1d\u00E1n\u00ED s chybou " + std::to_wstring(exitCode) + L".";
             }
             std::filesystem::remove(tempOutput, fileError);
             return false;
@@ -3741,7 +3741,7 @@ namespace winrt::Aegisub_WinUI::implementation
 
         if (!std::filesystem::exists(tempOutput))
         {
-            errorMessage = L"Aegisub bridge nevytvo\u0159il ulo\u017Een\u00FD soubor.";
+            errorMessage = L"SRTune bridge nevytvo\u0159il ulo\u017Een\u00FD soubor.";
             return false;
         }
 
