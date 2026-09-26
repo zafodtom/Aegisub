@@ -221,6 +221,15 @@ namespace winrt::Aegisub_WinUI::implementation
             row.workflowStatus = row.status == L"Problém" ? winrt::hstring{ L"Připraveno" } : row.status;
         RefreshQaAll();
         UpdateTableRow(m_currentIndex);
+
+        bool const wasLastSubtitle = m_currentIndex == static_cast<int32_t>(m_rows.size()) - 1;
+        if (wasLastSubtitle)
+        {
+            InsertSubtitleRelative(false);
+            StatusBarText().Text(L"Vytvořen nový prázdný titulek · délka 2 s");
+            return;
+        }
+
         MoveToFilteredRow(1);
         RefreshCurrentQaVisuals();
         TargetTextBox().Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
