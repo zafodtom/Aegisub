@@ -522,7 +522,8 @@ namespace winrt::Aegisub_WinUI::implementation
                 canvas.Children().Append(range);
             };
 
-            if (!subtitle.sourceStart.empty() && !subtitle.sourceEnd.empty())
+            if (!m_originalPanelManuallyHidden && !m_sourcePath.empty() &&
+                !subtitle.sourceStart.empty() && !subtitle.sourceEnd.empty())
             {
                 drawRange(
                     WorkflowTimestampSeconds(subtitle.sourceStart),
@@ -639,7 +640,8 @@ namespace winrt::Aegisub_WinUI::implementation
         };
 
         // Original timing is visible as subtle reference markers.
-        if (!active.sourceStart.empty() && !active.sourceEnd.empty())
+        if (!m_originalPanelManuallyHidden && !m_sourcePath.empty() &&
+            !active.sourceStart.empty() && !active.sourceEnd.empty())
         {
             drawBoundary(WorkflowTimestampSeconds(active.sourceStart), 1.0, 0.28);
             drawBoundary(WorkflowTimestampSeconds(active.sourceEnd), 1.0, 0.28);

@@ -562,7 +562,11 @@ namespace winrt::Aegisub_WinUI::implementation
         StartMediaUiTimer();
         LoadLastGlossaryFile();
         RefreshRecentProjectAction();
-        LoadCurrentRow();
+        if (m_rows.empty())
+            RefreshEmptyWorkspaceUi();
+        else
+            LoadCurrentRow();
+        RefreshProjectFileLabels();
         RefreshSearchSummary();
     }
 
@@ -728,6 +732,184 @@ namespace winrt::Aegisub_WinUI::implementation
         m_targetEntries = std::move(restoredEntries);
         RefreshLoadedProject();
         StatusBarText().Text(L"P\u0159edchoz\u00ED verze obnovena \u00B7 p\u016Fvodn\u00ED verze je nyn\u00ED z\u00E1loha");
+    }
+
+    void MainWindow::RefreshEmptyWorkspaceUi()
+    {
+        m_loadingSelection = true;
+        HeaderCurrentSubtitleText().Text(L"");
+        OriginalTimingText().Text(L"");
+        OriginalTextBox().Text(L"");
+        TargetInfoText().Text(L"");
+        StartTimeBox().Text(L"");
+        EndTimeBox().Text(L"");
+        TimingDurationText().Text(L"");
+        TargetTextBox().Text(L"");
+        TargetCplText().Text(L"");
+        TargetCpsText().Text(L"");
+        TargetLengthText().Text(L"");
+        TargetProblemText().Text(L"");
+        TargetProblemText().Visibility(Visibility::Collapsed);
+        TargetStatusText().Text(L"");
+        TablePositionText().Text(L"");
+        SubtitleSelectionText().Text(L"0 titulků");
+        TranscriptPrev3Block().Visibility(Visibility::Collapsed);
+        TranscriptPrev2Block().Visibility(Visibility::Collapsed);
+        TranscriptPreviousBlock().Visibility(Visibility::Collapsed);
+        TranscriptNextBlock().Visibility(Visibility::Collapsed);
+        TranscriptNext2Block().Visibility(Visibility::Collapsed);
+        TranscriptNext3Block().Visibility(Visibility::Collapsed);
+        TranscriptCurrentTimeText().Text(L"");
+        TranscriptCurrentText().Text(L"");
+        m_loadingSelection = false;
+    }
+
+    void MainWindow::ResetWorkspaceToBlank()
+    {
+        m_sourceEntries.clear();
+        m_targetEntries.clear();
+        m_rows.clear();
+        m_sourcePath = L"";
+        m_targetPath = L"";
+        m_currentIndex = 0;
+        m_selectedSubtitleIndices.clear();
+        m_selectionAnchorIndex = -1;
+        m_originalPanelManuallyHidden = false;
+        m_structureDirty = false;
+        m_workflowStateDirty = false;
+        m_hasTargetFileFingerprint = false;
+        m_forceSaveAsForRecoveredDraft = false;
+        m_externalChangeAcknowledged = false;
+        ClearBulkUndo();
+        CloseVideoFile();
+
+        m_waveformPath.clear();
+        m_waveformPeaks.clear();
+        m_waveformDuration = 0.0;
+        m_waveformWindowStart = 0.0;
+        m_waveformWindowEnd = 0.0;
+        m_waveformViewportSubtitleIndex = -1;
+        WaveformFileText().Text(L"");
+        WaveformRangeText().Text(L"");
+        WaveformCanvas().Children().Clear();
+        WholeTimelineCanvas().Children().Clear();
+        m_waveformActiveSelection = nullptr;
+        m_waveformActiveStartMarker = nullptr;
+        m_waveformActiveEndMarker = nullptr;
+        m_waveformPlayhead = nullptr;
+        m_wholeTimelineViewport = nullptr;
+
+        m_timelineSliderUpdating = true;
+        TimelineSlider().Minimum(0.0);
+        TimelineSlider().Maximum(1.0);
+        TimelineSlider().Value(0.0);
+        m_timelineSliderUpdating = false;
+
+        SearchBar().Visibility(Visibility::Collapsed);
+        RebuildSubtitleGrid();
+        RefreshEmptyWorkspaceUi();
+        RefreshProjectFileLabels();
+        SetDirty(false);
+        StatusBarText().Text(L"Nový prázdný projekt");
+    }
+
+    void MainWindow::NewProjectMenuItem_Click(
+        Windows::Foundation::IInspectable const&,
+        RoutedEventArgs const&)
+    {
+        if (!ConfirmSaveBefore(L"zahájením nového projektu"))
+            return;
+        ResetWorkspaceToBlank();
+    }
+
+    void MainWindow::CloseSourceMenuItem_Click(
+        Windows::Foundation::IInspectable const&,
+        RoutedEventArgs const&)
+    {
+        if (m_sourcePath.empty() && m_sourceEntries.empty())
+            return;
+
+        m_sourceEntries.clear();
+        m_sourcePath = L"";
+        m_originalPanelManuallyHidden = false;
+        for (auto& row : m_rows)
+        {
+            row.original = L"";
+            row.sourceStart = L"";
+            row.sourceEnd = L"";
+            row.sourceMatchQuality = 0.0;
+            row.manualSourceIndex = -1;
+            row.pairingIgnored = false;
+        }
+
+        RefreshProjectFileLabels();
+        RebuildSubtitleGrid();
+        if (m_rows.empty())
+            RefreshEmptyWorkspaceUi();
+        else
+            LoadCurrentRow();
+        RenderWaveform();
+        StatusBarText().Text(L"Originál zavřen");
+    }
+
+    void MainWindow::CloseTargetMenuItem_Click(
+        Windows::Foundation::IInspectable const&,
+        RoutedEventArgs const&)
+    {
+        if (m_targetPath.empty() && m_rows.empty())
+            return;
+        if (!ConfirmSaveBefore(L"zavřením překladu"))
+            return;
+
+        m_targetEntries.clear();
+        m_targetPath = L"";
+        m_hasTargetFileFingerprint = false;
+        m_forceSaveAsForRecoveredDraft = false;
+        m_structureDirty = false;
+        m_workflowStateDirty = false;
+
+        BuildAlignedRows();
+        m_selectedSubtitleIndices.clear();
+        if (!m_rows.empty())
+            m_selectedSubtitleIndices.push_back(0);
+        m_selectionAnchorIndex = m_rows.empty() ? -1 : 0;
+        RebuildSubtitleGrid();
+        RefreshProjectFileLabels();
+        if (m_rows.empty())
+            RefreshEmptyWorkspaceUi();
+        else
+            LoadCurrentRow();
+        SetDirty(false);
+        StatusBarText().Text(L"Překlad zavřen");
+    }
+
+    void MainWindow::CloseVideoMenuItem_Click(
+        Windows::Foundation::IInspectable const&,
+        RoutedEventArgs const&)
+    {
+        CloseVideoFile();
+        StatusBarText().Text(L"Video zavřeno");
+    }
+
+    void MainWindow::SwapSourceTargetMenuItem_Click(
+        Windows::Foundation::IInspectable const&,
+        RoutedEventArgs const&)
+    {
+        if (m_sourceEntries.empty() || m_targetEntries.empty() ||
+            m_sourcePath.empty() || m_targetPath.empty())
+        {
+            StatusBarText().Text(L"Pro přehození musí být načten originál i překlad");
+            return;
+        }
+
+        if (!ConfirmSaveBefore(L"přehozením originálu a překladu"))
+            return;
+
+        std::swap(m_sourceEntries, m_targetEntries);
+        std::swap(m_sourcePath, m_targetPath);
+        m_originalPanelManuallyHidden = false;
+        RefreshLoadedProject();
+        StatusBarText().Text(L"Originál a překlad byly přehozeny");
     }
 
     void MainWindow::OpenBothButton_Click(
@@ -1577,7 +1759,12 @@ namespace winrt::Aegisub_WinUI::implementation
     {
         NormalizeSubtitleSelection();
         auto const count = m_selectedSubtitleIndices.size();
-        if (count <= 1)
+        if (count == 0)
+        {
+            SubtitleSelectionText().Text(L"0 titulků");
+            return;
+        }
+        if (count == 1)
         {
             SubtitleSelectionText().Text(L"Vybrán 1 titulek");
             return;
@@ -2831,6 +3018,17 @@ namespace winrt::Aegisub_WinUI::implementation
             Grid::SetColumnSpan(TargetPanelBorder(), 2);
         }
 
+        auto const columns = SubtitleGridHost().ColumnDefinitions();
+        if (columns.Size() >= 5)
+        {
+            columns.GetAt(3).Width(visible
+                ? GridLength{ 1.1, GridUnitType::Star }
+                : GridLength{ 0.0, GridUnitType::Pixel });
+            columns.GetAt(4).Width(visible
+                ? GridLength{ 1.1, GridUnitType::Star }
+                : GridLength{ 2.2, GridUnitType::Star });
+        }
+
         ToggleOriginalPanelMenuItem().IsEnabled(available);
         ToggleOriginalPanelMenuItem().Text(visible ? L"Skrýt originál" : L"Zobrazit originál");
     }
@@ -2843,6 +3041,7 @@ namespace winrt::Aegisub_WinUI::implementation
             return;
         m_originalPanelManuallyHidden = !m_originalPanelManuallyHidden;
         RefreshOriginalPanelVisibility();
+        RenderWaveform();
     }
 
     void MainWindow::RefreshBackupAction()

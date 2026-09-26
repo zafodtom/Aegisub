@@ -53,6 +53,16 @@ namespace winrt::Aegisub_WinUI::implementation
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void RestoreBackupButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void NewProjectMenuItem_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void CloseSourceMenuItem_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void CloseTargetMenuItem_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void CloseVideoMenuItem_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void SwapSourceTargetMenuItem_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void OpenBothButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void OpenSourceButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
@@ -132,6 +142,8 @@ namespace winrt::Aegisub_WinUI::implementation
         void ReplaceMenuItem_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void CloseSearchBarButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void ReplaceCurrentButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void FindAndRemoveButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
@@ -307,15 +319,7 @@ namespace winrt::Aegisub_WinUI::implementation
             winrt::hstring workflowStatus;
         };
 
-        std::vector<SubtitleRowData> m_rows
-        {
-            { 143, L"00:12:38.310", L"00:12:41.420", 3.11, L"00:12:38.310", L"00:12:41.420", L"We still have time.", L"Po\u0159\u00E1d m\u00E1me \u010Das.", L"Po\u0159\u00E1d m\u00E1me \u010Das.", L"Schv\u00E1leno", false },
-            { 144, L"00:12:41.980", L"00:12:43.980", 2.00, L"00:12:41.980", L"00:12:43.980", L"If the road stays clear, we can still make it.", L"Jestli z\u016Fstane cesta voln\u00E1, po\u0159\u00E1d to stihneme.", L"Jestli z\u016Fstane cesta voln\u00E1, po\u0159\u00E1d to stihneme.", L"Schv\u00E1leno", false },
-            { 145, L"00:12:44.120", L"00:12:46.840", 2.72, L"00:12:44.120", L"00:12:46.840", L"We should be there before sunrise.", L"M\u011Bli bychom tam b\u00FDt p\u0159ed v\u00FDchodem slunce.", L"M\u011Bli bychom tam b\u00FDt p\u0159ed v\u00FDchodem slunce.", L"Upraveno", false },
-            { 146, L"00:12:47.050", L"00:12:49.300", 2.25, L"00:12:47.050", L"00:12:49.300", L"Then we wait for the signal.", L"Pak po\u010Dk\u00E1me na sign\u00E1l.", L"Pak po\u010Dk\u00E1me na sign\u00E1l.", L"P\u0159ipraveno", false },
-            { 147, L"00:12:50.100", L"00:12:52.650", 2.55, L"00:12:50.100", L"00:12:52.650", L"No mistakes this time.", L"Tentokr\u00E1t bez chyb.", L"Tentokr\u00E1t bez chyb.", L"P\u0159ipraveno", false },
-        };
-
+        std::vector<SubtitleRowData> m_rows;
         std::vector<SubtitleEntry> m_sourceEntries;
         std::vector<SubtitleEntry> m_targetEntries;
         std::vector<winrt::Microsoft::UI::Xaml::Controls::Border> m_rowBorders;
@@ -326,7 +330,7 @@ namespace winrt::Aegisub_WinUI::implementation
         winrt::hstring m_sourcePath;
         winrt::hstring m_targetPath;
 
-        int32_t m_currentIndex{ 2 };
+        int32_t m_currentIndex{ 0 };
         std::vector<int32_t> m_selectedSubtitleIndices;
         int32_t m_selectionAnchorIndex{-1};
         bool m_subtitleDragSelecting{};
@@ -417,6 +421,8 @@ namespace winrt::Aegisub_WinUI::implementation
         void HookWindowClosing();
         void StartExternalChangeMonitoring();
         void CheckForExternalTargetChange();
+        void ResetWorkspaceToBlank();
+        void RefreshEmptyWorkspaceUi();
         void OpenProjectFiles();
         void OpenSourceFile();
         void OpenTargetFile();
@@ -515,6 +521,7 @@ namespace winrt::Aegisub_WinUI::implementation
         void InsertOneMillisecondSubtitleGaps();
         winrt::fire_and_forget ShowShiftAllSubtitlesDialog();
         bool OpenVideoFile(std::wstring const& filename);
+        void CloseVideoFile();
         double CurrentVideoSeconds();
         void SeekVideoToCurrentSubtitle();
         void AdjustVideoPosition(double deltaSeconds);

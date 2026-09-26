@@ -52,6 +52,26 @@ namespace winrt::Aegisub_WinUI::implementation
         }
     }
 
+    inline void MainWindow::CloseVideoFile()
+    {
+        try
+        {
+            auto const player = VideoPlayer().MediaPlayer();
+            if (player)
+                player.Pause();
+            VideoPlayer().SetMediaPlayer(nullptr);
+        }
+        catch (...) {}
+
+        m_videoPath.clear();
+        m_playSelectedUntil = -1.0;
+        VideoFileText().Text(L"");
+        VideoPositionText().Text(L"");
+        VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"▶" }));
+        VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Přehrát titulek" }));
+        WaveformPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"▶ Titulek" }));
+    }
+
     inline double MainWindow::CurrentVideoSeconds()
     {
         if (m_videoPath.empty())

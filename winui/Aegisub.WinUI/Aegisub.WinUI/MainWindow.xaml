@@ -35,6 +35,8 @@
         <Border Grid.Row="0" Margin="10,6,10,0" Padding="2,0" BorderBrush="Gray" BorderThickness="1" CornerRadius="5">
             <MenuBar>
                 <MenuBarItem Title="Soubor">
+                    <MenuFlyoutItem Text="Nový projekt    Ctrl+N" Click="NewProjectMenuItem_Click" />
+                    <MenuFlyoutSeparator />
                     <MenuFlyoutItem Text="Otevřít video…" Click="OpenVideoButton_Click" />
                     <MenuFlyoutItem Text="Otevřít audio…" Click="OpenAudioButton_Click" />
                     <MenuFlyoutSeparator />
@@ -42,6 +44,11 @@
                     <MenuFlyoutItem Text="Otevřít originál…" Click="OpenSourceButton_Click" />
                     <MenuFlyoutItem Text="Otevřít překlad…" Click="OpenTargetButton_Click" />
                     <MenuFlyoutItem x:Name="RecentProjectMenuItem" Text="Otevřít naposledy použité" IsEnabled="False" Click="OpenRecentProjectButton_Click" />
+                    <MenuFlyoutSeparator />
+                    <MenuFlyoutItem Text="Zavřít video" Click="CloseVideoMenuItem_Click" />
+                    <MenuFlyoutItem Text="Zavřít originál" Click="CloseSourceMenuItem_Click" />
+                    <MenuFlyoutItem Text="Zavřít překlad" Click="CloseTargetMenuItem_Click" />
+                    <MenuFlyoutItem Text="Přehodit originál ↔ překlad" Click="SwapSourceTargetMenuItem_Click" />
                     <MenuFlyoutSeparator />
                     <MenuFlyoutItem Text="Uložit" Click="SaveButton_Click" />
                     <MenuFlyoutItem Text="Uložit jako…" Click="SaveAsButton_Click" />
@@ -98,7 +105,7 @@
                     <Grid>
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                         <TextBlock Text="Video" FontSize="12" FontWeight="SemiBold" />
-                        <TextBlock x:Name="VideoFileText" Grid.Column="1" Text="není načteno" FontSize="10" Opacity="0.5" TextTrimming="CharacterEllipsis" MaxWidth="210" />
+                        <TextBlock x:Name="VideoFileText" Grid.Column="1" Text="" FontSize="10" Opacity="0.5" TextTrimming="CharacterEllipsis" MaxWidth="210" />
                     </Grid>
                     <Border Grid.Row="1" Background="Black" CornerRadius="3">
                         <MediaPlayerElement x:Name="VideoPlayer" AreTransportControlsEnabled="False" AutoPlay="False" Stretch="Uniform" />
@@ -132,7 +139,7 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                             <TextBlock Text="Zvuková vlna" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
-                            <TextBlock x:Name="WaveformFileText" Text="otevři video nebo audio" FontSize="9.5"
+                            <TextBlock x:Name="WaveformFileText" Text="" FontSize="9.5"
                                        Opacity="0.5" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                         </StackPanel>
                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="3" VerticalAlignment="Center">
@@ -163,7 +170,7 @@
                                 PointerReleased="WaveformCanvas_PointerReleased" />
                     </Border>
                     <Grid Grid.Row="4">
-                        <TextBlock x:Name="WaveformRangeText" Text="Lokální pohled kolem aktuálního titulku"
+                        <TextBlock x:Name="WaveformRangeText" Text=""
                                    FontFamily="Consolas" FontSize="10" Opacity="0.55"
                                    VerticalAlignment="Center" HorizontalAlignment="Left" />
                         <Button x:Name="WaveformPlaySelectedButton" Content="▶ Titulek"
@@ -244,13 +251,14 @@
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                                 <StackPanel>
                                     <TextBlock Text="Originál" FontSize="12" FontWeight="SemiBold" />
-                                    <TextBlock x:Name="OriginalFileText" Text="soubor není načten" FontSize="9.5" Opacity="0.5" />
+                                    <TextBlock x:Name="OriginalFileText" Text="" FontSize="9.5" Opacity="0.5" />
                                 </StackPanel>
                                 <TextBlock Grid.Column="1" Text="?" FontSize="10" Opacity="0.42"
                                            ToolTipService.ToolTip="Originální titulky slouží jako referenční text a časování pro překlad." />
                             </Grid>
                             <TextBlock x:Name="OriginalTimingText" Grid.Row="1" Margin="0,4,0,6" FontFamily="Consolas" FontSize="11" Opacity="0.58" />
-                            <TextBox x:Name="OriginalTextBox" Grid.Row="2" Padding="8" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" FontSize="16" />
+                            <TextBox x:Name="OriginalTextBox" Grid.Row="2" Padding="8" IsReadOnly="True" AcceptsReturn="True"
+                                     TextWrapping="Wrap" FontSize="16" SelectionHighlightColor="#88FFD54F" />
                         </Grid>
                     </Border>
 
@@ -270,7 +278,7 @@
                                 </Grid.ColumnDefinitions>
                                 <StackPanel>
                                     <TextBlock Text="Překlad" FontSize="12" FontWeight="SemiBold" />
-                                    <TextBlock x:Name="TargetFileText" Text="soubor není načten" FontSize="9.5" Opacity="0.5" />
+                                    <TextBlock x:Name="TargetFileText" Text="" FontSize="9.5" Opacity="0.5" />
                                 </StackPanel>
                                 <TextBlock x:Name="TargetInfoText" Grid.Column="1" FontSize="9.5" Opacity="0.5" VerticalAlignment="Center" />
                                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="3" VerticalAlignment="Center">
@@ -307,6 +315,7 @@
                             </Grid>
 
                             <TextBox x:Name="TargetTextBox" Grid.Row="2" Padding="8" AcceptsReturn="True" TextWrapping="Wrap" FontSize="16"
+                                     SelectionHighlightColor="#88FFD54F"
                                      Loaded="TargetTextBox_WorkflowLoaded" TextChanged="TargetTextBox_TextChanged">
                                 <TextBox.ContextFlyout>
                                     <MenuFlyout>
@@ -394,7 +403,7 @@
                         <TextBlock Text="Titulky" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"
                                    ToolTipService.ToolTip="Klik = jeden titulek · Ctrl+klik = přidat/odebrat · Shift+klik nebo tažení myší = souvislý výběr. ↑/↓ mění aktuální titulek." />
                         <TextBlock x:Name="TablePositionText" Grid.Column="1" FontSize="10" Opacity="0.58" VerticalAlignment="Center" />
-                        <TextBlock x:Name="SubtitleSelectionText" Grid.Column="3" Text="Vybrán 1 titulek" FontSize="10" Opacity="0.55" VerticalAlignment="Center" />
+                        <TextBlock x:Name="SubtitleSelectionText" Grid.Column="3" Text="0 titulků" FontSize="10" Opacity="0.55" VerticalAlignment="Center" />
                         <Button Grid.Column="4" Content="Sloučit vybrané" Padding="7,2" FontSize="11" Click="MergeSelectedSubtitlesButton_Click"
                                 ToolTipService.ToolTip="Sloučit souvisle vybrané titulky; Ctrl+klik, Shift+klik nebo tažení myší" />
                     </Grid>
@@ -455,6 +464,8 @@
                     <TextBlock Text="Nahradit" VerticalAlignment="Center" />
                     <TextBox x:Name="ReplaceTextBox" Width="180" Height="26" MinHeight="26" Padding="5,0"
                              VerticalContentAlignment="Center" />
+                    <Button Content="Nahradit" Click="ReplaceCurrentButton_Click"
+                            ToolTipService.ToolTip="Nahradit aktuální nalezený výskyt" />
                     <Button Content="Nahradit vše" Click="AdvancedReplaceAllButton_Click" />
                     <Button Content="Najít a odstranit" Click="FindAndRemoveButton_Click"
                             ToolTipService.ToolTip="Odstranit nalezený text; pokud titulek zůstane prázdný, odstranit i celý řádek" />
