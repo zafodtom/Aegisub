@@ -39,6 +39,8 @@ namespace winrt::Aegisub_WinUI::implementation
             VideoFileText().Text(winrt::hstring{ std::filesystem::path{ absolute }.filename().wstring() });
             SeekVideoToCurrentSubtitle();
             RefreshVideoPositionText();
+            RenderWholeTimeline();
+            RefreshTimelineSlider();
             LoadWaveformForMedia(absolute);
             StatusBarText().Text(L"Video načteno · výběr titulku sleduje čas videa");
             return true;
@@ -266,6 +268,7 @@ namespace winrt::Aegisub_WinUI::implementation
         {
             RefreshVideoPositionText();
             RefreshWaveformPlayhead();
+            RefreshTimelineSlider();
 
             if (m_playSelectedUntil >= 0.0)
             {

@@ -143,7 +143,134 @@ namespace winrt::Aegisub_WinUI::implementation
             std::filesystem::path{ filename }.filename().wstring() +
             L" · " + std::to_wstring(static_cast<int>(m_waveformDuration)) + L" s" });
         RenderWaveform();
+        RenderWholeTimeline();
+        RefreshTimelineSlider();
         return true;
+    }
+
+    inline double MainWindow::CurrentMediaDurationSeconds()
+    {
+        if (m_waveformDuration > 0.0)
+            return m_waveformDuration;
+
+        try
+        {
+            auto const player = VideoPlayer().MediaPlayer();
+            if (!player)
+                return 0.0;
+            return std::chrono::duration<double>(
+                player.PlaybackSession().NaturalDuration()).count();
+        }
+        catch (...)
+        {
+            return 0.0;
+        }
+    }
+
+    inline void MainWindow::RenderWholeTimeline()
+    {
+        auto const canvas = WholeTimelineCanvas();
+        canvas.Children().Clear();
+
+        auto const width = canvas.ActualWidth();
+        auto const height = canvas.ActualHeight();
+        auto const duration = CurrentMediaDurationSeconds();
+        if (width < 20.0 || height < 10.0 || duration <= 0.0)
+            return;
+
+        winrt::Microsoft::UI::Xaml::Media::SolidColorBrush lineBrush;
+        lineBrush.Color(winrt::Windows::UI::Color{ 130, 128, 128, 128 });
+
+        winrt::Microsoft::UI::Xaml::Media::SolidColorBrush accentBrush;
+        accentBrush.Color(winrt::Windows::UI::Color{ 90, 0, 120, 212 });
+
+        // Current detail viewport inside the whole-video overview.
+        if (m_waveformWindowEnd > m_waveformWindowStart)
+        {
+            auto const left = width * (std::max)(0.0, m_waveformWindowStart) / duration;
+            auto const right = width * (std::min)(duration, m_waveformWindowEnd) / duration;
+
+            winrt::Microsoft::UI::Xaml::Shapes::Rectangle viewport;
+            viewport.Fill(accentBrush);
+            viewport.Width((std::max)(1.0, right - left));
+            viewport.Height(height);
+            viewport.Opacity(0.35);
+            winrt::Microsoft::UI::Xaml::Controls::Canvas::SetLeft(viewport, left);
+            canvas.Children().Append(viewport);
+        }
+
+        winrt::Microsoft::UI::Xaml::Shapes::Line baseLine;
+        baseLine.X1(0.0);
+        baseLine.X2(width);
+        baseLine.Y1(height - 5.0);
+        baseLine.Y2(height - 5.0);
+        baseLine.Stroke(lineBrush);
+        baseLine.StrokeThickness(1.0);
+        canvas.Children().Append(baseLine);
+
+        constexpr int divisions = 4;
+        for (int division = 0; division <= divisions; ++division)
+        {
+            auto const ratio = static_cast<double>(division) / divisions;
+            auto const x = width * ratio;
+            auto const seconds = duration * ratio;
+
+            winrt::Microsoft::UI::Xaml::Shapes::Line tick;
+            tick.X1(x);
+            tick.X2(x);
+            tick.Y1(height - 10.0);
+            tick.Y2(height);
+            tick.Stroke(lineBrush);
+            tick.StrokeThickness(1.0);
+            canvas.Children().Append(tick);
+
+            winrt::Microsoft::UI::Xaml::Controls::TextBlock label;
+            label.Text(FormatWinUiTiming(seconds));
+            label.FontFamily(winrt::Microsoft::UI::Xaml::Media::FontFamily{ L"Consolas" });
+            label.FontSize(8.5);
+            label.Opacity(0.55);
+            winrt::Microsoft::UI::Xaml::Controls::Canvas::SetLeft(
+                label, (std::max)(0.0, (std::min)(width - 58.0, x - 24.0)));
+            winrt::Microsoft::UI::Xaml::Controls::Canvas::SetTop(label, 0.0);
+            canvas.Children().Append(label);
+        }
+
+        m_timelineSliderUpdating = true;
+        TimelineSlider().Maximum(duration);
+        m_timelineSliderUpdating = false;
+    }
+
+    inline void MainWindow::RefreshTimelineSlider()
+    {
+        auto const duration = CurrentMediaDurationSeconds();
+        if (duration <= 0.0)
+            return;
+
+        auto const current = CurrentVideoSeconds();
+        m_timelineSliderUpdating = true;
+        TimelineSlider().Maximum(duration);
+        if (current >= 0.0)
+            TimelineSlider().Value((std::max)(0.0, (std::min)(duration, current)));
+        m_timelineSliderUpdating = false;
+    }
+
+    inline void MainWindow::WholeTimelineCanvas_SizeChanged(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::SizeChangedEventArgs const&)
+    {
+        RenderWholeTimeline();
+    }
+
+    inline void MainWindow::TimelineSlider_ValueChanged(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::Controls::Primitives::RangeBaseValueChangedEventArgs const& args)
+    {
+        if (m_timelineSliderUpdating || CurrentMediaDurationSeconds() <= 0.0)
+            return;
+
+        SeekMediaToSeconds(args.NewValue());
+        RefreshVideoPositionText();
+        RefreshWaveformPlayhead();
     }
 
     inline void MainWindow::CenterWaveformOnCurrentSubtitle()
@@ -373,6 +500,7 @@ namespace winrt::Aegisub_WinUI::implementation
               << FormatWinUiTiming(activeStart).c_str()
               << L" – " << FormatWinUiTiming(activeEnd).c_str();
         WaveformRangeText().Text(winrt::hstring{ range.str() });
+        RenderWholeTimeline();
     }
 
     inline void MainWindow::RefreshWaveformTimingOverlay()

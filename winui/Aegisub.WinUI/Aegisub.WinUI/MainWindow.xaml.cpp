@@ -1773,21 +1773,6 @@ namespace winrt::Aegisub_WinUI::implementation
             });
             MenuFlyout rowMenu;
 
-            MenuFlyoutItem splitItem;
-            splitItem.Text(L"Rozdělit v kurzoru");
-            splitItem.Click([this, index](auto const&, auto const&)
-            {
-                if (index != m_currentIndex)
-                {
-                    StoreCurrentEditorSelection();
-                    SelectSubtitleRow(index, false, false);
-                    m_currentIndex = index;
-                    LoadCurrentRow();
-                }
-                SplitCurrentSubtitleAtCursor();
-            });
-            rowMenu.Items().Append(splitItem);
-
             MenuFlyoutItem mergeItem;
             mergeItem.Text(L"Sloučit vybrané titulky");
             mergeItem.Click([this, index](auto const&, auto const&)
@@ -1827,6 +1812,14 @@ namespace winrt::Aegisub_WinUI::implementation
 
         RefreshActiveFilter();
         UpdateSelectionVisuals();
+    }
+
+    void MainWindow::TargetSelectAllMenuItem_Click(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        TargetTextBox().SelectAll();
+        TargetTextBox().Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
     }
 
     void MainWindow::SetDirty(bool dirty)

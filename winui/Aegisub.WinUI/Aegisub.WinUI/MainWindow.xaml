@@ -109,6 +109,8 @@
                 <Grid RowSpacing="5">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="24" />
+                        <RowDefinition Height="24" />
                         <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
@@ -131,7 +133,14 @@
                         </StackPanel>
                         <Button Grid.Column="2" Content="Audio…" Padding="7,2" Click="OpenAudioButton_Click" />
                     </Grid>
-                    <Border Grid.Row="1" Background="#08000000" CornerRadius="3">
+                    <Canvas x:Name="WholeTimelineCanvas" Grid.Row="1" Background="Transparent"
+                            SizeChanged="WholeTimelineCanvas_SizeChanged"
+                            ToolTipService.ToolTip="Přehled celé délky videa. Zvýrazněný úsek odpovídá detailu zobrazenému ve waveformu." />
+                    <Slider x:Name="TimelineSlider" Grid.Row="2" Minimum="0" Maximum="1" Value="0"
+                            Margin="0,-2,0,-2" SmallChange="0.1" LargeChange="5"
+                            ValueChanged="TimelineSlider_ValueChanged"
+                            ToolTipService.ToolTip="Aktuální pozice videa v celé délce souboru" />
+                    <Border Grid.Row="3" Background="#08000000" CornerRadius="3">
                         <Canvas x:Name="WaveformCanvas" Background="Transparent"
                                 ToolTipService.ToolTip="Levé tlačítko nastavuje a táhne začátek titulku. Pravé tlačítko nastavuje a táhne konec. H± mění časový zoom, V± výšku vlny."
                                 SizeChanged="WaveformCanvas_SizeChanged"
@@ -139,7 +148,7 @@
                                 PointerMoved="WaveformCanvas_PointerMoved"
                                 PointerReleased="WaveformCanvas_PointerReleased" />
                     </Border>
-                    <Grid Grid.Row="2">
+                    <Grid Grid.Row="4">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                         <TextBlock x:Name="WaveformRangeText" Text="Lokální pohled kolem aktuálního titulku" FontFamily="Consolas" FontSize="10" Opacity="0.55" />
                         <TextBlock Grid.Column="1" Text="?" FontSize="10" Opacity="0.42"
@@ -239,7 +248,15 @@
                             </Grid>
 
                             <TextBox x:Name="TargetTextBox" Grid.Row="2" Padding="8" AcceptsReturn="True" TextWrapping="Wrap" FontSize="16"
-                                     Loaded="TargetTextBox_WorkflowLoaded" TextChanged="TargetTextBox_TextChanged" />
+                                     Loaded="TargetTextBox_WorkflowLoaded" TextChanged="TargetTextBox_TextChanged">
+                                <TextBox.ContextFlyout>
+                                    <MenuFlyout>
+                                        <MenuFlyoutItem Text="Rozdělit v kurzoru" Click="SplitSubtitleButton_Click" />
+                                        <MenuFlyoutSeparator />
+                                        <MenuFlyoutItem Text="Vybrat vše" Click="TargetSelectAllMenuItem_Click" />
+                                    </MenuFlyout>
+                                </TextBox.ContextFlyout>
+                            </TextBox>
 
                             <Grid Grid.Row="3" Margin="0,5,0,0" ColumnSpacing="8">
                                 <Grid.ColumnDefinitions>
@@ -250,8 +267,6 @@
                                 <TextBlock x:Name="TargetCpsText" Grid.Column="1" Text="CPS 0" FontSize="10" Opacity="0.5" />
                                 <TextBlock x:Name="TargetLengthText" Grid.Column="2" Text="Znaky 0" FontSize="10" Opacity="0.5" />
                                 <StackPanel Grid.Column="4" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="6">
-                                    <Button Content="Rozdělit v kurzoru" Padding="7,2" FontSize="11" Click="SplitSubtitleButton_Click"
-                                            ToolTipService.ToolTip="Rozdělit text v místě kurzoru; čas řezu použije aktuální pozici videa, pokud leží uvnitř titulku" />
                                     <Button Content="Převzít originál" Padding="6,2" FontSize="11" Click="CopyOriginalButton_Click" />
                                     <Button Content="Rozdělit řádky" Padding="6,2" FontSize="11" Click="InsertLineBreakButton_Click" />
                                 </StackPanel>

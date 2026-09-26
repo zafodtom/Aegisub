@@ -125,6 +125,8 @@ namespace winrt::Aegisub_WinUI::implementation
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void SplitSubtitleButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void TargetSelectAllMenuItem_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void MergeSelectedSubtitlesButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void JoinNextSubtitleButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
@@ -171,6 +173,10 @@ namespace winrt::Aegisub_WinUI::implementation
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void WaveformCanvas_SizeChanged(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::SizeChangedEventArgs const& args);
+        void WholeTimelineCanvas_SizeChanged(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::SizeChangedEventArgs const& args);
+        void TimelineSlider_ValueChanged(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::Controls::Primitives::RangeBaseValueChangedEventArgs const& args);
         void WaveformCanvas_PointerPressed(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args);
         void WaveformCanvas_PointerMoved(winrt::Windows::Foundation::IInspectable const& sender,
@@ -342,6 +348,7 @@ namespace winrt::Aegisub_WinUI::implementation
         winrt::Microsoft::UI::Xaml::Shapes::Line m_waveformActiveStartMarker{ nullptr };
         winrt::Microsoft::UI::Xaml::Shapes::Line m_waveformActiveEndMarker{ nullptr };
         winrt::Microsoft::UI::Xaml::Shapes::Line m_waveformPlayhead{ nullptr };
+        bool m_timelineSliderUpdating{};
         winrt::Microsoft::UI::Xaml::DispatcherTimer m_mediaUiTimer{ nullptr };
         double m_playSelectedUntil{-1.0};
         bool m_structureDirty{};
@@ -460,6 +467,9 @@ namespace winrt::Aegisub_WinUI::implementation
         void RefreshVideoPositionText();
         bool LoadWaveformForMedia(std::wstring const& filename);
         void RenderWaveform();
+        void RenderWholeTimeline();
+        void RefreshTimelineSlider();
+        double CurrentMediaDurationSeconds();
         void CenterWaveformOnCurrentSubtitle();
         void RefreshWaveformPlayhead();
         void RefreshWaveformTimingOverlay();
