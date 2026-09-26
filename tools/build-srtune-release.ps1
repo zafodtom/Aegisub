@@ -20,6 +20,74 @@ function Require-Command([string]$Name) {
     }
 }
 
+function Wait-FileReadable([string]$Path, [int]$TimeoutSeconds = 30) {
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    while ((Get-Date) -lt $deadline) {
+        try {
+            $stream = [System.IO.File]::Open(
+                $Path,
+                [System.IO.FileMode]::Open,
+                [System.IO.FileAccess]::Read,
+                [System.IO.FileShare]::ReadWrite
+            )
+            $stream.Dispose()
+            return
+        }
+        catch {
+            Start-Sleep -Milliseconds 500
+        }
+    }
+
+    throw "Soubor je stále zamčený a nelze jej zabalit: $Path"
+}
+
+function New-PortableZip([string]$SourceDirectory, [string]$DestinationZip) {
+    $files = Get-ChildItem -Path $SourceDirectory -File -Recurse
+    foreach ($file in $files) {
+        Wait-FileReadable -Path $file.FullName -TimeoutSeconds 30
+    }
+
+    if (Test-Path $DestinationZip) {
+        Remove-Item -Force $DestinationZip
+    }
+
+    $lastError = $null
+    for ($attempt = 1; $attempt -le 5; $attempt++) {
+        try {
+            Compress-Archive -Path (Join-Path $SourceDirectory "*") -DestinationPath $DestinationZip -CompressionLevel Optimal -ErrorAction Stop
+
+            if (-not (Test-Path $DestinationZip)) {
+                throw "ZIP soubor po kompresi nevznikl."
+            }
+
+            Add-Type -AssemblyName System.IO.Compression.FileSystem
+            $archive = [System.IO.Compression.ZipFile]::OpenRead($DestinationZip)
+            try {
+                if ($archive.Entries.Count -eq 0) {
+                    throw "ZIP archiv je prázdný."
+                }
+            }
+            finally {
+                $archive.Dispose()
+            }
+
+            return
+        }
+        catch {
+            $lastError = $_
+            if (Test-Path $DestinationZip) {
+                Remove-Item -Force $DestinationZip -ErrorAction SilentlyContinue
+            }
+            if ($attempt -lt 5) {
+                Write-Warning ("ZIP je dočasně blokovaný, opakuji pokus {0}/5..." -f ($attempt + 1))
+                Start-Sleep -Seconds 2
+            }
+        }
+    }
+
+    throw "Portable ZIP se nepodařilo vytvořit ani po opakování: $lastError"
+}
+
 Require-Command "msbuild"
 
 if (-not $SkipBridge) {
@@ -63,8 +131,7 @@ if (Test-Path $FfmpegNotice) {
     Copy-Item -Force $FfmpegNotice (Join-Path $Stage "FFMPEG-NOTICE.txt")
 }
 
-if (Test-Path $Portable) { Remove-Item -Force $Portable }
-Compress-Archive -Path (Join-Path $Stage "*") -DestinationPath $Portable -CompressionLevel Optimal
+New-PortableZip -SourceDirectory $Stage -DestinationZip $Portable
 
 Write-Host ""
 Write-Host "[SRTune] Portable package:"
