@@ -323,6 +323,7 @@ namespace winrt::Aegisub_WinUI::implementation
         std::vector<SubtitleEntry> m_sourceEntries;
         std::vector<SubtitleEntry> m_targetEntries;
         std::vector<winrt::Microsoft::UI::Xaml::Controls::Border> m_rowBorders;
+        std::vector<winrt::Microsoft::UI::Xaml::Controls::TextBlock> m_rowOriginalTexts;
         std::vector<winrt::Microsoft::UI::Xaml::Controls::TextBlock> m_rowTargetTexts;
         std::vector<winrt::Microsoft::UI::Xaml::Controls::TextBlock> m_rowStatusTexts;
         winrt::Microsoft::UI::Xaml::Controls::Grid m_subtitleGrid{ nullptr };
@@ -551,6 +552,7 @@ namespace winrt::Aegisub_WinUI::implementation
         void CaptureRecoveryHistorySnapshot() const;
 
         bool RowMatchesAdvancedSearch(SubtitleRowData const& row, std::wstring_view query);
+        void RefreshSearchHighlights();
         void RefreshAdvancedSearchSummary();
         void MoveToAdvancedSearchResult(int32_t direction);
         void ApplyAdvancedReplace(bool previewOnly);

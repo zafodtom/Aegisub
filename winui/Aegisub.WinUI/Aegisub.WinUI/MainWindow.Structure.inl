@@ -63,7 +63,7 @@ namespace winrt::Aegisub_WinUI::implementation
         cursor = (std::min)(cursor, text.size());
         if (cursor == 0 || cursor >= text.size())
         {
-            StatusBarText().Text(L"Umístěte kurzor dovnitř českého textu, kde se má titulek rozdělit");
+            StatusBarText().Text(L"Umístěte kurzor dovnitř překladu, kde se má titulek rozdělit");
             return;
         }
 

@@ -1881,6 +1881,7 @@ namespace winrt::Aegisub_WinUI::implementation
             ToolTipService::SetToolTip(m_rowStatusTexts[index], winrt::box_value(m_rows[index].qaIssue));
         else
             ToolTipService::SetToolTip(m_rowStatusTexts[index], nullptr);
+        RefreshSearchHighlights();
     }
 
     int32_t MainWindow::RowIndexFromSender(
@@ -1919,14 +1920,11 @@ namespace winrt::Aegisub_WinUI::implementation
         grid.RowDefinitions().Clear();
 
         m_rowBorders.clear();
+        m_rowOriginalTexts.clear();
         m_rowTargetTexts.clear();
         m_rowStatusTexts.clear();
         m_rowVisuals.clear();
         m_rowVisuals.resize(m_rows.size());
-
-        RowDefinition headerRow;
-        headerRow.Height(GridLength{ 30.0, GridUnitType::Pixel });
-        grid.RowDefinitions().Append(headerRow);
 
         for (size_t i = 0; i < m_rows.size(); ++i)
         {
@@ -1935,15 +1933,6 @@ namespace winrt::Aegisub_WinUI::implementation
             grid.RowDefinitions().Append(rowDefinition);
         }
 
-        auto const accentBrush = TargetPanelBorder().BorderBrush();
-
-        Border headerBorder;
-        headerBorder.BorderBrush(accentBrush);
-        headerBorder.BorderThickness(Thickness{ 0.0, 1.0, 0.0, 1.0 });
-        Grid::SetRow(headerBorder, 0);
-        Grid::SetColumnSpan(headerBorder, 6);
-        grid.Children().Append(headerBorder);
-
         auto addText = [&](hstring const& text, int32_t row, int32_t column, bool ellipsis, double leftMargin)
         {
             TextBlock block;
@@ -1951,30 +1940,19 @@ namespace winrt::Aegisub_WinUI::implementation
             block.Margin(Thickness{ leftMargin, 0.0, 4.0, 0.0 });
             block.VerticalAlignment(VerticalAlignment::Center);
             block.IsHitTestVisible(false);
-            block.FontSize(row == 0 ? 10.5 : 11.5);
-            if (row == 0)
-                block.FontWeight(Windows::UI::Text::FontWeights::SemiBold());
+            block.FontSize(11.5);
             if (ellipsis)
-            {
                 block.TextTrimming(TextTrimming::CharacterEllipsis);
-            }
             Grid::SetRow(block, row);
             Grid::SetColumn(block, column);
             grid.Children().Append(block);
             return block;
         };
 
-        addText(L"#", 0, 0, false, 10.0);
-        addText(L"Start", 0, 1, false, 8.0);
-        addText(L"Konec", 0, 2, false, 8.0);
-        addText(L"Origin\u00E1l", 0, 3, false, 8.0);
-        addText(L"\u010Ce\u0161tina", 0, 4, false, 8.0);
-        addText(L"Stav", 0, 5, false, 8.0);
-
         for (int32_t index = 0; index < static_cast<int32_t>(m_rows.size()); ++index)
         {
             auto const& row = m_rows[index];
-            auto const visualRow = index + 1;
+            auto const visualRow = index;
 
             Microsoft::UI::Xaml::Media::SolidColorBrush transparentBrush;
             transparentBrush.Color(Windows::UI::Color{ 0, 0, 0, 0 });
@@ -2175,12 +2153,14 @@ namespace winrt::Aegisub_WinUI::implementation
             visuals.push_back(originalText.as<UIElement>());
             visuals.push_back(targetText.as<UIElement>());
             visuals.push_back(statusText.as<UIElement>());
+            m_rowOriginalTexts.push_back(originalText);
             m_rowTargetTexts.push_back(targetText);
             m_rowStatusTexts.push_back(statusText);
         }
 
         RefreshActiveFilter();
         UpdateSelectionVisuals();
+        RefreshSearchHighlights();
     }
 
     void MainWindow::TargetSelectAllMenuItem_Click(
@@ -3018,16 +2998,20 @@ namespace winrt::Aegisub_WinUI::implementation
             Grid::SetColumnSpan(TargetPanelBorder(), 2);
         }
 
-        auto const columns = SubtitleGridHost().ColumnDefinitions();
-        if (columns.Size() >= 5)
+        auto updateColumns = [visible](Grid const& table)
         {
+            auto const columns = table.ColumnDefinitions();
+            if (columns.Size() < 5)
+                return;
             columns.GetAt(3).Width(visible
                 ? GridLength{ 1.1, GridUnitType::Star }
                 : GridLength{ 0.0, GridUnitType::Pixel });
             columns.GetAt(4).Width(visible
                 ? GridLength{ 1.1, GridUnitType::Star }
                 : GridLength{ 2.2, GridUnitType::Star });
-        }
+        };
+        updateColumns(SubtitleColumnHeader());
+        updateColumns(SubtitleGridHost());
 
         ToggleOriginalPanelMenuItem().IsEnabled(available);
         ToggleOriginalPanelMenuItem().Text(visible ? L"Skrýt originál" : L"Zobrazit originál");

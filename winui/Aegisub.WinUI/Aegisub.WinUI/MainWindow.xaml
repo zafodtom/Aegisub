@@ -407,12 +407,39 @@
                         <Button Grid.Column="4" Content="Sloučit vybrané" Padding="7,2" FontSize="11" Click="MergeSelectedSubtitlesButton_Click"
                                 ToolTipService.ToolTip="Sloučit souvisle vybrané titulky; Ctrl+klik, Shift+klik nebo tažení myší" />
                     </Grid>
-                    <ScrollViewer x:Name="SubtitleScrollViewer" Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-                        <Grid x:Name="SubtitleGridHost" MinWidth="1000">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="55" /><ColumnDefinition Width="125" /><ColumnDefinition Width="125" />
-                                <ColumnDefinition Width="1.1*" /><ColumnDefinition Width="1.1*" /><ColumnDefinition Width="105" />
-                            </Grid.ColumnDefinitions>
+
+                    <ScrollViewer x:Name="SubtitleHorizontalScrollViewer" Grid.Row="1"
+                                  HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                        <Grid MinWidth="1000">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="30" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <Border Grid.Row="0" BorderBrush="Gray" BorderThickness="0,1,0,1">
+                                <Grid x:Name="SubtitleColumnHeader">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="55" /><ColumnDefinition Width="125" /><ColumnDefinition Width="125" />
+                                        <ColumnDefinition Width="1.1*" /><ColumnDefinition Width="1.1*" /><ColumnDefinition Width="105" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="#" Margin="10,0,4,0" FontSize="10.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="1" Text="Start" Margin="8,0,4,0" FontSize="10.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="2" Text="Konec" Margin="8,0,4,0" FontSize="10.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="3" Text="Originál" Margin="8,0,4,0" FontSize="10.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="4" Text="Překlad" Margin="8,0,4,0" FontSize="10.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="5" Text="Stav" Margin="8,0,4,0" FontSize="10.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                </Grid>
+                            </Border>
+
+                            <ScrollViewer x:Name="SubtitleScrollViewer" Grid.Row="1"
+                                          HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                                <Grid x:Name="SubtitleGridHost">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="55" /><ColumnDefinition Width="125" /><ColumnDefinition Width="125" />
+                                        <ColumnDefinition Width="1.1*" /><ColumnDefinition Width="1.1*" /><ColumnDefinition Width="105" />
+                                    </Grid.ColumnDefinitions>
+                                </Grid>
+                            </ScrollViewer>
                         </Grid>
                     </ScrollViewer>
                 </Grid>

@@ -267,7 +267,7 @@ namespace winrt::Aegisub_WinUI::implementation
         std::wstring errorMessage;
         if (!SaveTargetSubtitleFile(errorMessage))
         {
-            StatusBarText().Text(L"Uložení českých titulků se nezdařilo");
+            StatusBarText().Text(L"Uložení překladu se nezdařilo");
             if (m_lastSaveDetectedExternalChange) { OfferSaveAsForExternalChange(errorMessage); return; }
             MessageBoxW(GetActiveWindow(), errorMessage.c_str(), L"Aegisub Translation Workspace", MB_OK | MB_ICONERROR);
             return;
@@ -276,7 +276,7 @@ namespace winrt::Aegisub_WinUI::implementation
         RememberRecentProject();
         auto const targetName = std::filesystem::path(m_targetPath.c_str()).filename().wstring();
         auto const backupInfo = m_lastSaveCreatedBackup ? std::wstring{ L" · záloha v LocalAppData" } : std::wstring{};
-        StatusBarText().Text(winrt::hstring{ L"Čeština uložena · " + targetName + backupInfo + L" · projekt je čistý" });
+        StatusBarText().Text(winrt::hstring{ L"Překlad uložen · " + targetName + backupInfo + L" · projekt je čistý" });
     }
 
     inline void MainWindow::SaveAsFromShortcut()
@@ -290,7 +290,7 @@ namespace winrt::Aegisub_WinUI::implementation
         std::wstring errorMessage;
         if (!SaveTargetSubtitleFile(errorMessage, destination))
         {
-            StatusBarText().Text(L"Uložení českých titulků se nezdařilo");
+            StatusBarText().Text(L"Uložení překladu se nezdařilo");
             if (m_lastSaveDetectedExternalChange) { OfferSaveAsForExternalChange(errorMessage); return; }
             MessageBoxW(GetActiveWindow(), errorMessage.c_str(), L"Aegisub Translation Workspace", MB_OK | MB_ICONERROR);
             return;
@@ -298,7 +298,7 @@ namespace winrt::Aegisub_WinUI::implementation
         CaptureRecoveryHistorySnapshot();
         RememberRecentProject();
         auto const targetName = std::filesystem::path(m_targetPath.c_str()).filename().wstring();
-        StatusBarText().Text(winrt::hstring{ L"Čeština uložena jako · " + targetName + L" · projekt je čistý" });
+        StatusBarText().Text(winrt::hstring{ L"Překlad uložen jako · " + targetName + L" · projekt je čistý" });
     }
 
     inline void MainWindow::TargetTextBox_WorkflowKeyDown(
@@ -547,7 +547,7 @@ namespace winrt::Aegisub_WinUI::implementation
         auto const& original = m_rows[m_currentIndex].original;
         if (original.empty()) { StatusBarText().Text(L"Aktuální titulek nemá spárovaný originální text"); return; }
         auto const box = TargetTextBox();
-        if (box.Text() == original) { StatusBarText().Text(L"Český text již odpovídá originálu"); return; }
+        if (box.Text() == original) { StatusBarText().Text(L"Překlad již odpovídá originálu"); return; }
         box.Text(original);
         box.SelectionStart(static_cast<int32_t>(original.size()));
         box.SelectionLength(0);
@@ -696,6 +696,7 @@ namespace winrt::Aegisub_WinUI::implementation
             if (count) { ++rows; matches += count; }
         }
         SearchResultText().Text(winrt::hstring{ query.empty() ? L"" : std::to_wstring(matches) + L" / " + std::to_wstring(rows) + L" ř." });
+        RefreshSearchHighlights();
     }
 
     inline void MainWindow::BulkNormalizeButton_Click(winrt::Windows::Foundation::IInspectable const&,

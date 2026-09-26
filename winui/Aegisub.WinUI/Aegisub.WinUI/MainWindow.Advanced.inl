@@ -35,6 +35,7 @@ namespace winrt::Aegisub_WinUI::implementation
         winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
         SearchBar().Visibility(winrt::Microsoft::UI::Xaml::Visibility::Collapsed);
+        RefreshSearchHighlights();
         TargetTextBox().Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
     }
 
@@ -181,6 +182,63 @@ namespace winrt::Aegisub_WinUI::implementation
             CurrentSearchOptions());
     }
 
+    inline void MainWindow::RefreshSearchHighlights()
+    {
+        for (auto const& block : m_rowOriginalTexts)
+            block.TextHighlighters().Clear();
+        for (auto const& block : m_rowTargetTexts)
+            block.TextHighlighters().Clear();
+
+        if (SearchBar().Visibility() != winrt::Microsoft::UI::Xaml::Visibility::Visible)
+            return;
+
+        std::wstring const query{ SearchTextBox().Text().c_str() };
+        if (query.empty())
+            return;
+
+        auto const options = CurrentSearchOptions();
+
+        winrt::Microsoft::UI::Xaml::Media::SolidColorBrush background;
+        background.Color(winrt::Windows::UI::Color{ 92, 255, 213, 79 });
+
+        auto apply = [&](winrt::Microsoft::UI::Xaml::Controls::TextBlock const& block,
+                         winrt::hstring const& text,
+                         bool enabled)
+        {
+            if (!enabled)
+                return;
+
+            auto const matches = agi::winui::FindSearchMatches(
+                std::wstring_view{ text.c_str(), text.size() }, query, options);
+            if (matches.empty())
+                return;
+
+            winrt::Microsoft::UI::Xaml::Documents::TextHighlighter highlighter;
+            highlighter.Background(background);
+            for (auto const& match : matches)
+            {
+                winrt::Microsoft::UI::Xaml::Documents::TextRange range{};
+                range.StartIndex = static_cast<int32_t>(match.position);
+                range.Length = static_cast<int32_t>(match.length);
+                highlighter.Ranges().Append(range);
+            }
+            block.TextHighlighters().Append(highlighter);
+        };
+
+        auto const count = (std::min)(m_rows.size(),
+            (std::min)(m_rowOriginalTexts.size(), m_rowTargetTexts.size()));
+        for (size_t index = 0; index < count; ++index)
+        {
+            auto const& row = m_rows[index];
+            apply(m_rowOriginalTexts[index], row.original,
+                options.scope == agi::winui::SearchScope::source ||
+                options.scope == agi::winui::SearchScope::both);
+            apply(m_rowTargetTexts[index], row.target,
+                options.scope == agi::winui::SearchScope::target ||
+                options.scope == agi::winui::SearchScope::both);
+        }
+    }
+
     inline void MainWindow::RefreshAdvancedSearchSummary()
     {
         std::wstring const query{ SearchTextBox().Text().c_str() };
@@ -189,6 +247,7 @@ namespace winrt::Aegisub_WinUI::implementation
             SearchResultText().Text(L"");
             SearchPreviousButton().IsEnabled(false);
             SearchNextButton().IsEnabled(false);
+            RefreshSearchHighlights();
             return;
         }
 
@@ -216,6 +275,7 @@ namespace winrt::Aegisub_WinUI::implementation
         SearchNextButton().IsEnabled(available);
         SearchResultText().Text(winrt::hstring{
             std::to_wstring(occurrences) + L" / " + std::to_wstring(matchedRows) + L" ř." });
+        RefreshSearchHighlights();
     }
 
     inline void MainWindow::MoveToAdvancedSearchResult(int32_t direction)
@@ -292,51 +352,80 @@ namespace winrt::Aegisub_WinUI::implementation
             return;
         }
 
+        int32_t foundIndex = -1;
+        agi::winui::SearchMatch foundMatch{};
         auto const rowCount = static_cast<int32_t>(m_rows.size());
+
         for (int32_t offset = 0; offset < rowCount; ++offset)
         {
-            auto index = (m_currentIndex + offset) % rowCount;
+            auto const index = (m_currentIndex + offset) % rowCount;
             if (!RowMatchesActiveFilter(m_rows[index]))
                 continue;
 
-            auto const target = std::wstring_view{ m_rows[index].target.c_str(), m_rows[index].target.size() };
-            auto const matches = agi::winui::FindSearchMatches(target, query, options);
+            auto const text = std::wstring_view{
+                m_rows[index].target.c_str(), m_rows[index].target.size() };
+            auto const matches = agi::winui::FindSearchMatches(text, query, options);
             if (matches.empty())
                 continue;
 
-            if (index != m_currentIndex)
-                StoreCurrentEditorSelection();
+            foundIndex = index;
+            foundMatch = matches.front();
 
-            CaptureBulkSnapshot({ static_cast<size_t>(index) }, L"nahrazení aktuálního výskytu");
+            if (index == m_currentIndex)
+            {
+                auto const selectionStart = static_cast<size_t>(
+                    (std::max)(0, TargetTextBox().SelectionStart()));
+                auto const selected = std::find_if(matches.begin(), matches.end(),
+                    [selectionStart](agi::winui::SearchMatch const& match)
+                    {
+                        return match.position == selectionStart;
+                    });
+                if (selected != matches.end())
+                    foundMatch = *selected;
+            }
+            break;
+        }
 
-            auto& row = m_rows[index];
-            std::wstring updated{ row.target.c_str() };
-            auto const match = matches.front();
-            updated.replace(match.position, match.length, replacement);
-            row.target = winrt::hstring{ updated };
-            row.rawTarget = row.target;
-            row.workflowStatus = L"Upraveno";
-            row.status = L"Upraveno";
-            row.targetModified = true;
-
-            m_currentIndex = index;
-            m_selectedSubtitleIndices.assign(1, index);
-            m_selectionAnchorIndex = index;
-            SyncTargetEntriesFromRows();
-            m_workflowStateDirty = true;
-            UpdateDirtyFromRows();
-            RefreshQaAll();
-            RebuildSubtitleGrid();
-            LoadCurrentRow();
-            RefreshAdvancedSearchSummary();
-
-            StatusBarText().Text(winrt::hstring{
-                L"Nahrazen aktuální výskyt · titulek #" + std::to_wstring(row.number) });
-            MoveToAdvancedSearchResult(1);
+        if (foundIndex < 0)
+        {
+            StatusBarText().Text(L"Nahradit · žádná shoda");
             return;
         }
 
-        StatusBarText().Text(L"Nahradit · žádný další výskyt");
+        if (foundIndex != m_currentIndex)
+            StoreCurrentEditorSelection();
+
+        CaptureBulkSnapshot({ static_cast<size_t>(foundIndex) }, L"nahrazení aktuálního výskytu");
+
+        auto& row = m_rows[foundIndex];
+        std::wstring updated{ row.target.c_str() };
+        updated.replace(foundMatch.position, foundMatch.length, replacement);
+        row.target = winrt::hstring{ updated };
+        row.workflowStatus = L"Upraveno";
+        row.status = L"Upraveno";
+        row.targetModified = !agi::winui::EquivalentEditorText(
+            row.target.c_str(), row.savedTarget.c_str());
+
+        m_currentIndex = foundIndex;
+        m_selectedSubtitleIndices.assign(1, foundIndex);
+        m_selectionAnchorIndex = foundIndex;
+
+        SyncTargetEntriesFromRows();
+        m_workflowStateDirty = true;
+        UpdateDirtyFromRows();
+        RefreshQaAll();
+        RebuildSubtitleGrid();
+        LoadCurrentRow();
+        RefreshAdvancedSearchSummary();
+        ScheduleWorkspaceDraftSave();
+
+        auto const replacementLength = static_cast<int32_t>(replacement.size());
+        TargetTextBox().SelectionStart(static_cast<int32_t>(foundMatch.position));
+        TargetTextBox().SelectionLength(replacementLength);
+        TargetTextBox().Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
+
+        StatusBarText().Text(winrt::hstring{
+            L"Nahrazen aktuální výskyt · titulek #" + std::to_wstring(row.number) });
     }
 
     inline void MainWindow::ApplyAdvancedReplace(bool previewOnly)
@@ -353,7 +442,7 @@ namespace winrt::Aegisub_WinUI::implementation
         auto options = CurrentSearchOptions();
         if (options.scope == agi::winui::SearchScope::source)
         {
-            StatusBarText().Text(L"Originál je pouze pro čtení · pro náhradu zvolte češtinu nebo obojí");
+            StatusBarText().Text(L"Originál je pouze pro čtení · pro náhradu zvolte Překlad nebo Obojí");
             return;
         }
 
@@ -371,7 +460,7 @@ namespace winrt::Aegisub_WinUI::implementation
 
         if (affected.empty())
         {
-            StatusBarText().Text(L"Nahradit · ve zobrazených českých titulcích není žádná shoda");
+            StatusBarText().Text(L"Nahradit · ve zobrazeném překladu není žádná shoda");
             return;
         }
 
@@ -402,11 +491,14 @@ namespace winrt::Aegisub_WinUI::implementation
             row.targetModified = !agi::winui::EquivalentEditorText(row.target.c_str(), row.savedTarget.c_str());
             if (index < m_targetEntries.size()) m_targetEntries[index].text = row.target;
         }
+        SyncTargetEntriesFromRows();
         m_workflowStateDirty = true;
         UpdateDirtyFromRows();
         RefreshQaAll();
+        RebuildSubtitleGrid();
         LoadCurrentRow();
         RefreshAdvancedSearchSummary();
+        ScheduleWorkspaceDraftSave();
         StatusBarText().Text(winrt::hstring{
             L"Nahrazeno " + std::to_wstring(occurrences) + L" shod v " +
             std::to_wstring(affected.size()) + L" titulcích · hromadnou změnu lze vrátit" });
@@ -549,7 +641,7 @@ namespace winrt::Aegisub_WinUI::implementation
         combo.Items().Clear();
         if (m_targetPath.empty())
         {
-            RecoveryHistoryText().Text(L"Recovery: otevřete český cílový soubor");
+            RecoveryHistoryText().Text(L"Recovery: otevřete soubor překladu");
             RestoreSelectedRecoveryButton().IsEnabled(false);
             return;
         }
@@ -745,7 +837,7 @@ namespace winrt::Aegisub_WinUI::implementation
 
         if (source.empty() || target.empty() || source == target)
         {
-            StatusBarText().Text(L"Přetažení: dvojici originál + čeština se nepodařilo jednoznačně určit");
+            StatusBarText().Text(L"Přetažení: dvojici originál + překlad se nepodařilo jednoznačně určit");
             co_return;
         }
         if (!ConfirmSaveBefore(L"otevřením přetaženého projektu")) co_return;
