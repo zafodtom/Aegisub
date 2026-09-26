@@ -3,7 +3,7 @@
 #include <cmath>
 #include <fstream>
 
-namespace winrt::Aegisub_WinUI::implementation
+namespace winrt::SRTune::implementation
 {
     inline std::filesystem::path WaveformViewSettingsPath()
     {
@@ -14,7 +14,7 @@ namespace winrt::Aegisub_WinUI::implementation
 
         std::filesystem::path root{ value };
         std::free(value);
-        return root / L"Aegisub" / L"waveform-view.tsv";
+        return root / L"SRTune" / L"waveform-view.tsv";
     }
 
     inline std::filesystem::path FindWaveformBridgeExecutable()
@@ -69,7 +69,7 @@ namespace winrt::Aegisub_WinUI::implementation
         }
 
         auto output = std::filesystem::temp_directory_path() /
-            (L"aegisub-winui-waveform-" + std::to_wstring(GetCurrentProcessId()) + L".tsv");
+            (L"srtune-waveform-" + std::to_wstring(GetCurrentProcessId()) + L".tsv");
 
         std::error_code error;
         std::filesystem::remove(output, error);
