@@ -4,6 +4,18 @@
 
 namespace winrt::Aegisub_WinUI::implementation
 {
+    inline std::filesystem::path WaveformViewSettingsPath()
+    {
+        wchar_t* value = nullptr;
+        size_t length = 0;
+        if (_wdupenv_s(&value, &length, L"LOCALAPPDATA") != 0 || !value)
+            return {};
+
+        std::filesystem::path root{ value };
+        std::free(value);
+        return root / L"Aegisub" / L"waveform-view.tsv";
+    }
+
     inline std::filesystem::path FindWaveformBridgeExecutable()
     {
         wchar_t modulePath[32768]{};
@@ -148,6 +160,122 @@ namespace winrt::Aegisub_WinUI::implementation
         return true;
     }
 
+    inline void MainWindow::LoadWaveformViewSettings()
+    {
+        try
+        {
+            auto const path = WaveformViewSettingsPath();
+            if (path.empty() || !std::filesystem::exists(path))
+                return;
+
+            std::ifstream stream(path, std::ios::binary);
+            std::string line;
+            while (std::getline(stream, line))
+            {
+                auto const tab = line.find('\t');
+                if (tab == std::string::npos)
+                    continue;
+
+                auto const key = line.substr(0, tab);
+                auto const value = std::stod(line.substr(tab + 1));
+                if (key == "horizontal")
+                    m_waveformHorizontalZoom = (std::max)(0.25, (std::min)(8.0, value));
+                else if (key == "vertical")
+                    m_waveformVerticalGain = (std::max)(0.25, (std::min)(8.0, value));
+            }
+        }
+        catch (...) {}
+    }
+
+    inline void MainWindow::SaveWaveformViewSettings() const
+    {
+        try
+        {
+            auto const path = WaveformViewSettingsPath();
+            if (path.empty())
+                return;
+
+            std::filesystem::create_directories(path.parent_path());
+            std::ofstream stream(path, std::ios::binary | std::ios::trunc);
+            if (!stream)
+                return;
+
+            stream << "horizontal\t" << m_waveformHorizontalZoom << '\n';
+            stream << "vertical\t" << m_waveformVerticalGain << '\n';
+        }
+        catch (...) {}
+    }
+
+    inline int32_t MainWindow::FindSubtitleIndexForTime(double seconds) const
+    {
+        for (int32_t index = 0; index < static_cast<int32_t>(m_rows.size()); ++index)
+        {
+            auto const start = WorkflowTimestampSeconds(m_rows[index].start);
+            auto const end = WorkflowTimestampSeconds(m_rows[index].end);
+            if (seconds >= start && seconds < end)
+                return index;
+        }
+        return -1;
+    }
+
+    inline void MainWindow::CenterWaveformOnTime(double seconds)
+    {
+        if (m_waveformDuration <= 0.0)
+            return;
+
+        auto span = m_waveformWindowEnd - m_waveformWindowStart;
+        if (span <= 0.0)
+            span = (std::max)(1.0, 8.0 / m_waveformHorizontalZoom);
+        span = (std::min)(span, m_waveformDuration);
+
+        m_waveformWindowStart = seconds - span * 0.5;
+        m_waveformWindowEnd = seconds + span * 0.5;
+
+        if (m_waveformWindowStart < 0.0)
+        {
+            m_waveformWindowEnd -= m_waveformWindowStart;
+            m_waveformWindowStart = 0.0;
+        }
+        if (m_waveformWindowEnd > m_waveformDuration)
+        {
+            auto const overflow = m_waveformWindowEnd - m_waveformDuration;
+            m_waveformWindowStart = (std::max)(0.0, m_waveformWindowStart - overflow);
+            m_waveformWindowEnd = m_waveformDuration;
+        }
+    }
+
+    inline void MainWindow::SyncSubtitleToPlayback(double seconds)
+    {
+        auto const index = FindSubtitleIndexForTime(seconds);
+        if (index < 0 || index == m_currentIndex)
+            return;
+
+        StoreCurrentEditorSelection();
+        m_currentIndex = index;
+        m_selectedSubtitleIndices.assign(1, index);
+        m_selectionAnchorIndex = index;
+
+        m_mediaDrivenSelectionUpdate = true;
+        LoadCurrentRow();
+        m_mediaDrivenSelectionUpdate = false;
+    }
+
+    inline void MainWindow::FollowWaveformPlayback(double seconds)
+    {
+        if (m_waveformDuration <= 0.0 || m_waveformWindowEnd <= m_waveformWindowStart)
+            return;
+
+        auto const span = m_waveformWindowEnd - m_waveformWindowStart;
+        auto const safeStart = m_waveformWindowStart + span * 0.15;
+        auto const safeEnd = m_waveformWindowEnd - span * 0.15;
+
+        if (seconds >= safeStart && seconds <= safeEnd)
+            return;
+
+        CenterWaveformOnTime(seconds);
+        RenderWaveform();
+    }
+
     inline double MainWindow::CurrentMediaDurationSeconds()
     {
         if (m_waveformDuration > 0.0)
@@ -268,7 +396,11 @@ namespace winrt::Aegisub_WinUI::implementation
         if (m_timelineSliderUpdating || CurrentMediaDurationSeconds() <= 0.0)
             return;
 
-        SeekMediaToSeconds(args.NewValue());
+        auto const seconds = args.NewValue();
+        SeekMediaToSeconds(seconds);
+        SyncSubtitleToPlayback(seconds);
+        CenterWaveformOnTime(seconds);
+        RenderWaveform();
         RefreshVideoPositionText();
         RefreshWaveformPlayhead();
     }
@@ -586,6 +718,7 @@ namespace winrt::Aegisub_WinUI::implementation
         }
 
         RenderWaveform();
+        SaveWaveformViewSettings();
     }
 
     inline void MainWindow::ZoomWaveformVertical(double factor)
@@ -595,6 +728,7 @@ namespace winrt::Aegisub_WinUI::implementation
         m_waveformVerticalGain = (std::max)(0.25,
             (std::min)(8.0, m_waveformVerticalGain * factor));
         RenderWaveform();
+        SaveWaveformViewSettings();
     }
 
     inline double MainWindow::WaveformSecondsFromPointer(double x, double width, bool allowAutoPan)

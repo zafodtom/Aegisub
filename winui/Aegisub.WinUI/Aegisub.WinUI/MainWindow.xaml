@@ -302,7 +302,7 @@
                             </Grid>
 
                             <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
-                                <Grid x:Name="GlossaryGridHost" ColumnSpacing="5" RowSpacing="4">
+                                <Grid x:Name="GlossaryGridHost" ColumnSpacing="5" RowSpacing="1">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="*" />

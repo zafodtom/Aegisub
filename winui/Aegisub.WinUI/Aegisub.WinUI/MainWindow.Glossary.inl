@@ -262,7 +262,7 @@ namespace winrt::Aegisub_WinUI::implementation
 
             winrt::Microsoft::UI::Xaml::Controls::RowDefinition row;
             row.Height(winrt::Microsoft::UI::Xaml::GridLength{
-                24.0, winrt::Microsoft::UI::Xaml::GridUnitType::Pixel });
+                23.0, winrt::Microsoft::UI::Xaml::GridUnitType::Pixel });
             grid.RowDefinitions().Append(row);
 
             auto const sourceText = std::wstring{ m_glossaryEntries[index].source.c_str() };
@@ -270,7 +270,9 @@ namespace winrt::Aegisub_WinUI::implementation
 
             winrt::Microsoft::UI::Xaml::Controls::TextBox sourceBox;
             sourceBox.Text(m_glossaryEntries[index].source);
-            sourceBox.FontSize(10.0);
+            sourceBox.FontSize(10.5);
+            sourceBox.Height(22.0);
+            sourceBox.MinHeight(22.0);
             sourceBox.Padding(winrt::Microsoft::UI::Xaml::Thickness{ 4.0, 0.0, 4.0, 0.0 });
             sourceBox.VerticalContentAlignment(winrt::Microsoft::UI::Xaml::VerticalAlignment::Center);
             if (matched)
@@ -280,7 +282,9 @@ namespace winrt::Aegisub_WinUI::implementation
 
             winrt::Microsoft::UI::Xaml::Controls::TextBox targetBox;
             targetBox.Text(m_glossaryEntries[index].target);
-            targetBox.FontSize(10.0);
+            targetBox.FontSize(10.5);
+            targetBox.Height(22.0);
+            targetBox.MinHeight(22.0);
             targetBox.Padding(winrt::Microsoft::UI::Xaml::Thickness{ 4.0, 0.0, 4.0, 0.0 });
             targetBox.VerticalContentAlignment(winrt::Microsoft::UI::Xaml::VerticalAlignment::Center);
             if (matched)

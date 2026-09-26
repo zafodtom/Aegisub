@@ -369,6 +369,7 @@ namespace winrt::Aegisub_WinUI::implementation
         if (m_workflowHooksInstalled) return;
         m_workflowHooksInstalled = true;
         LoadFeatureState();
+        LoadWaveformViewSettings();
         TargetTextBox().PreviewKeyDown({ this, &MainWindow::TargetTextBox_WorkflowKeyDown });
         RootGrid().PreviewKeyDown({ this, &MainWindow::RootGrid_WorkflowKeyDown });
         TargetTextBox().TextChanged([this](auto const&, auto const&)

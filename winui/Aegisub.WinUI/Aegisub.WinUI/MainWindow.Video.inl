@@ -270,6 +270,20 @@ namespace winrt::Aegisub_WinUI::implementation
             RefreshWaveformPlayhead();
             RefreshTimelineSlider();
 
+            auto const playbackSeconds = CurrentVideoSeconds();
+            try
+            {
+                auto const player = VideoPlayer().MediaPlayer();
+                if (player && playbackSeconds >= 0.0 &&
+                    player.PlaybackSession().PlaybackState() ==
+                        winrt::Windows::Media::Playback::MediaPlaybackState::Playing)
+                {
+                    SyncSubtitleToPlayback(playbackSeconds);
+                    FollowWaveformPlayback(playbackSeconds);
+                }
+            }
+            catch (...) {}
+
             if (m_playSelectedUntil >= 0.0)
             {
                 auto const current = CurrentVideoSeconds();

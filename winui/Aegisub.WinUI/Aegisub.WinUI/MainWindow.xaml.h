@@ -349,6 +349,7 @@ namespace winrt::Aegisub_WinUI::implementation
         winrt::Microsoft::UI::Xaml::Shapes::Line m_waveformActiveEndMarker{ nullptr };
         winrt::Microsoft::UI::Xaml::Shapes::Line m_waveformPlayhead{ nullptr };
         bool m_timelineSliderUpdating{};
+        bool m_mediaDrivenSelectionUpdate{};
         winrt::Microsoft::UI::Xaml::DispatcherTimer m_mediaUiTimer{ nullptr };
         double m_playSelectedUntil{-1.0};
         bool m_structureDirty{};
@@ -470,6 +471,12 @@ namespace winrt::Aegisub_WinUI::implementation
         void RenderWholeTimeline();
         void RefreshTimelineSlider();
         double CurrentMediaDurationSeconds();
+        void LoadWaveformViewSettings();
+        void SaveWaveformViewSettings() const;
+        int32_t FindSubtitleIndexForTime(double seconds) const;
+        void SyncSubtitleToPlayback(double seconds);
+        void FollowWaveformPlayback(double seconds);
+        void CenterWaveformOnTime(double seconds);
         void CenterWaveformOnCurrentSubtitle();
         void RefreshWaveformPlayhead();
         void RefreshWaveformTimingOverlay();

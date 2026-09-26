@@ -1402,7 +1402,8 @@ namespace winrt::Aegisub_WinUI::implementation
         {
             m_waveformViewportSubtitleIndex = m_currentIndex;
             CenterWaveformOnCurrentSubtitle();
-            SeekVideoToCurrentSubtitle();
+            if (!m_mediaDrivenSelectionUpdate)
+                SeekVideoToCurrentSubtitle();
         }
         RenderWaveform();
         RefreshWaveformPlayhead();
