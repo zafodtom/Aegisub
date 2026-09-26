@@ -218,14 +218,12 @@ namespace winrt::Aegisub_WinUI::implementation
 
     inline void MainWindow::RefreshGlossaryForCurrentSubtitle()
     {
-        RebuildGlossaryGrid();
-    }
-
-    inline void MainWindow::RebuildGlossaryGrid()
-    {
-        auto const grid = GlossaryGridHost();
-        grid.Children().Clear();
-        grid.RowDefinitions().Clear();
+        if (m_glossarySourceBoxes.size() != m_glossaryEntries.size() ||
+            m_glossaryTargetBoxes.size() != m_glossaryEntries.size())
+        {
+            RebuildGlossaryGrid();
+            return;
+        }
 
         std::wstring currentOriginal;
         if (!m_rows.empty() && m_currentIndex >= 0 &&
@@ -234,39 +232,63 @@ namespace winrt::Aegisub_WinUI::implementation
             currentOriginal = m_rows[m_currentIndex].original.c_str();
         }
 
+        auto const currentLower = GlossaryLower(currentOriginal);
+
         std::vector<size_t> order(m_glossaryEntries.size());
         std::iota(order.begin(), order.end(), size_t{ 0 });
         std::stable_sort(order.begin(), order.end(),
-            [this, &currentOriginal](size_t a, size_t b)
+            [this, &currentLower](size_t a, size_t b)
             {
-                auto const aSource = std::wstring{ m_glossaryEntries[a].source.c_str() };
-                auto const bSource = std::wstring{ m_glossaryEntries[b].source.c_str() };
-                bool const aMatch = GlossaryContainsInsensitive(currentOriginal, aSource);
-                bool const bMatch = GlossaryContainsInsensitive(currentOriginal, bSource);
+                auto const aSource = GlossaryLower(std::wstring{ m_glossaryEntries[a].source.c_str() });
+                auto const bSource = GlossaryLower(std::wstring{ m_glossaryEntries[b].source.c_str() });
+                bool const aMatch = !aSource.empty() && currentLower.find(aSource) != std::wstring::npos;
+                bool const bMatch = !bSource.empty() && currentLower.find(bSource) != std::wstring::npos;
+
                 if (aMatch != bMatch)
                     return aMatch > bMatch;
-
-                bool const aEmpty = aSource.empty();
-                bool const bEmpty = bSource.empty();
-                if (aEmpty != bEmpty)
-                    return !aEmpty;
-
-                return GlossaryLower(aSource) < GlossaryLower(bSource);
+                if (aSource.empty() != bSource.empty())
+                    return !aSource.empty();
+                return aSource < bSource;
             });
 
-        m_glossaryRebuilding = true;
+        auto const normalWeight = winrt::Windows::UI::Text::FontWeights::Normal();
+        auto const strongWeight = winrt::Windows::UI::Text::FontWeights::SemiBold();
 
         for (size_t visual = 0; visual < order.size(); ++visual)
         {
             auto const index = order[visual];
+            auto const sourceLower = GlossaryLower(std::wstring{ m_glossaryEntries[index].source.c_str() });
+            bool const matched = !sourceLower.empty() &&
+                currentLower.find(sourceLower) != std::wstring::npos;
 
+            winrt::Microsoft::UI::Xaml::Controls::Grid::SetRow(
+                m_glossarySourceBoxes[index], static_cast<int32_t>(visual));
+            winrt::Microsoft::UI::Xaml::Controls::Grid::SetRow(
+                m_glossaryTargetBoxes[index], static_cast<int32_t>(visual));
+
+            m_glossarySourceBoxes[index].FontWeight(matched ? strongWeight : normalWeight);
+            m_glossaryTargetBoxes[index].FontWeight(matched ? strongWeight : normalWeight);
+        }
+    }
+
+    inline void MainWindow::RebuildGlossaryGrid()
+    {
+        auto const grid = GlossaryGridHost();
+        grid.Children().Clear();
+        grid.RowDefinitions().Clear();
+        m_glossarySourceBoxes.clear();
+        m_glossaryTargetBoxes.clear();
+        m_glossarySourceBoxes.resize(m_glossaryEntries.size());
+        m_glossaryTargetBoxes.resize(m_glossaryEntries.size());
+
+        m_glossaryRebuilding = true;
+
+        for (size_t index = 0; index < m_glossaryEntries.size(); ++index)
+        {
             winrt::Microsoft::UI::Xaml::Controls::RowDefinition row;
             row.Height(winrt::Microsoft::UI::Xaml::GridLength{
                 23.0, winrt::Microsoft::UI::Xaml::GridUnitType::Pixel });
             grid.RowDefinitions().Append(row);
-
-            auto const sourceText = std::wstring{ m_glossaryEntries[index].source.c_str() };
-            bool const matched = GlossaryContainsInsensitive(currentOriginal, sourceText);
 
             winrt::Microsoft::UI::Xaml::Controls::TextBox sourceBox;
             sourceBox.Text(m_glossaryEntries[index].source);
@@ -275,9 +297,7 @@ namespace winrt::Aegisub_WinUI::implementation
             sourceBox.MinHeight(22.0);
             sourceBox.Padding(winrt::Microsoft::UI::Xaml::Thickness{ 4.0, 0.0, 4.0, 0.0 });
             sourceBox.VerticalContentAlignment(winrt::Microsoft::UI::Xaml::VerticalAlignment::Center);
-            if (matched)
-                sourceBox.FontWeight(winrt::Windows::UI::Text::FontWeights::SemiBold());
-            winrt::Microsoft::UI::Xaml::Controls::Grid::SetRow(sourceBox, static_cast<int32_t>(visual));
+            winrt::Microsoft::UI::Xaml::Controls::Grid::SetRow(sourceBox, static_cast<int32_t>(index));
             winrt::Microsoft::UI::Xaml::Controls::Grid::SetColumn(sourceBox, 0);
 
             winrt::Microsoft::UI::Xaml::Controls::TextBox targetBox;
@@ -287,9 +307,7 @@ namespace winrt::Aegisub_WinUI::implementation
             targetBox.MinHeight(22.0);
             targetBox.Padding(winrt::Microsoft::UI::Xaml::Thickness{ 4.0, 0.0, 4.0, 0.0 });
             targetBox.VerticalContentAlignment(winrt::Microsoft::UI::Xaml::VerticalAlignment::Center);
-            if (matched)
-                targetBox.FontWeight(winrt::Windows::UI::Text::FontWeights::SemiBold());
-            winrt::Microsoft::UI::Xaml::Controls::Grid::SetRow(targetBox, static_cast<int32_t>(visual));
+            winrt::Microsoft::UI::Xaml::Controls::Grid::SetRow(targetBox, static_cast<int32_t>(index));
             winrt::Microsoft::UI::Xaml::Controls::Grid::SetColumn(targetBox, 1);
 
             sourceBox.TextChanged([this, index](
@@ -300,8 +318,6 @@ namespace winrt::Aegisub_WinUI::implementation
                     return;
                 m_glossaryEntries[index].source =
                     sender.as<winrt::Microsoft::UI::Xaml::Controls::TextBox>().Text();
-                EnsureGlossaryAutoSavePath();
-                SaveGlossaryToFile(m_glossaryPath);
             });
             targetBox.TextChanged([this, index](
                 winrt::Windows::Foundation::IInspectable const& sender,
@@ -311,15 +327,29 @@ namespace winrt::Aegisub_WinUI::implementation
                     return;
                 m_glossaryEntries[index].target =
                     sender.as<winrt::Microsoft::UI::Xaml::Controls::TextBox>().Text();
-                EnsureGlossaryAutoSavePath();
-                SaveGlossaryToFile(m_glossaryPath);
             });
+
+            auto saveOnLeave = [this](
+                winrt::Windows::Foundation::IInspectable const&,
+                winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+            {
+                if (m_glossaryRebuilding)
+                    return;
+                EnsureGlossaryAutoSavePath();
+                if (!m_glossaryPath.empty())
+                    SaveGlossaryToFile(m_glossaryPath);
+            };
+            sourceBox.LostFocus(saveOnLeave);
+            targetBox.LostFocus(saveOnLeave);
 
             grid.Children().Append(sourceBox);
             grid.Children().Append(targetBox);
+            m_glossarySourceBoxes[index] = sourceBox;
+            m_glossaryTargetBoxes[index] = targetBox;
         }
 
         m_glossaryRebuilding = false;
+        RefreshGlossaryForCurrentSubtitle();
     }
 
     inline void MainWindow::GlossaryAddButton_Click(

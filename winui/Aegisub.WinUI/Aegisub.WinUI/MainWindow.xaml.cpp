@@ -1430,7 +1430,8 @@ namespace winrt::Aegisub_WinUI::implementation
             TranscriptNextBlock().Visibility(Visibility::Collapsed);
         }
 
-        RefreshProgressSummary();
+        TablePositionText().Text(hstring{
+            L"#" + std::to_wstring(row.number) + L" / " + std::to_wstring(m_rows.size()) });
 
         UpdateSelectionVisuals();
         ScrollCurrentRowIntoView();
@@ -1454,7 +1455,6 @@ namespace winrt::Aegisub_WinUI::implementation
         }
 
         m_loadingSelection = false;
-        ScheduleWorkspaceDraftSave();
     }
 
     void MainWindow::UpdateMetrics()

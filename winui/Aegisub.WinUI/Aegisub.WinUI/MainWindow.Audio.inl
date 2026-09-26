@@ -295,10 +295,40 @@ namespace winrt::Aegisub_WinUI::implementation
         }
     }
 
+    inline void MainWindow::RefreshWholeTimelineViewport()
+    {
+        if (!m_wholeTimelineViewport)
+            return;
+
+        auto const width = WholeTimelineCanvas().ActualWidth();
+        auto const height = WholeTimelineCanvas().ActualHeight();
+        auto const duration = CurrentMediaDurationSeconds();
+        if (width <= 0.0 || height <= 0.0 || duration <= 0.0 ||
+            m_waveformWindowEnd <= m_waveformWindowStart)
+        {
+            m_wholeTimelineViewport.Visibility(
+                winrt::Microsoft::UI::Xaml::Visibility::Collapsed);
+            return;
+        }
+
+        auto const left = width *
+            (std::max)(0.0, (std::min)(duration, m_waveformWindowStart)) / duration;
+        auto const right = width *
+            (std::max)(0.0, (std::min)(duration, m_waveformWindowEnd)) / duration;
+
+        winrt::Microsoft::UI::Xaml::Controls::Canvas::SetLeft(
+            m_wholeTimelineViewport, left);
+        m_wholeTimelineViewport.Width((std::max)(1.0, right - left));
+        m_wholeTimelineViewport.Height(height);
+        m_wholeTimelineViewport.Visibility(
+            winrt::Microsoft::UI::Xaml::Visibility::Visible);
+    }
+
     inline void MainWindow::RenderWholeTimeline()
     {
         auto const canvas = WholeTimelineCanvas();
         canvas.Children().Clear();
+        m_wholeTimelineViewport = nullptr;
 
         auto const width = canvas.ActualWidth();
         auto const height = canvas.ActualHeight();
@@ -312,20 +342,11 @@ namespace winrt::Aegisub_WinUI::implementation
         winrt::Microsoft::UI::Xaml::Media::SolidColorBrush accentBrush;
         accentBrush.Color(winrt::Windows::UI::Color{ 90, 0, 120, 212 });
 
-        // Current detail viewport inside the whole-video overview.
-        if (m_waveformWindowEnd > m_waveformWindowStart)
-        {
-            auto const left = width * (std::max)(0.0, m_waveformWindowStart) / duration;
-            auto const right = width * (std::min)(duration, m_waveformWindowEnd) / duration;
-
-            winrt::Microsoft::UI::Xaml::Shapes::Rectangle viewport;
-            viewport.Fill(accentBrush);
-            viewport.Width((std::max)(1.0, right - left));
-            viewport.Height(height);
-            viewport.Opacity(0.35);
-            winrt::Microsoft::UI::Xaml::Controls::Canvas::SetLeft(viewport, left);
-            canvas.Children().Append(viewport);
-        }
+        m_wholeTimelineViewport =
+            winrt::Microsoft::UI::Xaml::Shapes::Rectangle{};
+        m_wholeTimelineViewport.Fill(accentBrush);
+        m_wholeTimelineViewport.Opacity(0.35);
+        canvas.Children().Append(m_wholeTimelineViewport);
 
         winrt::Microsoft::UI::Xaml::Shapes::Line baseLine;
         baseLine.X1(0.0);
@@ -366,6 +387,7 @@ namespace winrt::Aegisub_WinUI::implementation
         m_timelineSliderUpdating = true;
         TimelineSlider().Maximum(duration);
         m_timelineSliderUpdating = false;
+        RefreshWholeTimelineViewport();
     }
 
     inline void MainWindow::RefreshTimelineSlider()
@@ -657,7 +679,7 @@ namespace winrt::Aegisub_WinUI::implementation
               << FormatWinUiTiming(activeStart).c_str()
               << L" – " << FormatWinUiTiming(activeEnd).c_str();
         WaveformRangeText().Text(winrt::hstring{ range.str() });
-        RenderWholeTimeline();
+        RefreshWholeTimelineViewport();
     }
 
     inline void MainWindow::RefreshWaveformTimingOverlay()

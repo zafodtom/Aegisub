@@ -330,6 +330,8 @@ namespace winrt::Aegisub_WinUI::implementation
         std::vector<agi::winui::RecentTranslationProject> m_recentProjects;
         std::vector<std::wstring> m_recoveryVersions;
         std::vector<GlossaryEntry> m_glossaryEntries;
+        std::vector<winrt::Microsoft::UI::Xaml::Controls::TextBox> m_glossarySourceBoxes;
+        std::vector<winrt::Microsoft::UI::Xaml::Controls::TextBox> m_glossaryTargetBoxes;
         std::wstring m_glossaryPath;
         bool m_glossaryRebuilding{};
         std::wstring m_videoPath;
@@ -348,6 +350,7 @@ namespace winrt::Aegisub_WinUI::implementation
         winrt::Microsoft::UI::Xaml::Shapes::Line m_waveformActiveStartMarker{ nullptr };
         winrt::Microsoft::UI::Xaml::Shapes::Line m_waveformActiveEndMarker{ nullptr };
         winrt::Microsoft::UI::Xaml::Shapes::Line m_waveformPlayhead{ nullptr };
+        winrt::Microsoft::UI::Xaml::Shapes::Rectangle m_wholeTimelineViewport{ nullptr };
         bool m_timelineSliderUpdating{};
         bool m_mediaDrivenSelectionUpdate{};
         uint64_t m_lastTimelineUiTick{};
@@ -471,6 +474,7 @@ namespace winrt::Aegisub_WinUI::implementation
         bool LoadWaveformForMedia(std::wstring const& filename);
         void RenderWaveform();
         void RenderWholeTimeline();
+        void RefreshWholeTimelineViewport();
         void RefreshTimelineSlider();
         double CurrentMediaDurationSeconds();
         void LoadWaveformViewSettings();
