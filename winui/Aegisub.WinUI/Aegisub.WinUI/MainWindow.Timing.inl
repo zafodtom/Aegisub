@@ -86,8 +86,12 @@ namespace winrt::Aegisub_WinUI::implementation
         }
 
         auto& row = m_rows[m_currentIndex];
-        row.start = FormatWinUiTiming(start);
-        row.end = FormatWinUiTiming(end);
+        auto const newStart = FormatWinUiTiming(start);
+        auto const newEnd = FormatWinUiTiming(end);
+        if (newStart != row.start || newEnd != row.end)
+            CaptureWorkspaceUndoSnapshot(L"úprava časování");
+        row.start = newStart;
+        row.end = newEnd;
         row.duration = end - start;
         row.timingModified = row.start != row.savedStart || row.end != row.savedEnd;
         row.status = (row.targetModified || row.timingModified)
@@ -208,6 +212,9 @@ namespace winrt::Aegisub_WinUI::implementation
         // Preserve all relative timings. If a negative shift would cross 00:00,
         // reduce the requested shift rather than clamping rows individually.
         auto const effectiveDelta = (std::max)(deltaSeconds, -earliestStart);
+        if (std::abs(effectiveDelta) < 0.0005)
+            return;
+        CaptureWorkspaceUndoSnapshot(L"posun všech titulků");
 
         for (auto& row : m_rows)
         {
@@ -249,6 +256,7 @@ namespace winrt::Aegisub_WinUI::implementation
             return;
 
         size_t changed = 0;
+        bool historyCaptured = false;
         for (size_t index = 0; index + 1 < m_rows.size(); ++index)
         {
             auto& current = m_rows[index];
@@ -266,6 +274,11 @@ namespace winrt::Aegisub_WinUI::implementation
             if (newEndMs <= currentStartMs)
                 continue;
 
+            if (!historyCaptured)
+            {
+                CaptureWorkspaceUndoSnapshot(L"vložení 1 ms mezer");
+                historyCaptured = true;
+            }
             auto const newEnd = static_cast<double>(newEndMs) / 1000.0;
             current.end = FormatWinUiTiming(newEnd);
             current.duration = newEnd - static_cast<double>(currentStartMs) / 1000.0;

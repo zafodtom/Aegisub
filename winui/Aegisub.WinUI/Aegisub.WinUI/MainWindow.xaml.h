@@ -321,6 +321,17 @@ namespace winrt::Aegisub_WinUI::implementation
             winrt::hstring workflowStatus;
         };
 
+        struct WorkspaceHistorySnapshot
+        {
+            std::vector<SubtitleRowData> rows;
+            int32_t currentIndex{};
+            std::vector<int32_t> selectedSubtitleIndices;
+            int32_t selectionAnchorIndex{-1};
+            bool structureDirty{};
+            bool workflowStateDirty{};
+            winrt::hstring action;
+        };
+
         std::vector<SubtitleRowData> m_rows;
         std::vector<SubtitleEntry> m_sourceEntries;
         std::vector<SubtitleEntry> m_targetEntries;
@@ -362,6 +373,9 @@ namespace winrt::Aegisub_WinUI::implementation
         std::vector<BulkRowSnapshot> m_lastBulkSnapshot;
         winrt::hstring m_lastBulkAction;
         bool m_lastBulkWorkflowStateDirty{};
+        std::vector<WorkspaceHistorySnapshot> m_workspaceUndoHistory;
+        std::vector<WorkspaceHistorySnapshot> m_workspaceRedoHistory;
+        bool m_restoringWorkspaceHistory{};
         agi::winui::WinUiWorkspaceSettings m_workspaceSettings;
         std::vector<agi::winui::RecentTranslationProject> m_recentProjects;
         std::vector<std::wstring> m_recoveryVersions;
@@ -382,6 +396,7 @@ namespace winrt::Aegisub_WinUI::implementation
         bool m_waveformDragActive{};
         bool m_waveformLeftDragged{};
         bool m_waveformMiddleDragged{};
+        bool m_waveformHistoryCaptured{};
         double m_waveformPointerPressX{};
         double m_waveformPointerPressTime{};
         double m_waveformOriginalStart{};
@@ -484,6 +499,9 @@ namespace winrt::Aegisub_WinUI::implementation
         void SaveFromShortcut();
         void SaveAsFromShortcut();
         void InsertLineBreakAtSelection();
+        void CaptureWorkspaceUndoSnapshot(winrt::hstring const& action);
+        void RestoreWorkspaceHistorySnapshot(WorkspaceHistorySnapshot snapshot);
+        void ClearWorkspaceHistory();
         void ApplyEditHistory(bool redo);
         void UpdateDirtyFromRows();
         void MoveToProblem(int32_t direction);

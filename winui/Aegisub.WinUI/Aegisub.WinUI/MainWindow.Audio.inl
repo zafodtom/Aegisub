@@ -836,8 +836,17 @@ namespace winrt::Aegisub_WinUI::implementation
             return;
 
         auto& row = m_rows[m_currentIndex];
-        row.start = FormatWinUiTiming(start);
-        row.end = FormatWinUiTiming(end);
+        auto const newStart = FormatWinUiTiming(start);
+        auto const newEnd = FormatWinUiTiming(end);
+        if (newStart == row.start && newEnd == row.end)
+            return;
+        if (!m_waveformHistoryCaptured)
+        {
+            CaptureWorkspaceUndoSnapshot(L"časování waveformem");
+            m_waveformHistoryCaptured = true;
+        }
+        row.start = newStart;
+        row.end = newEnd;
         row.duration = end - start;
         row.timingModified = row.start != row.savedStart || row.end != row.savedEnd;
         row.status = (row.targetModified || row.timingModified)
@@ -1132,6 +1141,7 @@ namespace winrt::Aegisub_WinUI::implementation
 
         auto const point = args.GetCurrentPoint(WaveformCanvas());
         auto const properties = point.Properties();
+        m_waveformHistoryCaptured = false;
 
         bool const shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
         bool const middle = (GetKeyState(VK_MBUTTON) & 0x8000) != 0;
@@ -1366,6 +1376,7 @@ namespace winrt::Aegisub_WinUI::implementation
         m_waveformDragActive = false;
         m_waveformDragMode = 0;
         m_waveformLeftDragged = false;
+        m_waveformHistoryCaptured = false;
 
         if (completedMode == 3)
         {

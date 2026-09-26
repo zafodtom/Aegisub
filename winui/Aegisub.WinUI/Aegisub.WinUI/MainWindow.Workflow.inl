@@ -579,29 +579,117 @@ namespace winrt::Aegisub_WinUI::implementation
         box.Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
     }
 
+    inline void MainWindow::CaptureWorkspaceUndoSnapshot(winrt::hstring const& action)
+    {
+        if (m_restoringWorkspaceHistory)
+            return;
+
+        if (!m_rows.empty() && m_currentIndex >= 0 && m_currentIndex < static_cast<int32_t>(m_rows.size()))
+            StoreCurrentEditorSelection();
+
+        WorkspaceHistorySnapshot snapshot;
+        snapshot.rows = m_rows;
+        snapshot.currentIndex = m_currentIndex;
+        snapshot.selectedSubtitleIndices = m_selectedSubtitleIndices;
+        snapshot.selectionAnchorIndex = m_selectionAnchorIndex;
+        snapshot.structureDirty = m_structureDirty;
+        snapshot.workflowStateDirty = m_workflowStateDirty;
+        snapshot.action = action;
+        for (auto& row : snapshot.rows)
+            row.editSequenceKind = 0;
+
+        m_workspaceUndoHistory.push_back(std::move(snapshot));
+        if (m_workspaceUndoHistory.size() > 100)
+            m_workspaceUndoHistory.erase(m_workspaceUndoHistory.begin());
+        m_workspaceRedoHistory.clear();
+
+        if (!m_rows.empty() && m_currentIndex >= 0 && m_currentIndex < static_cast<int32_t>(m_rows.size()))
+            m_rows[m_currentIndex].editSequenceKind = 0;
+    }
+
+    inline void MainWindow::RestoreWorkspaceHistorySnapshot(WorkspaceHistorySnapshot snapshot)
+    {
+        m_restoringWorkspaceHistory = true;
+        m_rows = std::move(snapshot.rows);
+        m_currentIndex = snapshot.currentIndex;
+        m_selectedSubtitleIndices = std::move(snapshot.selectedSubtitleIndices);
+        m_selectionAnchorIndex = snapshot.selectionAnchorIndex;
+        m_structureDirty = snapshot.structureDirty;
+        m_workflowStateDirty = snapshot.workflowStateDirty;
+
+        if (m_rows.empty())
+        {
+            m_currentIndex = 0;
+            m_selectedSubtitleIndices.clear();
+            m_selectionAnchorIndex = -1;
+        }
+        else
+        {
+            m_currentIndex = (std::max)(0, (std::min)(m_currentIndex,
+                static_cast<int32_t>(m_rows.size()) - 1));
+            NormalizeSubtitleSelection();
+        }
+
+        SyncTargetEntriesFromRows();
+        RefreshQaAll();
+        RebuildSubtitleGrid();
+        if (!m_rows.empty())
+        {
+            LoadCurrentRow();
+            RefreshCurrentQaVisuals();
+            TargetTextBox().Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
+        }
+        else
+        {
+            RefreshEmptyWorkspaceUi();
+        }
+        RefreshProgressSummary();
+        RefreshSearchSummary();
+        RefreshFeatureMetrics();
+        RenderWaveform();
+        UpdateDirtyFromRows();
+        m_restoringWorkspaceHistory = false;
+    }
+
+    inline void MainWindow::ClearWorkspaceHistory()
+    {
+        m_workspaceUndoHistory.clear();
+        m_workspaceRedoHistory.clear();
+        m_waveformHistoryCaptured = false;
+    }
+
     inline void MainWindow::ApplyEditHistory(bool redo)
     {
-        if (m_rows.empty()) return;
-        auto& row = m_rows[m_currentIndex];
-        auto& source = redo ? row.redoHistory : row.undoHistory;
-        auto& destination = redo ? row.undoHistory : row.redoHistory;
+        auto& source = redo ? m_workspaceRedoHistory : m_workspaceUndoHistory;
+        auto& destination = redo ? m_workspaceUndoHistory : m_workspaceRedoHistory;
         if (source.empty())
         {
             StatusBarText().Text(redo ? L"Není k dispozici žádná změna k opakování" : L"Není k dispozici žádná změna k vrácení");
             return;
         }
-        destination.push_back(row.target);
-        auto const nextText = source.back();
+
+        auto snapshot = std::move(source.back());
         source.pop_back();
-        row.editSequenceKind = 0;
-        m_pendingHistoryText = nextText;
-        m_hasPendingHistoryText = true;
-        auto const box = TargetTextBox();
-        box.Text(nextText);
-        box.SelectionStart(static_cast<int32_t>(nextText.size()));
-        box.SelectionLength(0);
-        box.Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
-        StatusBarText().Text(redo ? L"Změna zopakována · Ctrl+Y" : L"Změna vrácena · Ctrl+Z");
+
+        WorkspaceHistorySnapshot current;
+        current.rows = m_rows;
+        current.currentIndex = m_currentIndex;
+        current.selectedSubtitleIndices = m_selectedSubtitleIndices;
+        current.selectionAnchorIndex = m_selectionAnchorIndex;
+        current.structureDirty = m_structureDirty;
+        current.workflowStateDirty = m_workflowStateDirty;
+        current.action = snapshot.action;
+        for (auto& row : current.rows)
+            row.editSequenceKind = 0;
+        destination.push_back(std::move(current));
+        if (destination.size() > 100)
+            destination.erase(destination.begin());
+
+        auto const action = snapshot.action;
+        RestoreWorkspaceHistorySnapshot(std::move(snapshot));
+        StatusBarText().Text(winrt::hstring{
+            std::wstring{ redo ? L"Zopakováno: " : L"Vráceno: " } + action.c_str() +
+            (redo ? L" · Ctrl+Y" : L" · Ctrl+Z") });
     }
 
     inline void MainWindow::UpdateDirtyFromRows()

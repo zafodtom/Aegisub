@@ -83,6 +83,7 @@ namespace winrt::Aegisub_WinUI::implementation
 
         auto const start = WorkflowTimestampSeconds(current.start);
         auto const end = WorkflowTimestampSeconds(current.end);
+        CaptureWorkspaceUndoSnapshot(L"rozdělení titulku");
         double split = CurrentVideoSeconds();
         if (split <= start + 0.05 || split >= end - 0.05)
             split = start + (end - start) * 0.5;
@@ -149,6 +150,7 @@ namespace winrt::Aegisub_WinUI::implementation
         if (first < 0 || last >= static_cast<int32_t>(m_rows.size()))
             return;
 
+        CaptureWorkspaceUndoSnapshot(L"sloučení titulků");
         SubtitleRowData merged = m_rows[first];
         std::wstring targetText;
         std::wstring originalText;
@@ -225,6 +227,7 @@ namespace winrt::Aegisub_WinUI::implementation
             return;
         }
 
+        CaptureWorkspaceUndoSnapshot(L"spojení s následujícím titulkem");
         auto& current = m_rows[m_currentIndex];
         auto const& next = m_rows[m_currentIndex + 1];
 
@@ -276,6 +279,7 @@ namespace winrt::Aegisub_WinUI::implementation
 
         // New subtitles always start with an exact default duration of 2 seconds.
         auto const end = start + 2.0;
+        CaptureWorkspaceUndoSnapshot(above ? L"vložení titulku nad" : L"vložení titulku pod");
 
         SubtitleRowData row;
         row.start = FormatWinUiTiming(start);
@@ -333,6 +337,7 @@ namespace winrt::Aegisub_WinUI::implementation
             return;
 
         StoreCurrentEditorSelection();
+        CaptureWorkspaceUndoSnapshot(L"zdvojení titulku");
 
         auto duplicate = m_rows[m_currentIndex];
         duplicate.savedTarget = L"";
@@ -388,6 +393,7 @@ namespace winrt::Aegisub_WinUI::implementation
         if (end <= start)
             end = start + 2.0;
 
+        CaptureWorkspaceUndoSnapshot(L"vložení titulku na pozici videa");
         SubtitleRowData row;
         row.start = FormatWinUiTiming(start);
         row.end = FormatWinUiTiming(end);
@@ -449,6 +455,7 @@ namespace winrt::Aegisub_WinUI::implementation
 
         auto const firstDeleted = indices.front();
         auto const deletedCount = indices.size();
+        CaptureWorkspaceUndoSnapshot(deletedCount == 1 ? L"smazání titulku" : L"smazání vybraných titulků");
 
         for (auto it = indices.rbegin(); it != indices.rend(); ++it)
         {

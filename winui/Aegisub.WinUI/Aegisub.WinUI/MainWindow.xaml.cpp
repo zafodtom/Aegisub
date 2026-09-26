@@ -781,6 +781,7 @@ namespace winrt::Aegisub_WinUI::implementation
         m_forceSaveAsForRecoveredDraft = false;
         m_externalChangeAcknowledged = false;
         ClearBulkUndo();
+        ClearWorkspaceHistory();
         CloseVideoFile();
 
         m_waveformPath.clear();
@@ -1136,6 +1137,7 @@ namespace winrt::Aegisub_WinUI::implementation
 
     void MainWindow::CaptureBulkSnapshot(std::vector<size_t> const& indices, hstring const& action)
     {
+        CaptureWorkspaceUndoSnapshot(action);
         m_lastBulkWorkflowStateDirty = m_workflowStateDirty;
         m_lastBulkSnapshot.clear();
         m_lastBulkSnapshot.reserve(indices.size());
@@ -1457,14 +1459,7 @@ namespace winrt::Aegisub_WinUI::implementation
                     || edit.position + 1 == row.editSequencePosition);
 
             if (!continuesInsertion && !continuesDeletion)
-            {
-                row.undoHistory.push_back(row.target);
-                if (row.undoHistory.size() > 200)
-                {
-                    row.undoHistory.erase(row.undoHistory.begin());
-                }
-            }
-            row.redoHistory.clear();
+                CaptureWorkspaceUndoSnapshot(L"úprava textu");
             row.editSequenceKind = edit.kind;
             row.editSequencePosition = edit.position + (edit.kind == 1 ? 1 : 0);
         }
@@ -2639,6 +2634,7 @@ namespace winrt::Aegisub_WinUI::implementation
     {
         m_externalChangeAcknowledged = false;
         ClearBulkUndo();
+        ClearWorkspaceHistory();
         BuildAlignedRows();
         m_selectedSubtitleIndices.clear();
         if (!m_rows.empty())
