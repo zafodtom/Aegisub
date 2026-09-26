@@ -83,6 +83,8 @@ namespace winrt::Aegisub_WinUI::implementation
             winrt::Microsoft::UI::Xaml::Input::TappedRoutedEventArgs const& args);
         void TargetTextBox_WorkflowLoaded(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void SubtitleEditor_SelectionChanged(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void InsertLineBreakButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void CopyOriginalButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
@@ -338,6 +340,8 @@ namespace winrt::Aegisub_WinUI::implementation
         bool m_subtitleDragSelectionMoved{};
         int32_t m_subtitleDragAnchor{-1};
         bool m_loadingSelection{ false };
+        bool m_searchSelectionHighlightActive{};
+        bool m_settingSearchSelection{};
         bool m_initialized{ false };
         bool m_workflowHooksInstalled{ false };
         bool m_windowClosingHookInstalled{ false };
@@ -552,6 +556,9 @@ namespace winrt::Aegisub_WinUI::implementation
         void CaptureRecoveryHistorySnapshot() const;
 
         bool RowMatchesAdvancedSearch(SubtitleRowData const& row, std::wstring_view query);
+        void ClearSearchEditorHighlight();
+        void SetSearchEditorHighlight(winrt::Microsoft::UI::Xaml::Controls::TextBox const& editor,
+            int32_t start, int32_t length);
         void RefreshSearchHighlights();
         void RefreshAdvancedSearchSummary();
         void MoveToAdvancedSearchResult(int32_t direction);

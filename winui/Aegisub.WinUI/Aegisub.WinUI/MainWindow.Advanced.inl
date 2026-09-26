@@ -16,6 +16,39 @@ namespace winrt::Aegisub_WinUI::implementation
         RefreshAdvancedSearchSummary();
     }
 
+    inline void MainWindow::ClearSearchEditorHighlight()
+    {
+        auto const property = winrt::Microsoft::UI::Xaml::Controls::TextBox::SelectionHighlightColorProperty();
+        OriginalTextBox().ClearValue(property);
+        TargetTextBox().ClearValue(property);
+        m_searchSelectionHighlightActive = false;
+    }
+
+    inline void MainWindow::SetSearchEditorHighlight(
+        winrt::Microsoft::UI::Xaml::Controls::TextBox const& editor,
+        int32_t start,
+        int32_t length)
+    {
+        ClearSearchEditorHighlight();
+
+        winrt::Microsoft::UI::Xaml::Media::SolidColorBrush background;
+        background.Color(winrt::Windows::UI::Color{ 92, 255, 213, 79 });
+        editor.SelectionHighlightColor(background);
+
+        m_settingSearchSelection = true;
+        editor.Select(start, length);
+        m_settingSearchSelection = false;
+        m_searchSelectionHighlightActive = true;
+    }
+
+    inline void MainWindow::SubtitleEditor_SelectionChanged(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        if (!m_settingSearchSelection && m_searchSelectionHighlightActive)
+            ClearSearchEditorHighlight();
+    }
+
     inline void MainWindow::SearchMenuItem_Click(
         winrt::Windows::Foundation::IInspectable const&,
         winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
@@ -184,6 +217,8 @@ namespace winrt::Aegisub_WinUI::implementation
 
     inline void MainWindow::RefreshSearchHighlights()
     {
+        ClearSearchEditorHighlight();
+
         for (auto const& block : m_rowOriginalTexts)
             block.TextHighlighters().Clear();
         for (auto const& block : m_rowTargetTexts)
@@ -313,14 +348,18 @@ namespace winrt::Aegisub_WinUI::implementation
 
             if (options.scope != agi::winui::SearchScope::source && !targetMatches.empty())
             {
-                TargetTextBox().SelectionStart(static_cast<int32_t>(targetMatches.front().position));
-                TargetTextBox().SelectionLength(static_cast<int32_t>(targetMatches.front().length));
+                SetSearchEditorHighlight(
+                    TargetTextBox(),
+                    static_cast<int32_t>(targetMatches.front().position),
+                    static_cast<int32_t>(targetMatches.front().length));
                 TargetTextBox().Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
             }
             else if (options.scope != agi::winui::SearchScope::target && !sourceMatches.empty())
             {
-                OriginalTextBox().SelectionStart(static_cast<int32_t>(sourceMatches.front().position));
-                OriginalTextBox().SelectionLength(static_cast<int32_t>(sourceMatches.front().length));
+                SetSearchEditorHighlight(
+                    OriginalTextBox(),
+                    static_cast<int32_t>(sourceMatches.front().position),
+                    static_cast<int32_t>(sourceMatches.front().length));
                 OriginalTextBox().Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
             }
 

@@ -3279,8 +3279,10 @@ namespace winrt::Aegisub_WinUI::implementation
             auto const targetMatch = FindOrdinalIgnoreCase(target, query);
             if (targetMatch != std::wstring_view::npos)
             {
-                TargetTextBox().SelectionStart(static_cast<int32_t>(targetMatch));
-                TargetTextBox().SelectionLength(static_cast<int32_t>(query.size()));
+                SetSearchEditorHighlight(
+                    TargetTextBox(),
+                    static_cast<int32_t>(targetMatch),
+                    static_cast<int32_t>(query.size()));
             }
             TargetTextBox().Focus(FocusState::Programmatic);
             StatusBarText().Text(hstring{
