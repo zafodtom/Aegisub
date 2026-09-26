@@ -390,6 +390,9 @@ namespace winrt::Aegisub_WinUI::implementation
         double m_waveformPanWindowStart{};
         double m_waveformPanWindowEnd{};
         uint64_t m_lastWaveformAutoPanTick{};
+        uint64_t m_lastWaveformLeftClickTick{};
+        double m_lastWaveformLeftClickX{};
+        double m_lastWaveformLeftClickY{};
         double m_waveformHorizontalZoom{1.0};
         double m_waveformVerticalGain{1.0};
         winrt::Microsoft::UI::Xaml::Shapes::Rectangle m_waveformActiveSelection{ nullptr };
@@ -548,6 +551,7 @@ namespace winrt::Aegisub_WinUI::implementation
         void RefreshWaveformTimingOverlay();
         void PreviewWaveformRange(double start, double end);
         void PreviewWaveformBoundary(double seconds);
+        bool DetectWaveformSpeechRange(double seconds, double& detectedStart, double& detectedEnd) const;
         double WaveformSecondsFromPointer(double x, double width, bool allowAutoPan);
         void ZoomWaveformHorizontal(double factor);
         void ZoomWaveformVertical(double factor);

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cmath>
 #include <fstream>
 
 namespace winrt::Aegisub_WinUI::implementation
@@ -953,6 +954,175 @@ namespace winrt::Aegisub_WinUI::implementation
         ZoomWaveformVertical(1.25);
     }
 
+    inline bool MainWindow::DetectWaveformSpeechRange(
+        double seconds,
+        double& detectedStart,
+        double& detectedEnd) const
+    {
+        if (m_waveformDuration <= 0.0 || m_waveformPeaks.empty())
+            return false;
+
+        auto const peakCount = m_waveformPeaks.size();
+        auto const binDuration = m_waveformDuration / static_cast<double>(peakCount);
+        if (binDuration <= 0.0)
+            return false;
+
+        seconds = (std::max)(0.0, (std::min)(m_waveformDuration, seconds));
+
+        constexpr double localRadiusSeconds = 6.0;
+        constexpr double smoothingSeconds = 0.06;
+        constexpr double maxAnchorDistanceSeconds = 0.45;
+        constexpr double bridgeGapSeconds = 0.24;
+        constexpr double paddingSeconds = 0.12;
+        constexpr double minimumRangeSeconds = 0.45;
+        constexpr double maximumRangeSeconds = 8.0;
+
+        auto const globalCenter = static_cast<size_t>((std::min)(
+            static_cast<double>(peakCount - 1), seconds / binDuration));
+        auto const radiusBins = static_cast<size_t>((std::max)(
+            1.0, std::ceil(localRadiusSeconds / binDuration)));
+        auto const firstBin = globalCenter > radiusBins ? globalCenter - radiusBins : size_t{ 0 };
+        auto const lastBin = (std::min)(peakCount - 1, globalCenter + radiusBins);
+        auto const localCount = lastBin - firstBin + 1;
+        if (localCount < 3)
+            return false;
+
+        std::vector<double> raw(localCount);
+        for (size_t i = 0; i < localCount; ++i)
+        {
+            auto const& peak = m_waveformPeaks[firstBin + i];
+            raw[i] = (std::max)(std::abs(static_cast<double>(peak.first)),
+                std::abs(static_cast<double>(peak.second)));
+        }
+
+        auto const smoothingRadius = static_cast<size_t>((std::min)(
+            32.0, (std::max)(1.0, std::round((smoothingSeconds * 0.5) / binDuration))));
+        std::vector<double> prefix(localCount + 1, 0.0);
+        for (size_t i = 0; i < localCount; ++i)
+            prefix[i + 1] = prefix[i] + raw[i];
+
+        std::vector<double> energy(localCount);
+        for (size_t i = 0; i < localCount; ++i)
+        {
+            auto const begin = i > smoothingRadius ? i - smoothingRadius : size_t{ 0 };
+            auto const end = (std::min)(localCount, i + smoothingRadius + 1);
+            energy[i] = (prefix[end] - prefix[begin]) / static_cast<double>(end - begin);
+        }
+
+        auto sorted = energy;
+        std::sort(sorted.begin(), sorted.end());
+        auto percentile = [&](double fraction)
+        {
+            auto const index = static_cast<size_t>(std::round(
+                fraction * static_cast<double>(sorted.size() - 1)));
+            return sorted[(std::min)(sorted.size() - 1, index)];
+        };
+
+        auto const noiseFloor = percentile(0.25);
+        auto const strongLevel = percentile(0.90);
+        if (strongLevel < 0.006)
+            return false;
+
+        auto const threshold = (std::max)(0.006,
+            (std::max)(strongLevel * 0.16, noiseFloor + (strongLevel - noiseFloor) * 0.28));
+
+        std::vector<uint8_t> active(localCount, 0);
+        for (size_t i = 0; i < localCount; ++i)
+            active[i] = energy[i] >= threshold ? 1 : 0;
+
+        auto const maxGapBins = static_cast<size_t>((std::max)(
+            1.0, std::round(bridgeGapSeconds / binDuration)));
+        size_t i = 0;
+        while (i < localCount)
+        {
+            if (active[i])
+            {
+                ++i;
+                continue;
+            }
+
+            auto const gapStart = i;
+            while (i < localCount && !active[i])
+                ++i;
+            auto const gapLength = i - gapStart;
+            bool const hasActiveBefore = gapStart > 0 && active[gapStart - 1];
+            bool const hasActiveAfter = i < localCount && active[i];
+            if (hasActiveBefore && hasActiveAfter && gapLength <= maxGapBins)
+            {
+                for (size_t gap = gapStart; gap < i; ++gap)
+                    active[gap] = 1;
+            }
+        }
+
+        auto const localCenter = globalCenter - firstBin;
+        size_t anchor = localCenter;
+        if (!active[anchor])
+        {
+            auto const maxDistanceBins = static_cast<size_t>((std::max)(
+                1.0, std::round(maxAnchorDistanceSeconds / binDuration)));
+            bool found = false;
+            for (size_t distance = 1; distance <= maxDistanceBins; ++distance)
+            {
+                if (localCenter >= distance && active[localCenter - distance])
+                {
+                    anchor = localCenter - distance;
+                    found = true;
+                    break;
+                }
+                if (localCenter + distance < localCount && active[localCenter + distance])
+                {
+                    anchor = localCenter + distance;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found)
+                return false;
+        }
+
+        size_t rangeFirst = anchor;
+        size_t rangeLast = anchor;
+        while (rangeFirst > 0 && active[rangeFirst - 1])
+            --rangeFirst;
+        while (rangeLast + 1 < localCount && active[rangeLast + 1])
+            ++rangeLast;
+
+        auto start = static_cast<double>(firstBin + rangeFirst) * binDuration;
+        auto end = static_cast<double>(firstBin + rangeLast + 1) * binDuration;
+
+        start = (std::max)(0.0, start - paddingSeconds);
+        end = (std::min)(m_waveformDuration, end + paddingSeconds);
+
+        if (end - start < minimumRangeSeconds)
+        {
+            auto const center = (start + end) * 0.5;
+            start = (std::max)(0.0, center - minimumRangeSeconds * 0.5);
+            end = (std::min)(m_waveformDuration, start + minimumRangeSeconds);
+            if (end - start < minimumRangeSeconds)
+                start = (std::max)(0.0, end - minimumRangeSeconds);
+        }
+
+        if (end - start > maximumRangeSeconds)
+        {
+            auto newStart = (std::max)(start, seconds - maximumRangeSeconds * 0.45);
+            auto newEnd = newStart + maximumRangeSeconds;
+            if (newEnd > end)
+            {
+                newEnd = end;
+                newStart = (std::max)(start, newEnd - maximumRangeSeconds);
+            }
+            start = newStart;
+            end = newEnd;
+        }
+
+        if (end <= start + 0.01)
+            return false;
+
+        detectedStart = start;
+        detectedEnd = end;
+        return true;
+    }
+
     inline void MainWindow::WaveformCanvas_PointerPressed(
         winrt::Windows::Foundation::IInspectable const&,
         winrt::Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
@@ -967,6 +1137,45 @@ namespace winrt::Aegisub_WinUI::implementation
         bool const middle = (GetKeyState(VK_MBUTTON) & 0x8000) != 0;
         bool const left = properties.IsLeftButtonPressed();
         bool const right = properties.IsRightButtonPressed();
+
+        if (left && !right && !middle && !shift)
+        {
+            auto const now = GetTickCount64();
+            auto const maxDoubleClickX = static_cast<double>((std::max)(4, GetSystemMetrics(SM_CXDOUBLECLK)));
+            auto const maxDoubleClickY = static_cast<double>((std::max)(4, GetSystemMetrics(SM_CYDOUBLECLK)));
+            bool const isDoubleClick = m_lastWaveformLeftClickTick != 0 &&
+                now - m_lastWaveformLeftClickTick <= GetDoubleClickTime() &&
+                std::abs(point.Position().X - m_lastWaveformLeftClickX) <= maxDoubleClickX &&
+                std::abs(point.Position().Y - m_lastWaveformLeftClickY) <= maxDoubleClickY;
+
+            if (isDoubleClick)
+            {
+                m_lastWaveformLeftClickTick = 0;
+                auto const seconds = WaveformSecondsFromPointer(
+                    point.Position().X, WaveformCanvas().ActualWidth(), false);
+                double detectedStart = 0.0;
+                double detectedEnd = 0.0;
+                if (DetectWaveformSpeechRange(seconds, detectedStart, detectedEnd))
+                {
+                    PreviewWaveformRange(detectedStart, detectedEnd);
+                    if (ApplyCurrentTimingFromEditors())
+                    {
+                        std::wostringstream message;
+                        message << L"Waveform · automaticky vybraný aktivní úsek · "
+                            << std::fixed << std::setprecision(2)
+                            << (detectedEnd - detectedStart) << L" s";
+                        StatusBarText().Text(winrt::hstring{ message.str() });
+                    }
+                    RenderWaveform();
+                }
+                else
+                {
+                    StatusBarText().Text(L"Waveform · kolem dvojkliku nebyl nalezen dostatečně výrazný úsek zvuku");
+                }
+                args.Handled(true);
+                return;
+            }
+        }
 
         // Modes:
         // 1 = left click/new-range drag
@@ -1139,10 +1348,18 @@ namespace winrt::Aegisub_WinUI::implementation
 
         if (completedMode == 1 && !m_waveformLeftDragged)
         {
-            // Plain left click: only move the start boundary.
+            // Plain left click: only move the start boundary. Remember the completed
+            // click so the next nearby click can be recognized as a double click.
             auto const seconds = WaveformSecondsFromPointer(
                 point.Position().X, WaveformCanvas().ActualWidth(), false);
             PreviewWaveformBoundary(seconds);
+            m_lastWaveformLeftClickTick = GetTickCount64();
+            m_lastWaveformLeftClickX = point.Position().X;
+            m_lastWaveformLeftClickY = point.Position().Y;
+        }
+        else if (completedMode != 1 || m_waveformLeftDragged)
+        {
+            m_lastWaveformLeftClickTick = 0;
         }
 
         WaveformCanvas().ReleasePointerCapture(args.Pointer());
