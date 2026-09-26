@@ -137,6 +137,7 @@ namespace winrt::Aegisub_WinUI::implementation
         if (!row.qaIssue.empty()) info += L" · " + std::wstring{ row.qaIssue.c_str() };
         TargetInfoText().Text(winrt::hstring{ info });
         TargetStatusText().Text(winrt::hstring{ L"Stav: " + std::wstring(row.status.c_str()) });
+        RefreshCurrentProblemText();
         RefreshApprovalAction();
         RefreshFeatureMetrics();
         if (!row.qaIssue.empty())
@@ -267,7 +268,12 @@ namespace winrt::Aegisub_WinUI::implementation
         if (key == winrt::Windows::System::VirtualKey::Enter)
         {
             args.Handled(true);
-            if (shift) InsertLineBreakAtSelection(); else CommitCurrentAndMoveNext(control);
+            if (shift)
+                InsertLineBreakAtSelection();
+            else if (control)
+                MoveCurrentBy(-1);
+            else
+                CommitCurrentAndMoveNext(false);
             return;
         }
         if (key == winrt::Windows::System::VirtualKey::Up) { args.Handled(true); MoveCurrentBy(-1); return; }
@@ -294,6 +300,13 @@ namespace winrt::Aegisub_WinUI::implementation
         {
             args.Handled(true);
             DeleteCurrentSubtitle();
+            return;
+        }
+
+        if (control && key == winrt::Windows::System::VirtualKey::Enter)
+        {
+            args.Handled(true);
+            MoveCurrentBy(-1);
             return;
         }
 
@@ -400,6 +413,7 @@ namespace winrt::Aegisub_WinUI::implementation
                 ? row.workflowStatus
                 : winrt::hstring{ L"Problém" };
             UpdateTableRow(m_currentIndex);
+            RefreshCurrentProblemText();
             RefreshFeatureMetrics();
         });
         PreviousButton().Click([this](auto const&, auto const&) { RefreshCurrentQaVisuals(); });

@@ -142,7 +142,6 @@
                             ToolTipService.ToolTip="Aktuální pozice videa v celé délce souboru" />
                     <Border Grid.Row="3" Background="#08000000" CornerRadius="3">
                         <Canvas x:Name="WaveformCanvas" Background="Transparent"
-                                ToolTipService.ToolTip="Levé tlačítko nastavuje a táhne začátek titulku. Pravé tlačítko nastavuje a táhne konec. H± mění časový zoom, V± výšku vlny."
                                 SizeChanged="WaveformCanvas_SizeChanged"
                                 PointerPressed="WaveformCanvas_PointerPressed"
                                 PointerMoved="WaveformCanvas_PointerMoved"
@@ -151,29 +150,50 @@
                     <Grid Grid.Row="4">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                         <TextBlock x:Name="WaveformRangeText" Text="Lokální pohled kolem aktuálního titulku" FontFamily="Consolas" FontSize="10" Opacity="0.55" />
-                        <TextBlock Grid.Column="1" Text="?" FontSize="10" Opacity="0.42"
-                                   ToolTipService.ToolTip="Levé = začátek · pravé = konec · tažením plynule. Při tažení za okraj se časové okno posouvá." />
+                        <Border Grid.Column="1" Width="22" Height="22" CornerRadius="11" BorderBrush="Gray" BorderThickness="1"
+                                ToolTipService.ToolTip="Levé tlačítko = začátek titulku · pravé tlačítko = konec · tažením plynule. H± mění časový zoom, V± výšku vlny. Při tažení za okraj se detail posouvá.">
+                            <TextBlock Text="?" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.65" />
+                        </Border>
                     </Grid>
                 </Grid>
             </Border>
 
             <Border x:Name="TranscriptPanel" Grid.Column="2" Padding="8" BorderBrush="Gray" BorderThickness="1" CornerRadius="6">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel Spacing="9">
+                    <StackPanel Spacing="6">
                         <TextBlock Text="Kontext / transcript" FontSize="12" FontWeight="SemiBold" />
-                        <StackPanel x:Name="TranscriptPreviousBlock">
-                            <TextBlock x:Name="TranscriptPreviousTimeText" FontFamily="Consolas" FontSize="10" Opacity="0.45" />
-                            <TextBlock x:Name="TranscriptPreviousText" TextWrapping="Wrap" FontSize="11" Opacity="0.55" />
+
+                        <StackPanel x:Name="TranscriptPrev3Block">
+                            <TextBlock x:Name="TranscriptPrev3TimeText" FontFamily="Consolas" FontSize="9" Opacity="0.4" />
+                            <TextBlock x:Name="TranscriptPrev3Text" TextWrapping="Wrap" FontSize="10.5" Opacity="0.48" />
                         </StackPanel>
+                        <StackPanel x:Name="TranscriptPrev2Block">
+                            <TextBlock x:Name="TranscriptPrev2TimeText" FontFamily="Consolas" FontSize="9" Opacity="0.42" />
+                            <TextBlock x:Name="TranscriptPrev2Text" TextWrapping="Wrap" FontSize="10.5" Opacity="0.52" />
+                        </StackPanel>
+                        <StackPanel x:Name="TranscriptPreviousBlock">
+                            <TextBlock x:Name="TranscriptPreviousTimeText" FontFamily="Consolas" FontSize="9.5" Opacity="0.45" />
+                            <TextBlock x:Name="TranscriptPreviousText" TextWrapping="Wrap" FontSize="10.5" Opacity="0.58" />
+                        </StackPanel>
+
                         <Border Padding="7,5" BorderBrush="#0078D4" BorderThickness="3,0,0,0">
                             <StackPanel>
-                                <TextBlock x:Name="TranscriptCurrentTimeText" FontFamily="Consolas" FontSize="10" />
-                                <TextBlock x:Name="TranscriptCurrentText" TextWrapping="Wrap" FontSize="12" FontWeight="SemiBold" />
+                                <TextBlock x:Name="TranscriptCurrentTimeText" FontFamily="Consolas" FontSize="9.5" />
+                                <TextBlock x:Name="TranscriptCurrentText" TextWrapping="Wrap" FontSize="11.5" FontWeight="SemiBold" />
                             </StackPanel>
                         </Border>
+
                         <StackPanel x:Name="TranscriptNextBlock">
-                            <TextBlock x:Name="TranscriptNextTimeText" FontFamily="Consolas" FontSize="10" Opacity="0.45" />
-                            <TextBlock x:Name="TranscriptNextText" TextWrapping="Wrap" FontSize="11" Opacity="0.55" />
+                            <TextBlock x:Name="TranscriptNextTimeText" FontFamily="Consolas" FontSize="9.5" Opacity="0.45" />
+                            <TextBlock x:Name="TranscriptNextText" TextWrapping="Wrap" FontSize="10.5" Opacity="0.58" />
+                        </StackPanel>
+                        <StackPanel x:Name="TranscriptNext2Block">
+                            <TextBlock x:Name="TranscriptNext2TimeText" FontFamily="Consolas" FontSize="9" Opacity="0.42" />
+                            <TextBlock x:Name="TranscriptNext2Text" TextWrapping="Wrap" FontSize="10.5" Opacity="0.52" />
+                        </StackPanel>
+                        <StackPanel x:Name="TranscriptNext3Block">
+                            <TextBlock x:Name="TranscriptNext3TimeText" FontFamily="Consolas" FontSize="9" Opacity="0.4" />
+                            <TextBlock x:Name="TranscriptNext3Text" TextWrapping="Wrap" FontSize="10.5" Opacity="0.48" />
                         </StackPanel>
                     </StackPanel>
                 </ScrollViewer>
@@ -253,9 +273,11 @@
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Text="Start" FontSize="9.5" VerticalAlignment="Center" Opacity="0.6" />
-                                <TextBox x:Name="StartTimeBox" Grid.Column="1" FontFamily="Consolas" FontSize="11" Padding="5,2" KeyDown="TimingTextBox_KeyDown" />
+                                <TextBox x:Name="StartTimeBox" Grid.Column="1" Height="28" MinHeight="28" FontFamily="Consolas" FontSize="10.5"
+                                         Padding="5,0" VerticalContentAlignment="Center" KeyDown="TimingTextBox_KeyDown" />
                                 <TextBlock Grid.Column="2" Text="Konec" FontSize="9.5" VerticalAlignment="Center" Opacity="0.6" />
-                                <TextBox x:Name="EndTimeBox" Grid.Column="3" FontFamily="Consolas" FontSize="11" Padding="5,2" KeyDown="TimingTextBox_KeyDown" />
+                                <TextBox x:Name="EndTimeBox" Grid.Column="3" Height="28" MinHeight="28" FontFamily="Consolas" FontSize="10.5"
+                                         Padding="5,0" VerticalContentAlignment="Center" KeyDown="TimingTextBox_KeyDown" />
                                 <Button Grid.Column="4" Content="−100" Padding="5,2" Click="TimingShiftBackButton_Click" />
                                 <Button Grid.Column="5" Content="+100" Padding="5,2" Click="TimingShiftForwardButton_Click" />
                                 <Button Grid.Column="6" Content="Použít" Padding="6,2" Click="TimingApplyButton_Click" />
@@ -281,6 +303,9 @@
                                 <TextBlock x:Name="TargetCplText" Text="CPL 0" FontSize="10" Opacity="0.5" />
                                 <TextBlock x:Name="TargetCpsText" Grid.Column="1" Text="CPS 0" FontSize="10" Opacity="0.5" />
                                 <TextBlock x:Name="TargetLengthText" Grid.Column="2" Text="Znaky 0" FontSize="10" Opacity="0.5" />
+                                <TextBlock x:Name="TargetProblemText" Grid.Column="3" Margin="8,0" FontSize="9.5"
+                                           Foreground="#D13438" FontWeight="SemiBold" VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis" Visibility="Collapsed" />
                                 <StackPanel Grid.Column="4" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="6">
                                     <Button Content="Převzít originál" Padding="6,2" FontSize="11" Click="CopyOriginalButton_Click" />
                                     <Button Content="Rozdělit řádky" Padding="6,2" FontSize="11" Click="InsertLineBreakButton_Click" />

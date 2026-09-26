@@ -1370,6 +1370,7 @@ namespace winrt::Aegisub_WinUI::implementation
         std::wstring targetInfo = L"#" + std::to_wstring(row.number) + L" \u00B7 ";
         targetInfo += row.status.c_str();
         TargetInfoText().Text(hstring{ targetInfo });
+        RefreshCurrentProblemText();
         RefreshTimingEditor();
         TargetTextBox().Text(row.target);
         if (row.selectionInitialized)
@@ -1392,8 +1393,34 @@ namespace winrt::Aegisub_WinUI::implementation
         TargetStatusText().Text(hstring{ status });
         RefreshApprovalAction();
 
+        auto setTranscriptContext = [this](
+            int32_t index,
+            winrt::Microsoft::UI::Xaml::Controls::StackPanel const& block,
+            winrt::Microsoft::UI::Xaml::Controls::TextBlock const& timeText,
+            winrt::Microsoft::UI::Xaml::Controls::TextBlock const& bodyText)
+        {
+            if (index < 0 || index >= static_cast<int32_t>(m_rows.size()))
+            {
+                block.Visibility(Visibility::Collapsed);
+                return;
+            }
+
+            auto const& contextRow = m_rows[index];
+            block.Visibility(Visibility::Visible);
+            timeText.Text(contextRow.start);
+            bodyText.Text(contextRow.original);
+        };
+
+        setTranscriptContext(m_currentIndex - 3, TranscriptPrev3Block(), TranscriptPrev3TimeText(), TranscriptPrev3Text());
+        setTranscriptContext(m_currentIndex - 2, TranscriptPrev2Block(), TranscriptPrev2TimeText(), TranscriptPrev2Text());
+        setTranscriptContext(m_currentIndex - 1, TranscriptPreviousBlock(), TranscriptPreviousTimeText(), TranscriptPreviousText());
+
         TranscriptCurrentTimeText().Text(row.start);
         TranscriptCurrentText().Text(row.original);
+
+        setTranscriptContext(m_currentIndex + 1, TranscriptNextBlock(), TranscriptNextTimeText(), TranscriptNextText());
+        setTranscriptContext(m_currentIndex + 2, TranscriptNext2Block(), TranscriptNext2TimeText(), TranscriptNext2Text());
+        setTranscriptContext(m_currentIndex + 3, TranscriptNext3Block(), TranscriptNext3TimeText(), TranscriptNext3Text());
 
         bool const subtitleSelectionChanged = m_waveformViewportSubtitleIndex != m_currentIndex;
         if (subtitleSelectionChanged)
@@ -1405,30 +1432,6 @@ namespace winrt::Aegisub_WinUI::implementation
         }
         RenderWaveform();
         RefreshWaveformPlayhead();
-
-        if (m_currentIndex > 0)
-        {
-            auto const& previous = m_rows[m_currentIndex - 1];
-            TranscriptPreviousBlock().Visibility(Visibility::Visible);
-            TranscriptPreviousTimeText().Text(previous.start);
-            TranscriptPreviousText().Text(previous.original);
-        }
-        else
-        {
-            TranscriptPreviousBlock().Visibility(Visibility::Collapsed);
-        }
-
-        if (m_currentIndex < static_cast<int32_t>(m_rows.size()) - 1)
-        {
-            auto const& next = m_rows[m_currentIndex + 1];
-            TranscriptNextBlock().Visibility(Visibility::Visible);
-            TranscriptNextTimeText().Text(next.start);
-            TranscriptNextText().Text(next.original);
-        }
-        else
-        {
-            TranscriptNextBlock().Visibility(Visibility::Collapsed);
-        }
 
         TablePositionText().Text(hstring{
             L"#" + std::to_wstring(row.number) + L" / " + std::to_wstring(m_rows.size()) });
@@ -1455,6 +1458,33 @@ namespace winrt::Aegisub_WinUI::implementation
         }
 
         m_loadingSelection = false;
+    }
+
+    void MainWindow::RefreshCurrentProblemText()
+    {
+        if (m_rows.empty() || m_currentIndex < 0 ||
+            m_currentIndex >= static_cast<int32_t>(m_rows.size()))
+        {
+            TargetProblemText().Text(L"");
+            TargetProblemText().Visibility(Visibility::Collapsed);
+            ToolTipService::SetToolTip(TargetProblemText(), nullptr);
+            return;
+        }
+
+        auto const& row = m_rows[m_currentIndex];
+        if (row.qaIssue.empty())
+        {
+            TargetProblemText().Text(L"");
+            TargetProblemText().Visibility(Visibility::Collapsed);
+            ToolTipService::SetToolTip(TargetProblemText(), nullptr);
+            return;
+        }
+
+        auto const detail = winrt::hstring{
+            std::wstring{ L"⚠ " } + row.qaIssue.c_str() };
+        TargetProblemText().Text(detail);
+        TargetProblemText().Visibility(Visibility::Visible);
+        ToolTipService::SetToolTip(TargetProblemText(), winrt::box_value(row.qaIssue));
     }
 
     void MainWindow::UpdateMetrics()
@@ -2798,6 +2828,8 @@ namespace winrt::Aegisub_WinUI::implementation
                 continue;
             StoreCurrentEditorSelection();
             m_currentIndex = index;
+            m_selectedSubtitleIndices.assign(1, index);
+            m_selectionAnchorIndex = index;
             LoadCurrentRow();
             RefreshCurrentQaVisuals();
             TargetTextBox().Focus(FocusState::Programmatic);

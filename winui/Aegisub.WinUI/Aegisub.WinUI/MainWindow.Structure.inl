@@ -332,15 +332,6 @@ namespace winrt::Aegisub_WinUI::implementation
         if (m_rows.empty())
             return;
 
-        if (MessageBoxW(
-            GetActiveWindow(),
-            L"Opravdu smazat aktuální titulek?",
-            L"Smazat titulek",
-            MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2) != IDYES)
-        {
-            return;
-        }
-
         m_rows.erase(m_rows.begin() + m_currentIndex);
 
         if (m_currentIndex >= static_cast<int32_t>(m_rows.size()) && m_currentIndex > 0)

@@ -369,6 +369,7 @@ namespace winrt::Aegisub_WinUI::implementation
 
         void LoadCurrentRow();
         void UpdateMetrics();
+        void RefreshCurrentProblemText();
         void UpdateSelectionVisuals();
         void SelectSubtitleRow(int32_t index, bool ctrl, bool shift);
         bool IsSubtitleRowSelected(int32_t index) const;
