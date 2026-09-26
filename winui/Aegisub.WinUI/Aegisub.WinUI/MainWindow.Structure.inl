@@ -254,26 +254,33 @@ namespace winrt::Aegisub_WinUI::implementation
         RefreshAfterStructureEdit(L"Aktuální titulek spojen s následujícím");
     }
 
-    inline void MainWindow::InsertSubtitleButton_Click(
-        winrt::Windows::Foundation::IInspectable const&,
-        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    inline void MainWindow::InsertSubtitleRelative(bool above)
     {
         double start = 0.0;
-        if (!m_rows.empty())
-            start = WorkflowTimestampSeconds(m_rows[m_currentIndex].end);
+        int32_t position = 0;
 
-        double end = start + 2.0;
-        if (!m_rows.empty() && m_currentIndex + 1 < static_cast<int32_t>(m_rows.size()))
+        if (!m_rows.empty())
         {
-            auto const nextStart = WorkflowTimestampSeconds(m_rows[m_currentIndex + 1].start);
-            if (nextStart > start + 0.1)
-                end = nextStart;
+            if (above)
+            {
+                auto const currentStart = WorkflowTimestampSeconds(m_rows[m_currentIndex].start);
+                start = currentStart >= 2.0 ? currentStart - 2.0 : 0.0;
+                position = m_currentIndex;
+            }
+            else
+            {
+                start = WorkflowTimestampSeconds(m_rows[m_currentIndex].end);
+                position = m_currentIndex + 1;
+            }
         }
+
+        // New subtitles always start with an exact default duration of 2 seconds.
+        auto const end = start + 2.0;
 
         SubtitleRowData row;
         row.start = FormatWinUiTiming(start);
         row.end = FormatWinUiTiming(end);
-        row.duration = end - start;
+        row.duration = 2.0;
         row.target = L"";
         row.rawTarget = L"";
         row.savedTarget = L"";
@@ -284,19 +291,43 @@ namespace winrt::Aegisub_WinUI::implementation
         row.targetModified = false;
         row.timingModified = true;
         row.historyInitialized = true;
+        row.selectionInitialized = false;
 
-        auto const position = m_rows.empty() ? 0 : m_currentIndex + 1;
         m_rows.insert(m_rows.begin() + position, std::move(row));
         m_currentIndex = position;
         m_selectedSubtitleIndices.assign(1, position);
         m_selectionAnchorIndex = position;
-        RefreshAfterStructureEdit(L"Vložen nový prázdný titulek");
+
+        RefreshAfterStructureEdit(above
+            ? L"Vložen nový titulek nad aktuální řádek · délka 2 s"
+            : L"Vložen nový titulek pod aktuální řádek · délka 2 s");
+
         TargetTextBox().Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
     }
 
-    inline void MainWindow::DeleteSubtitleButton_Click(
+    inline void MainWindow::InsertSubtitleButton_Click(
         winrt::Windows::Foundation::IInspectable const&,
         winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        // Backward-compatible hidden/legacy action: insert below.
+        InsertSubtitleRelative(false);
+    }
+
+    inline void MainWindow::InsertSubtitleAboveButton_Click(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        InsertSubtitleRelative(true);
+    }
+
+    inline void MainWindow::InsertSubtitleBelowButton_Click(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        InsertSubtitleRelative(false);
+    }
+
+    inline void MainWindow::DeleteCurrentSubtitle()
     {
         if (m_rows.empty())
             return;
@@ -306,15 +337,30 @@ namespace winrt::Aegisub_WinUI::implementation
             L"Opravdu smazat aktuální titulek?",
             L"Smazat titulek",
             MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2) != IDYES)
+        {
             return;
+        }
 
         m_rows.erase(m_rows.begin() + m_currentIndex);
+
         if (m_currentIndex >= static_cast<int32_t>(m_rows.size()) && m_currentIndex > 0)
             --m_currentIndex;
+
         m_selectedSubtitleIndices.clear();
         if (!m_rows.empty())
             m_selectedSubtitleIndices.push_back(m_currentIndex);
-        m_selectionAnchorIndex = m_currentIndex;
+        m_selectionAnchorIndex = m_rows.empty() ? -1 : m_currentIndex;
+
         RefreshAfterStructureEdit(L"Titulek smazán");
+        if (!m_rows.empty())
+            TargetTextBox().Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
     }
+
+    inline void MainWindow::DeleteSubtitleButton_Click(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        DeleteCurrentSubtitle();
+    }
+
 }

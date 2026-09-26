@@ -258,6 +258,12 @@ namespace winrt::Aegisub_WinUI::implementation
         auto const key = args.Key();
         auto const keyValue = static_cast<int32_t>(key);
         if (control && keyValue >= 0x31 && keyValue <= 0x36) { args.Handled(true); SelectFilter(keyValue - 0x31); return; }
+        if (control && key == winrt::Windows::System::VirtualKey::Delete)
+        {
+            args.Handled(true);
+            DeleteCurrentSubtitle();
+            return;
+        }
         if (key == winrt::Windows::System::VirtualKey::Enter)
         {
             args.Handled(true);
@@ -283,6 +289,13 @@ namespace winrt::Aegisub_WinUI::implementation
         auto const key = args.Key();
         auto const keyValue = static_cast<int32_t>(key);
         if (control && keyValue >= 0x31 && keyValue <= 0x36) { args.Handled(true); SelectFilter(keyValue - 0x31); return; }
+
+        if (control && key == winrt::Windows::System::VirtualKey::Delete)
+        {
+            args.Handled(true);
+            DeleteCurrentSubtitle();
+            return;
+        }
 
         if (control && key == winrt::Windows::System::VirtualKey::S)
         { args.Handled(true); if (shift) SaveAsFromShortcut(); else SaveFromShortcut(); }

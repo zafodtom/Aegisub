@@ -1773,6 +1773,42 @@ namespace winrt::Aegisub_WinUI::implementation
             });
             MenuFlyout rowMenu;
 
+            auto activateContextRow = [this, index]()
+            {
+                if (index < 0 || index >= static_cast<int32_t>(m_rows.size()))
+                    return false;
+
+                if (index != m_currentIndex || !IsSubtitleRowSelected(index))
+                {
+                    if (index != m_currentIndex)
+                        StoreCurrentEditorSelection();
+                    SelectSubtitleRow(index, false, false);
+                    m_currentIndex = index;
+                    LoadCurrentRow();
+                }
+                return true;
+            };
+
+            MenuFlyoutItem insertAboveItem;
+            insertAboveItem.Text(L"Přidat titulek nad");
+            insertAboveItem.Click([this, activateContextRow](auto const&, auto const&)
+            {
+                if (activateContextRow())
+                    InsertSubtitleRelative(true);
+            });
+            rowMenu.Items().Append(insertAboveItem);
+
+            MenuFlyoutItem insertBelowItem;
+            insertBelowItem.Text(L"Přidat titulek pod");
+            insertBelowItem.Click([this, activateContextRow](auto const&, auto const&)
+            {
+                if (activateContextRow())
+                    InsertSubtitleRelative(false);
+            });
+            rowMenu.Items().Append(insertBelowItem);
+
+            rowMenu.Items().Append(MenuFlyoutSeparator{});
+
             MenuFlyoutItem mergeItem;
             mergeItem.Text(L"Sloučit vybrané titulky");
             mergeItem.Click([this, index](auto const&, auto const&)
@@ -1786,6 +1822,17 @@ namespace winrt::Aegisub_WinUI::implementation
                 MergeSelectedSubtitles();
             });
             rowMenu.Items().Append(mergeItem);
+
+            rowMenu.Items().Append(MenuFlyoutSeparator{});
+
+            MenuFlyoutItem deleteItem;
+            deleteItem.Text(L"Smazat titulek");
+            deleteItem.Click([this, activateContextRow](auto const&, auto const&)
+            {
+                if (activateContextRow())
+                    DeleteCurrentSubtitle();
+            });
+            rowMenu.Items().Append(deleteItem);
 
             rowBorder.ContextFlyout(rowMenu);
 
