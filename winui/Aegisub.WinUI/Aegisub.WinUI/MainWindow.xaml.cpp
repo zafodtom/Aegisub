@@ -1563,35 +1563,7 @@ namespace winrt::Aegisub_WinUI::implementation
 
     void MainWindow::InitializeDynamicSubtitleGrid()
     {
-        for (auto const& child : RootGrid().Children())
-        {
-            auto const outerBorder = child.try_as<Border>();
-            if (!outerBorder || Grid::GetRow(outerBorder) != 2)
-            {
-                continue;
-            }
-
-            auto const container = outerBorder.Child().try_as<Grid>();
-            if (!container)
-            {
-                continue;
-            }
-
-            for (auto const& containerChild : container.Children())
-            {
-                auto const scrollViewer = containerChild.try_as<ScrollViewer>();
-                if (!scrollViewer || Grid::GetRow(scrollViewer) != 1)
-                {
-                    continue;
-                }
-
-                m_subtitleGrid = scrollViewer.Content().try_as<Grid>();
-                if (m_subtitleGrid)
-                {
-                    return;
-                }
-            }
-        }
+        m_subtitleGrid = SubtitleGridHost();
     }
 
     void MainWindow::RebuildSubtitleGrid()
@@ -1709,8 +1681,8 @@ namespace winrt::Aegisub_WinUI::implementation
     {
         m_hasUnsavedChanges = dirty;
         Title(dirty
-            ? L"Aegisub Translation Workspace *"
-            : L"Aegisub Translation Workspace");
+            ? L"Aegisub *"
+            : L"Aegisub");
     }
 
     bool MainWindow::ConfirmSaveBefore(std::wstring const& action)
@@ -1727,7 +1699,7 @@ namespace winrt::Aegisub_WinUI::implementation
         auto const result = MessageBoxW(
             GetActiveWindow(),
             message.c_str(),
-            L"Aegisub Translation Workspace",
+            L"Aegisub",
             MB_YESNOCANCEL | MB_ICONWARNING);
 
         if (result == IDCANCEL)
@@ -2068,7 +2040,7 @@ namespace winrt::Aegisub_WinUI::implementation
         std::wstring errorMessage;
         if (!ReadSubtitleFile(sourceFilename, sourceEntries, errorMessage))
         {
-            MessageBoxW(GetActiveWindow(), errorMessage.c_str(), L"Aegisub Translation Workspace", MB_OK | MB_ICONERROR);
+            MessageBoxW(GetActiveWindow(), errorMessage.c_str(), L"Aegisub", MB_OK | MB_ICONERROR);
             return;
         }
 
@@ -2086,7 +2058,7 @@ namespace winrt::Aegisub_WinUI::implementation
         std::vector<SubtitleEntry> targetEntries;
         if (!ReadSubtitleFile(targetFilename, targetEntries, errorMessage))
         {
-            MessageBoxW(GetActiveWindow(), errorMessage.c_str(), L"Aegisub Translation Workspace", MB_OK | MB_ICONERROR);
+            MessageBoxW(GetActiveWindow(), errorMessage.c_str(), L"Aegisub", MB_OK | MB_ICONERROR);
             return;
         }
 
@@ -2115,7 +2087,7 @@ namespace winrt::Aegisub_WinUI::implementation
         std::wstring errorMessage;
         if (!ReadSubtitleFile(filename, entries, errorMessage))
         {
-            MessageBoxW(GetActiveWindow(), errorMessage.c_str(), L"Aegisub Translation Workspace", MB_OK | MB_ICONERROR);
+            MessageBoxW(GetActiveWindow(), errorMessage.c_str(), L"Aegisub", MB_OK | MB_ICONERROR);
             return;
         }
 
@@ -2123,7 +2095,7 @@ namespace winrt::Aegisub_WinUI::implementation
         if (!m_targetPath.empty()
             && !ReadSubtitleFile(m_targetPath.c_str(), refreshedTargetEntries, errorMessage))
         {
-            MessageBoxW(GetActiveWindow(), errorMessage.c_str(), L"Aegisub Translation Workspace", MB_OK | MB_ICONERROR);
+            MessageBoxW(GetActiveWindow(), errorMessage.c_str(), L"Aegisub", MB_OK | MB_ICONERROR);
             return;
         }
 
@@ -2152,7 +2124,7 @@ namespace winrt::Aegisub_WinUI::implementation
         std::wstring errorMessage;
         if (!ReadSubtitleFile(filename, entries, errorMessage))
         {
-            MessageBoxW(GetActiveWindow(), errorMessage.c_str(), L"Aegisub Translation Workspace", MB_OK | MB_ICONERROR);
+            MessageBoxW(GetActiveWindow(), errorMessage.c_str(), L"Aegisub", MB_OK | MB_ICONERROR);
             return;
         }
 

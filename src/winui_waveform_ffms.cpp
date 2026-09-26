@@ -23,7 +23,7 @@ bool WriteWinUiWaveform(
     error = "This Aegisub build does not include FFMS2 audio decoding.";
     return false;
 #else
-    bins = (std::max)(size_t{ 200 }, (std::min)(bins, size_t{ 5000 }));
+    bins = (std::max)(size_t{ 1000 }, (std::min)(bins, size_t{ 200000 }));
 
     char errorBuffer[2048]{};
     FFMS_ErrorInfo errorInfo{};
@@ -135,18 +135,50 @@ bool WriteWinUiWaveform(
            << std::fixed << std::setprecision(6) << duration << '\t'
            << sampleRate << '\t' << actualBins << '\n';
 
-    std::vector<int16_t> buffer(static_cast<size_t>(samplesPerBin));
-    int64_t position = 0;
-
-    for (size_t bin = 0; bin < actualBins; ++bin)
+    constexpr size_t binsPerChunk = 256;
+    for (size_t firstBin = 0; firstBin < actualBins; firstBin += binsPerChunk)
     {
-        auto const count = (std::min<int64_t>)(samplesPerBin, samples - position);
-        if (count <= 0)
-            break;
+        auto const lastBin = (std::min)(actualBins, firstBin + binsPerChunk);
+        auto const sampleStart = static_cast<int64_t>(
+            static_cast<long double>(firstBin) * samples / actualBins);
+        auto const sampleEnd = static_cast<int64_t>(
+            static_cast<long double>(lastBin) * samples / actualBins);
+        auto const count = (std::max<int64_t>)(1, sampleEnd - sampleStart);
 
-        if (FFMS_GetAudio(audio, buffer.data(), position, count, &errorInfo) != 0)
+        std::vector<int16_t> buffer(static_cast<size_t>(count));
+        if (FFMS_GetAudio(audio, buffer.data(), sampleStart, count, &errorInfo) != 0)
         {
             FFMS_DestroyAudioSource(audio);
+            FFMS_DestroyIndex(index);
+            error = std::string("Audio decoding failed: ") + errorInfo.Buffer;
+            return false;
+        }
+
+        for (size_t bin = firstBin; bin < lastBin; ++bin)
+        {
+            auto const absoluteStart = static_cast<int64_t>(
+                static_cast<long double>(bin) * samples / actualBins);
+            auto const absoluteEnd = static_cast<int64_t>(
+                static_cast<long double>(bin + 1) * samples / actualBins);
+            auto const localStart = (std::max<int64_t>)(0, absoluteStart - sampleStart);
+            auto const localEnd = (std::min<int64_t>)(count, (std::max<int64_t>)(localStart + 1, absoluteEnd - sampleStart));
+
+            int16_t minimum = 0;
+            int16_t maximum = 0;
+            for (int64_t sample = localStart; sample < localEnd; ++sample)
+            {
+                auto const value = buffer[static_cast<size_t>(sample)];
+                minimum = (std::min)(minimum, value);
+                maximum = (std::max)(maximum, value);
+            }
+
+            stream << std::fixed << std::setprecision(6)
+                   << static_cast<double>(minimum) / 32768.0 << '\t'
+                   << static_cast<double>(maximum) / 32767.0 << '\n';
+        }
+    }
+
+    FFMS_DestroyAudioSource(audio);
             FFMS_DestroyIndex(index);
             error = std::string("Audio decoding failed: ") + errorInfo.Buffer;
             return false;

@@ -289,6 +289,8 @@ namespace winrt::Aegisub_WinUI::implementation
         std::wstring m_waveformPath;
         std::vector<std::pair<float, float>> m_waveformPeaks;
         double m_waveformDuration{};
+        double m_waveformWindowStart{};
+        double m_waveformWindowEnd{};
         bool m_structureDirty{};
         bool m_featureStateLoaded{};
 
