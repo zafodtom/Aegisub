@@ -157,6 +157,8 @@ namespace winrt::Aegisub_WinUI::implementation
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void VideoPlayPauseButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void VideoPlaySelectedButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void VideoBackFiveButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void VideoForwardFiveButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
@@ -166,6 +168,10 @@ namespace winrt::Aegisub_WinUI::implementation
         void WaveformCanvas_SizeChanged(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::SizeChangedEventArgs const& args);
         void WaveformCanvas_PointerPressed(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args);
+        void WaveformCanvas_PointerMoved(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args);
+        void WaveformCanvas_PointerReleased(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args);
         void RecentProjectsButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
@@ -297,6 +303,12 @@ namespace winrt::Aegisub_WinUI::implementation
         double m_waveformDuration{};
         double m_waveformWindowStart{};
         double m_waveformWindowEnd{};
+        int32_t m_waveformViewportSubtitleIndex{-1};
+        int m_waveformDragMode{};
+        bool m_waveformDragActive{};
+        winrt::Microsoft::UI::Xaml::Shapes::Line m_waveformPlayhead{ nullptr };
+        winrt::Microsoft::UI::Xaml::DispatcherTimer m_mediaUiTimer{ nullptr };
+        double m_playSelectedUntil{-1.0};
         bool m_structureDirty{};
         bool m_featureStateLoaded{};
 
@@ -398,7 +410,12 @@ namespace winrt::Aegisub_WinUI::implementation
         void RefreshVideoPositionText();
         bool LoadWaveformForMedia(std::wstring const& filename);
         void RenderWaveform();
+        void CenterWaveformOnCurrentSubtitle();
+        void RefreshWaveformPlayhead();
+        void PreviewWaveformBoundary(double seconds);
+        double WaveformSecondsFromPointer(double x, double width, bool allowAutoPan);
         void SeekMediaToSeconds(double seconds);
+        void StartMediaUiTimer();
         void CaptureRecoveryHistorySnapshot() const;
 
         bool RowMatchesAdvancedSearch(SubtitleRowData const& row, std::wstring_view query);

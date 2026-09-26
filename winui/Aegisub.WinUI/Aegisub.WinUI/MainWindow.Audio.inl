@@ -137,6 +137,8 @@ namespace winrt::Aegisub_WinUI::implementation
 
         m_waveformPeaks = std::move(peaks);
         m_waveformPath = filename;
+        m_waveformViewportSubtitleIndex = m_currentIndex;
+        CenterWaveformOnCurrentSubtitle();
         WaveformFileText().Text(winrt::hstring{
             std::filesystem::path{ filename }.filename().wstring() +
             L" · " + std::to_wstring(static_cast<int>(m_waveformDuration)) + L" s" });
@@ -144,38 +146,115 @@ namespace winrt::Aegisub_WinUI::implementation
         return true;
     }
 
+    inline void MainWindow::CenterWaveformOnCurrentSubtitle()
+    {
+        if (m_waveformDuration <= 0.0 || m_rows.empty() || m_currentIndex < 0 ||
+            m_currentIndex >= static_cast<int32_t>(m_rows.size()))
+            return;
+
+        auto const& row = m_rows[m_currentIndex];
+        auto const activeStart = WorkflowTimestampSeconds(row.start);
+        auto const activeEnd = WorkflowTimestampSeconds(row.end);
+        auto const activeDuration = (std::max)(0.2, activeEnd - activeStart);
+        auto const windowSpan = (std::max)(8.0, activeDuration + 5.0);
+        auto const centerTime = (activeStart + activeEnd) * 0.5;
+
+        m_waveformWindowStart = (std::max)(0.0, centerTime - windowSpan * 0.5);
+        m_waveformWindowEnd = (std::min)(m_waveformDuration, m_waveformWindowStart + windowSpan);
+        if (m_waveformWindowEnd - m_waveformWindowStart < windowSpan &&
+            m_waveformWindowEnd >= m_waveformDuration)
+        {
+            m_waveformWindowStart = (std::max)(0.0, m_waveformWindowEnd - windowSpan);
+        }
+    }
+
+    inline void MainWindow::RefreshWaveformPlayhead()
+    {
+        if (!m_waveformPlayhead || m_waveformWindowEnd <= m_waveformWindowStart)
+            return;
+
+        auto const seconds = CurrentVideoSeconds();
+        auto const width = WaveformCanvas().ActualWidth();
+        if (seconds < m_waveformWindowStart || seconds > m_waveformWindowEnd || width <= 0.0)
+        {
+            m_waveformPlayhead.Visibility(winrt::Microsoft::UI::Xaml::Visibility::Collapsed);
+            return;
+        }
+
+        auto const x = width * (seconds - m_waveformWindowStart) /
+            (m_waveformWindowEnd - m_waveformWindowStart);
+        m_waveformPlayhead.X1(x);
+        m_waveformPlayhead.X2(x);
+        m_waveformPlayhead.Visibility(winrt::Microsoft::UI::Xaml::Visibility::Visible);
+    }
+
     inline void MainWindow::RenderWaveform()
     {
         auto const canvas = WaveformCanvas();
         canvas.Children().Clear();
+        m_waveformPlayhead = nullptr;
 
         auto const width = canvas.ActualWidth();
         auto const height = canvas.ActualHeight();
         if (width < 10.0 || height < 10.0 || m_waveformPeaks.empty() || m_waveformDuration <= 0.0)
             return;
 
-        double activeStart = 0.0;
-        double activeEnd = 0.0;
-        if (!m_rows.empty() && m_currentIndex >= 0 && m_currentIndex < static_cast<int32_t>(m_rows.size()))
-        {
-            activeStart = WorkflowTimestampSeconds(m_rows[m_currentIndex].start);
-            activeEnd = WorkflowTimestampSeconds(m_rows[m_currentIndex].end);
-        }
+        if (m_waveformWindowEnd <= m_waveformWindowStart)
+            CenterWaveformOnCurrentSubtitle();
+        if (m_waveformWindowEnd <= m_waveformWindowStart)
+            return;
 
-        auto const activeDuration = (std::max)(0.2, activeEnd - activeStart);
-        auto const windowSpan = (std::max)(8.0, activeDuration + 5.0);
-        auto const centerTime = (activeStart + activeEnd) * 0.5;
-        m_waveformWindowStart = (std::max)(0.0, centerTime - windowSpan * 0.5);
-        m_waveformWindowEnd = (std::min)(m_waveformDuration, m_waveformWindowStart + windowSpan);
-        if (m_waveformWindowEnd - m_waveformWindowStart < windowSpan && m_waveformWindowEnd >= m_waveformDuration)
-            m_waveformWindowStart = (std::max)(0.0, m_waveformWindowEnd - windowSpan);
-
-        auto const visibleDuration = (std::max)(0.001, m_waveformWindowEnd - m_waveformWindowStart);
+        auto const visibleDuration = m_waveformWindowEnd - m_waveformWindowStart;
         auto const accent = TargetPanelBorder().BorderBrush();
         auto mapTimeToX = [&](double seconds) {
             return width * (seconds - m_waveformWindowStart) / visibleDuration;
         };
 
+        // Show source subtitle ranges along the top and target ranges along the bottom.
+        for (int32_t index = 0; index < static_cast<int32_t>(m_rows.size()); ++index)
+        {
+            auto const& subtitle = m_rows[index];
+
+            auto drawRange = [&](double start, double end, double top, double barHeight, double opacity)
+            {
+                if (end < m_waveformWindowStart || start > m_waveformWindowEnd || end <= start)
+                    return;
+                auto const left = (std::max)(0.0, (std::min)(width, mapTimeToX((std::max)(start, m_waveformWindowStart))));
+                auto const right = (std::max)(left, (std::min)(width, mapTimeToX((std::min)(end, m_waveformWindowEnd))));
+
+                winrt::Microsoft::UI::Xaml::Shapes::Rectangle range;
+                range.Fill(accent);
+                range.Opacity(opacity);
+                range.Width((std::max)(1.0, right - left));
+                range.Height(barHeight);
+                winrt::Microsoft::UI::Xaml::Controls::Canvas::SetLeft(range, left);
+                winrt::Microsoft::UI::Xaml::Controls::Canvas::SetTop(range, top);
+                canvas.Children().Append(range);
+            };
+
+            if (!subtitle.sourceStart.empty() && !subtitle.sourceEnd.empty())
+            {
+                drawRange(
+                    WorkflowTimestampSeconds(subtitle.sourceStart),
+                    WorkflowTimestampSeconds(subtitle.sourceEnd),
+                    2.0,
+                    index == m_currentIndex ? 6.0 : 4.0,
+                    index == m_currentIndex ? 0.42 : 0.14);
+            }
+
+            drawRange(
+                WorkflowTimestampSeconds(subtitle.start),
+                WorkflowTimestampSeconds(subtitle.end),
+                (std::max)(8.0, height - (index == m_currentIndex ? 13.0 : 9.0)),
+                index == m_currentIndex ? 11.0 : 7.0,
+                index == m_currentIndex ? 0.62 : 0.22);
+        }
+
+        auto const& active = m_rows[m_currentIndex];
+        auto const activeStart = WorkflowTimestampSeconds(active.start);
+        auto const activeEnd = WorkflowTimestampSeconds(active.end);
+
+        // Highlight the editable target subtitle area without moving the viewport.
         if (activeEnd > activeStart)
         {
             auto const left = (std::max)(0.0, (std::min)(width, mapTimeToX(activeStart)));
@@ -183,7 +262,7 @@ namespace winrt::Aegisub_WinUI::implementation
 
             winrt::Microsoft::UI::Xaml::Shapes::Rectangle selection;
             selection.Fill(accent);
-            selection.Opacity(0.14);
+            selection.Opacity(0.10);
             selection.Width((std::max)(1.0, right - left));
             selection.Height(height);
             winrt::Microsoft::UI::Xaml::Controls::Canvas::SetLeft(selection, left);
@@ -193,10 +272,10 @@ namespace winrt::Aegisub_WinUI::implementation
         auto const center = height * 0.5;
         auto const count = m_waveformPeaks.size();
         auto const columns = static_cast<size_t>((std::max)(1.0, width));
-
         auto timeToBin = [&](double seconds) {
             auto const normalized = (std::max)(0.0, (std::min)(1.0, seconds / m_waveformDuration));
-            return (std::min)(count - 1, static_cast<size_t>(normalized * static_cast<double>(count - 1)));
+            return (std::min)(count - 1,
+                static_cast<size_t>(normalized * static_cast<double>(count - 1)));
         };
 
         for (size_t column = 0; column < columns; ++column)
@@ -210,10 +289,10 @@ namespace winrt::Aegisub_WinUI::implementation
 
             float minimum = 0.0f;
             float maximum = 0.0f;
-            for (size_t index = first; index < last; ++index)
+            for (size_t sample = first; sample < last; ++sample)
             {
-                minimum = (std::min)(minimum, m_waveformPeaks[index].first);
-                maximum = (std::max)(maximum, m_waveformPeaks[index].second);
+                minimum = (std::min)(minimum, m_waveformPeaks[sample].first);
+                maximum = (std::max)(maximum, m_waveformPeaks[sample].second);
             }
 
             winrt::Microsoft::UI::Xaml::Shapes::Line peak;
@@ -224,11 +303,11 @@ namespace winrt::Aegisub_WinUI::implementation
             peak.Y2(center - static_cast<double>(minimum) * center);
             peak.Stroke(accent);
             peak.StrokeThickness(1.0);
-            peak.Opacity(0.82);
+            peak.Opacity(0.78);
             canvas.Children().Append(peak);
         }
 
-        auto drawMarker = [&](double seconds, double thickness, double opacity)
+        auto drawBoundary = [&](double seconds, double thickness, double opacity)
         {
             if (seconds < m_waveformWindowStart || seconds > m_waveformWindowEnd)
                 return;
@@ -244,8 +323,16 @@ namespace winrt::Aegisub_WinUI::implementation
             canvas.Children().Append(marker);
         };
 
-        drawMarker(activeStart, 2.0, 0.95);
-        drawMarker(activeEnd, 2.0, 0.95);
+        // Original timing is visible as subtle reference markers.
+        if (!active.sourceStart.empty() && !active.sourceEnd.empty())
+        {
+            drawBoundary(WorkflowTimestampSeconds(active.sourceStart), 1.0, 0.28);
+            drawBoundary(WorkflowTimestampSeconds(active.sourceEnd), 1.0, 0.28);
+        }
+
+        // Editable translated timing.
+        drawBoundary(activeStart, 2.5, 0.95);
+        drawBoundary(activeEnd, 2.5, 0.95);
 
         winrt::Microsoft::UI::Xaml::Shapes::Line zero;
         zero.X1(0.0);
@@ -254,16 +341,106 @@ namespace winrt::Aegisub_WinUI::implementation
         zero.Y2(center);
         zero.Stroke(accent);
         zero.StrokeThickness(1.0);
-        zero.Opacity(0.25);
+        zero.Opacity(0.20);
         canvas.Children().Append(zero);
+
+        // Independent playback playhead; it moves while the waveform stays still.
+        winrt::Microsoft::UI::Xaml::Media::SolidColorBrush playheadBrush;
+        playheadBrush.Color(winrt::Windows::UI::Color{ 255, 210, 55, 45 });
+        m_waveformPlayhead = winrt::Microsoft::UI::Xaml::Shapes::Line{};
+        m_waveformPlayhead.Y1(0.0);
+        m_waveformPlayhead.Y2(height);
+        m_waveformPlayhead.Stroke(playheadBrush);
+        m_waveformPlayhead.StrokeThickness(1.5);
+        m_waveformPlayhead.Opacity(0.92);
+        canvas.Children().Append(m_waveformPlayhead);
+        RefreshWaveformPlayhead();
 
         std::wostringstream range;
         range << FormatWinUiTiming(m_waveformWindowStart).c_str()
               << L"  –  " << FormatWinUiTiming(m_waveformWindowEnd).c_str()
-              << L"   |   titulek "
+              << L"   |   překlad "
               << FormatWinUiTiming(activeStart).c_str()
               << L" – " << FormatWinUiTiming(activeEnd).c_str();
         WaveformRangeText().Text(winrt::hstring{ range.str() });
+    }
+
+    inline double MainWindow::WaveformSecondsFromPointer(double x, double width, bool allowAutoPan)
+    {
+        if (width <= 0.0 || m_waveformWindowEnd <= m_waveformWindowStart)
+            return 0.0;
+
+        auto const span = m_waveformWindowEnd - m_waveformWindowStart;
+        if (allowAutoPan)
+        {
+            double shift = 0.0;
+            if (x < 0.0)
+                shift = -(std::max)(0.15, span * 0.08);
+            else if (x > width)
+                shift = (std::max)(0.15, span * 0.08);
+
+            if (shift != 0.0)
+            {
+                auto newStart = m_waveformWindowStart + shift;
+                auto newEnd = m_waveformWindowEnd + shift;
+                if (newStart < 0.0)
+                {
+                    newEnd -= newStart;
+                    newStart = 0.0;
+                }
+                if (newEnd > m_waveformDuration)
+                {
+                    auto const overflow = newEnd - m_waveformDuration;
+                    newStart = (std::max)(0.0, newStart - overflow);
+                    newEnd = m_waveformDuration;
+                }
+                m_waveformWindowStart = newStart;
+                m_waveformWindowEnd = newEnd;
+                RenderWaveform();
+            }
+        }
+
+        auto const clampedX = (std::max)(0.0, (std::min)(width, x));
+        return m_waveformWindowStart +
+            clampedX / width * (m_waveformWindowEnd - m_waveformWindowStart);
+    }
+
+    inline void MainWindow::PreviewWaveformBoundary(double seconds)
+    {
+        if (m_rows.empty() || m_waveformDragMode == 0)
+            return;
+
+        auto& row = m_rows[m_currentIndex];
+        auto start = WorkflowTimestampSeconds(row.start);
+        auto end = WorkflowTimestampSeconds(row.end);
+
+        if (m_waveformDragMode == 1)
+            start = (std::max)(0.0, (std::min)(seconds, end - 0.01));
+        else
+            end = (std::max)(start + 0.01, seconds);
+
+        row.start = FormatWinUiTiming(start);
+        row.end = FormatWinUiTiming(end);
+        row.duration = end - start;
+        row.timingModified = row.start != row.savedStart || row.end != row.savedEnd;
+        row.status = (row.targetModified || row.timingModified)
+            ? winrt::hstring{ L"Upraveno" }
+            : (row.savedWorkflowStatus.empty() ? winrt::hstring{ L"Uloženo" } : row.savedWorkflowStatus);
+
+        if (m_currentIndex < static_cast<int32_t>(m_targetEntries.size()))
+        {
+            auto& entry = m_targetEntries[m_currentIndex];
+            entry.start = row.start;
+            entry.end = row.end;
+            entry.startSeconds = start;
+            entry.endSeconds = end;
+            entry.duration = row.duration;
+        }
+
+        RefreshTimingEditor();
+        UpdateMetrics();
+        UpdateDirtyFromRows();
+        RenderWaveform();
     }
 
     inline void MainWindow::SeekMediaToSeconds(double seconds)
@@ -333,56 +510,48 @@ namespace winrt::Aegisub_WinUI::implementation
         if (m_waveformDuration <= 0.0 || m_waveformPeaks.empty() || m_rows.empty())
             return;
 
-        auto const width = WaveformCanvas().ActualWidth();
-        if (width <= 0.0 || m_waveformWindowEnd <= m_waveformWindowStart)
+        auto const point = args.GetCurrentPoint(WaveformCanvas());
+        auto const properties = point.Properties();
+
+        m_waveformDragMode = properties.IsRightButtonPressed() ? 2 :
+            (properties.IsLeftButtonPressed() ? 1 : 0);
+        if (m_waveformDragMode == 0)
             return;
 
-        auto const pointerPoint = args.GetCurrentPoint(WaveformCanvas());
-        auto const point = pointerPoint.Position();
-        auto const ratio = (std::max)(0.0, (std::min)(1.0, point.X / width));
-        auto const seconds = m_waveformWindowStart +
-            ratio * (m_waveformWindowEnd - m_waveformWindowStart);
-        auto const properties = pointerPoint.Properties();
+        m_waveformDragActive = WaveformCanvas().CapturePointer(args.Pointer());
+        auto const seconds = WaveformSecondsFromPointer(
+            point.Position().X, WaveformCanvas().ActualWidth(), false);
+        PreviewWaveformBoundary(seconds);
+        args.Handled(true);
+    }
 
-        bool const setEnd = properties.IsRightButtonPressed();
-        bool const setStart = properties.IsLeftButtonPressed();
-        if (!setStart && !setEnd)
+    inline void MainWindow::WaveformCanvas_PointerMoved(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
+    {
+        if (!m_waveformDragActive || m_waveformDragMode == 0)
             return;
 
-        SeekMediaToSeconds(seconds);
-        RefreshVideoPositionText();
+        auto const point = args.GetCurrentPoint(WaveformCanvas());
+        auto const seconds = WaveformSecondsFromPointer(
+            point.Position().X, WaveformCanvas().ActualWidth(), true);
+        PreviewWaveformBoundary(seconds);
+        args.Handled(true);
+    }
 
-        auto const& row = m_rows[m_currentIndex];
-        auto const currentStart = WorkflowTimestampSeconds(row.start);
-        auto const currentEnd = WorkflowTimestampSeconds(row.end);
+    inline void MainWindow::WaveformCanvas_PointerReleased(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
+    {
+        if (!m_waveformDragActive)
+            return;
 
-        if (setEnd)
-        {
-            if (seconds <= currentStart + 0.001)
-            {
-                StatusBarText().Text(L"Konec musí být později než začátek titulku");
-                args.Handled(true);
-                return;
-            }
-            EndTimeBox().Text(FormatWinUiTiming(seconds));
-            ApplyCurrentTimingFromEditors();
-            StatusBarText().Text(winrt::hstring{
-                std::wstring{ L"Konec titulku: " } + FormatWinUiTiming(seconds).c_str() });
-        }
-        else
-        {
-            if (seconds >= currentEnd - 0.001)
-            {
-                StatusBarText().Text(L"Začátek musí být dříve než konec titulku");
-                args.Handled(true);
-                return;
-            }
-            StartTimeBox().Text(FormatWinUiTiming(seconds));
-            ApplyCurrentTimingFromEditors();
-            StatusBarText().Text(winrt::hstring{
-                std::wstring{ L"Začátek titulku: " } + FormatWinUiTiming(seconds).c_str() });
-        }
+        WaveformCanvas().ReleasePointerCapture(args.Pointer());
+        m_waveformDragActive = false;
+        m_waveformDragMode = 0;
 
+        // Full QA/list refresh only once after the drag finishes.
+        ApplyCurrentTimingFromEditors();
         RenderWaveform();
         args.Handled(true);
     }

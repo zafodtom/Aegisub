@@ -70,7 +70,6 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <Grid>
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
@@ -80,24 +79,16 @@
                     <Border Grid.Row="1" Background="Black" CornerRadius="3">
                         <MediaPlayerElement x:Name="VideoPlayer" AreTransportControlsEnabled="False" AutoPlay="False" Stretch="Uniform" />
                     </Border>
-                    <Grid Grid.Row="2" Margin="0,2,0,0" ColumnSpacing="5">
+                    <Grid Grid.Row="2" Margin="0,2,0,0" ColumnSpacing="6">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <Button Grid.Column="0" Content="−5 s" MinWidth="44" Padding="6,2" Click="VideoBackFiveButton_Click" />
-                        <Button x:Name="VideoPlayPauseButton" Grid.Column="1" Content="▶" MinWidth="42" Padding="6,2" Click="VideoPlayPauseButton_Click" />
-                        <Button Grid.Column="2" Content="+5 s" MinWidth="44" Padding="6,2" Click="VideoForwardFiveButton_Click" />
-                        <TextBlock x:Name="VideoPositionText" Grid.Column="3" Text="00:00:00.000" FontFamily="Consolas" FontSize="10" Opacity="0.58" VerticalAlignment="Center" HorizontalAlignment="Right" />
+                        <Button x:Name="VideoPlayPauseButton" Grid.Column="0" Content="▶ / ❚❚" Padding="8,2" Click="VideoPlayPauseButton_Click" ToolTipService.ToolTip="Přehrát / pozastavit" />
+                        <Button Grid.Column="1" Content="Přehrát titulek" Padding="8,2" Click="VideoPlaySelectedButton_Click" ToolTipService.ToolTip="Přehrát pouze časový úsek vybraného titulku" />
+                        <TextBlock x:Name="VideoPositionText" Grid.Column="2" Text="00:00:00.000" FontFamily="Consolas" FontSize="10" Opacity="0.58" VerticalAlignment="Center" HorizontalAlignment="Right" />
                     </Grid>
-                    <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="5">
-                        <Button Content="Na titulek" Padding="6,2" Click="VideoSeekCurrentButton_Click" />
-                        <Button Content="Start = pozice" Padding="6,2" Click="VideoSetStartButton_Click" />
-                        <Button Content="Konec = pozice" Padding="6,2" Click="VideoSetEndButton_Click" />
-                        <Button Content="Info" Padding="6,2" Click="VideoInfoButton_Click" />
-                    </StackPanel>
                 </Grid>
             </Border>
 
@@ -119,12 +110,14 @@
                     <Border Grid.Row="1" Background="#08000000" CornerRadius="3">
                         <Canvas x:Name="WaveformCanvas" Background="Transparent"
                                 SizeChanged="WaveformCanvas_SizeChanged"
-                                PointerPressed="WaveformCanvas_PointerPressed" />
+                                PointerPressed="WaveformCanvas_PointerPressed"
+                                PointerMoved="WaveformCanvas_PointerMoved"
+                                PointerReleased="WaveformCanvas_PointerReleased" />
                     </Border>
                     <Grid Grid.Row="2">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                         <TextBlock x:Name="WaveformRangeText" Text="Lokální pohled kolem aktuálního titulku" FontFamily="Consolas" FontSize="10" Opacity="0.55" />
-                        <TextBlock Grid.Column="1" Text="levé = začátek · pravé = konec" FontSize="10" Opacity="0.45" />
+                        <TextBlock Grid.Column="1" Text="levé = začátek · pravé = konec · tažením plynule" FontSize="10" Opacity="0.45" />
                     </Grid>
                 </Grid>
             </Border>

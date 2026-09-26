@@ -554,6 +554,7 @@ namespace winrt::Aegisub_WinUI::implementation
         RebuildSubtitleGrid();
         HookWindowClosing();
         StartExternalChangeMonitoring();
+        StartMediaUiTimer();
         RefreshRecentProjectAction();
         LoadCurrentRow();
         RefreshSearchSummary();
@@ -1388,8 +1389,16 @@ namespace winrt::Aegisub_WinUI::implementation
 
         TranscriptCurrentTimeText().Text(row.start);
         TranscriptCurrentText().Text(row.original);
-        SeekVideoToCurrentSubtitle();
+
+        bool const subtitleSelectionChanged = m_waveformViewportSubtitleIndex != m_currentIndex;
+        if (subtitleSelectionChanged)
+        {
+            m_waveformViewportSubtitleIndex = m_currentIndex;
+            CenterWaveformOnCurrentSubtitle();
+            SeekVideoToCurrentSubtitle();
+        }
         RenderWaveform();
+        RefreshWaveformPlayhead();
 
         if (m_currentIndex > 0)
         {
@@ -2138,6 +2147,7 @@ namespace winrt::Aegisub_WinUI::implementation
         m_externalChangeAcknowledged = false;
         ClearBulkUndo();
         BuildAlignedRows();
+        m_waveformViewportSubtitleIndex = -1;
         LoadWorkspaceState();
         m_forceSaveAsForRecoveredDraft = false;
         bool const restoredDraft = LoadWorkspaceDraft();

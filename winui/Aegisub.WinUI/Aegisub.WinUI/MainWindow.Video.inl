@@ -78,6 +78,9 @@ namespace winrt::Aegisub_WinUI::implementation
             auto const player = VideoPlayer().MediaPlayer();
             if (!player)
                 return;
+            player.Pause();
+            m_playSelectedUntil = -1.0;
+            VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"▶ / ❚❚" }));
             auto const seconds = WorkflowTimestampSeconds(m_rows[m_currentIndex].start);
             auto const position = std::chrono::duration_cast<winrt::Windows::Foundation::TimeSpan>(
                 std::chrono::duration<double>{ seconds });
@@ -206,6 +209,7 @@ namespace winrt::Aegisub_WinUI::implementation
         winrt::Windows::Foundation::IInspectable const&,
         winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
+        m_playSelectedUntil = -1.0;
         try
         {
             auto const player = VideoPlayer().MediaPlayer();
@@ -219,7 +223,7 @@ namespace winrt::Aegisub_WinUI::implementation
                 winrt::Windows::Media::Playback::MediaPlaybackState::Playing)
             {
                 player.Pause();
-                VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"▶" }));
+                VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"▶ / ❚❚" }));
             }
             else
             {
@@ -246,6 +250,75 @@ namespace winrt::Aegisub_WinUI::implementation
         winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
         AdjustVideoPosition(5.0);
+    }
+
+    inline void MainWindow::StartMediaUiTimer()
+    {
+        if (m_mediaUiTimer)
+            return;
+
+        winrt::Microsoft::UI::Xaml::DispatcherTimer timer;
+        timer.Interval(std::chrono::duration_cast<winrt::Windows::Foundation::TimeSpan>(
+            std::chrono::milliseconds{ 40 }));
+        timer.Tick([this](auto const&, auto const&)
+        {
+            RefreshVideoPositionText();
+            RefreshWaveformPlayhead();
+
+            if (m_playSelectedUntil >= 0.0)
+            {
+                auto const current = CurrentVideoSeconds();
+                if (current >= m_playSelectedUntil - 0.005)
+                {
+                    try
+                    {
+                        auto const player = VideoPlayer().MediaPlayer();
+                        if (player)
+                            player.Pause();
+                    }
+                    catch (...) {}
+                    m_playSelectedUntil = -1.0;
+                    VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"▶ / ❚❚" }));
+                    RefreshWaveformPlayhead();
+                }
+            }
+        });
+        timer.Start();
+        m_mediaUiTimer = timer;
+    }
+
+    inline void MainWindow::VideoPlaySelectedButton_Click(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        if (m_videoPath.empty() || m_rows.empty())
+        {
+            StatusBarText().Text(L"Nejprve otevřete video a titulky");
+            return;
+        }
+
+        try
+        {
+            auto const player = VideoPlayer().MediaPlayer();
+            if (!player)
+                return;
+
+            auto const& row = m_rows[m_currentIndex];
+            auto const start = WorkflowTimestampSeconds(row.start);
+            auto const end = WorkflowTimestampSeconds(row.end);
+            if (end <= start)
+                return;
+
+            SeekMediaToSeconds(start);
+            m_playSelectedUntil = end;
+            player.Play();
+            VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"❚❚" }));
+            RefreshWaveformPlayhead();
+        }
+        catch (...)
+        {
+            StatusBarText().Text(L"Vybraný titulek se nepodařilo přehrát");
+        }
     }
 
 }
