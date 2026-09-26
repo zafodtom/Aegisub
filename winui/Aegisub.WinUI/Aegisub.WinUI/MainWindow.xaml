@@ -120,6 +120,7 @@
                     </Grid>
                     <Border Grid.Row="1" Background="#08000000" CornerRadius="3">
                         <Canvas x:Name="WaveformCanvas" Background="Transparent"
+                                ToolTipService.ToolTip="Levé tlačítko nastavuje a táhne začátek titulku. Pravé tlačítko nastavuje a táhne konec. H± mění časový zoom, V± výšku vlny."
                                 SizeChanged="WaveformCanvas_SizeChanged"
                                 PointerPressed="WaveformCanvas_PointerPressed"
                                 PointerMoved="WaveformCanvas_PointerMoved"
@@ -128,7 +129,8 @@
                     <Grid Grid.Row="2">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                         <TextBlock x:Name="WaveformRangeText" Text="Lokální pohled kolem aktuálního titulku" FontFamily="Consolas" FontSize="10" Opacity="0.55" />
-                        <TextBlock Grid.Column="1" Text="levé = začátek · pravé = konec · tažením plynule" FontSize="10" Opacity="0.45" />
+                        <TextBlock Grid.Column="1" Text="?" FontSize="10" Opacity="0.42"
+                                   ToolTipService.ToolTip="Levé = začátek · pravé = konec · tažením plynule. Při tažení za okraj se časové okno posouvá." />
                     </Grid>
                 </Grid>
             </Border>
@@ -180,7 +182,8 @@
                                     <TextBlock Text="Originál" FontWeight="SemiBold" />
                                     <TextBlock x:Name="OriginalFileText" Text="soubor není načten" FontSize="10" Opacity="0.5" />
                                 </StackPanel>
-                                <TextBlock Grid.Column="1" Text="REFERENCE" FontSize="9" Opacity="0.4" />
+                                <TextBlock Grid.Column="1" Text="?" FontSize="10" Opacity="0.42"
+                                           ToolTipService.ToolTip="Originální titulky slouží jako referenční text a časování pro překlad." />
                             </Grid>
                             <TextBlock x:Name="OriginalTimingText" Grid.Row="1" Margin="0,4,0,6" FontFamily="Consolas" FontSize="11" Opacity="0.58" />
                             <TextBox x:Name="OriginalTextBox" Grid.Row="2" Padding="9" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" FontSize="18" />
@@ -256,10 +259,8 @@
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <StackPanel>
-                                    <TextBlock Text="Překladatelský manuál" FontWeight="SemiBold" />
-                                    <TextBlock Text="Výrazy nalezené v aktuálním originálu jsou nahoře" FontSize="9" Opacity="0.48" />
-                                </StackPanel>
+                                <TextBlock Text="Překladatelský manuál" FontWeight="SemiBold"
+                                           ToolTipService.ToolTip="Výrazy nalezené v aktuálním originálu jsou řazené nahoru. Ostatní výrazy jsou abecedně. Pořadí se během editace řádku nemění." />
                                 <Button Grid.Column="1" Content="+ řádek" Padding="6,2" FontSize="10" Click="GlossaryAddButton_Click" />
                             </Grid>
 
@@ -304,7 +305,8 @@
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="Titulky" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBlock Text="Titulky" FontWeight="SemiBold" VerticalAlignment="Center"
+                                   ToolTipService.ToolTip="Klik = jeden titulek · Ctrl+klik = přidat/odebrat · Shift+klik = souvislý rozsah. ↑/↓ mění aktuální titulek." />
                         <TextBlock x:Name="SubtitleSelectionText" Grid.Column="1" Text="Vybrán 1 titulek" FontSize="10" Opacity="0.55" VerticalAlignment="Center" />
                         <Button Grid.Column="2" Content="Sloučit vybrané" Padding="7,2" FontSize="10" Click="MergeSelectedSubtitlesButton_Click"
                                 ToolTipService.ToolTip="Sloučit souvisle vybrané titulky; Ctrl+klik přidává, Shift+klik vybírá rozsah" />
@@ -325,7 +327,8 @@
         <Grid Grid.Row="3" Margin="10,5,10,8">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
             <TextBlock x:Name="StatusBarText" Text="Připraveno" FontSize="10" Opacity="0.5" />
-            <TextBlock Grid.Column="1" Text="Space přehrávání · Ctrl+S uložit · Enter další" FontSize="10" Opacity="0.42" />
+            <TextBlock Grid.Column="1" Text="?" FontSize="10" Opacity="0.42"
+                       ToolTipService.ToolTip="↑/↓ předchozí/další titulek · Ctrl+S uložit · Enter další · Shift+Enter nový řádek" />
         </Grid>
 
         <!-- Existing advanced functionality stays instantiated for now, but it is no longer the main UI. -->

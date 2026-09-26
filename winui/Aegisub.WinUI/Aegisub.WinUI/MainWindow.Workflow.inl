@@ -264,8 +264,8 @@ namespace winrt::Aegisub_WinUI::implementation
             if (shift) InsertLineBreakAtSelection(); else CommitCurrentAndMoveNext(control);
             return;
         }
-        if (key == winrt::Windows::System::VirtualKey::PageUp) { args.Handled(true); MoveCurrentBy(-1); return; }
-        if (key == winrt::Windows::System::VirtualKey::PageDown) { args.Handled(true); MoveCurrentBy(1); return; }
+        if (key == winrt::Windows::System::VirtualKey::Up) { args.Handled(true); MoveCurrentBy(-1); return; }
+        if (key == winrt::Windows::System::VirtualKey::Down) { args.Handled(true); MoveCurrentBy(1); return; }
         if (control && key == winrt::Windows::System::VirtualKey::S)
         { args.Handled(true); if (shift) SaveAsFromShortcut(); else SaveFromShortcut(); return; }
         if (control && key == winrt::Windows::System::VirtualKey::Z)
@@ -283,9 +283,24 @@ namespace winrt::Aegisub_WinUI::implementation
         auto const key = args.Key();
         auto const keyValue = static_cast<int32_t>(key);
         if (control && keyValue >= 0x31 && keyValue <= 0x36) { args.Handled(true); SelectFilter(keyValue - 0x31); return; }
-        if (key == winrt::Windows::System::VirtualKey::PageUp) { args.Handled(true); MoveCurrentBy(-1); }
-        else if (key == winrt::Windows::System::VirtualKey::PageDown) { args.Handled(true); MoveCurrentBy(1); }
-        else if (control && key == winrt::Windows::System::VirtualKey::S)
+
+        if (key == winrt::Windows::System::VirtualKey::Up ||
+            key == winrt::Windows::System::VirtualKey::Down)
+        {
+            auto const focused = winrt::Microsoft::UI::Xaml::Input::FocusManager::GetFocusedElement(XamlRoot());
+            auto const focusedTextBox = focused.try_as<winrt::Microsoft::UI::Xaml::Controls::TextBox>();
+
+            // In the main translation editor Up/Down changes subtitle, like the classic workflow.
+            // Other edit fields keep their normal caret navigation.
+            if (!focusedTextBox || focusedTextBox == TargetTextBox())
+            {
+                args.Handled(true);
+                MoveCurrentBy(key == winrt::Windows::System::VirtualKey::Up ? -1 : 1);
+                return;
+            }
+        }
+
+        if (control && key == winrt::Windows::System::VirtualKey::S)
         { args.Handled(true); if (shift) SaveAsFromShortcut(); else SaveFromShortcut(); }
         else if (control && key == winrt::Windows::System::VirtualKey::O) { args.Handled(true); OpenProjectFiles(); }
         else if (control && key == winrt::Windows::System::VirtualKey::F)
