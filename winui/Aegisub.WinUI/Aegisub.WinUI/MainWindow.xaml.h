@@ -141,6 +141,10 @@ namespace winrt::Aegisub_WinUI::implementation
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void TimingApplyButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void ShiftAllSubtitlesMenuItem_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void InsertSubtitleGapMenuItem_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void TimingShiftBackButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void TimingShiftForwardButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
@@ -309,6 +313,9 @@ namespace winrt::Aegisub_WinUI::implementation
         int32_t m_currentIndex{ 2 };
         std::vector<int32_t> m_selectedSubtitleIndices;
         int32_t m_selectionAnchorIndex{-1};
+        bool m_subtitleDragSelecting{};
+        bool m_subtitleDragSelectionMoved{};
+        int32_t m_subtitleDragAnchor{-1};
         bool m_loadingSelection{ false };
         bool m_initialized{ false };
         bool m_workflowHooksInstalled{ false };
@@ -481,6 +488,9 @@ namespace winrt::Aegisub_WinUI::implementation
         void DeleteCurrentSubtitle();
         void RefreshAfterStructureEdit(winrt::hstring const& status);
         void AdjustCurrentTiming(double startDelta, double endDelta, winrt::hstring const& action);
+        void ShiftAllSubtitles(double deltaSeconds);
+        void InsertOneMillisecondSubtitleGaps();
+        winrt::fire_and_forget ShowShiftAllSubtitlesDialog();
         bool OpenVideoFile(std::wstring const& filename);
         double CurrentVideoSeconds();
         void SeekVideoToCurrentSubtitle();

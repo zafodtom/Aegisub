@@ -195,7 +195,30 @@ namespace winrt::Aegisub_WinUI::implementation
     inline void MainWindow::RefreshVideoPositionText()
     {
         auto const seconds = CurrentVideoSeconds();
-        VideoPositionText().Text(seconds < 0.0 ? winrt::hstring{ L"00:00:00.000" } : FormatWinUiTiming(seconds));
+        if (seconds < 0.0)
+        {
+            VideoPositionText().Text(L"00:00:00.000");
+            return;
+        }
+
+        auto const timeText = FormatWinUiTiming(seconds);
+        auto const playingIndex = FindSubtitleIndexForTime(seconds);
+
+        std::wstring videoLabel;
+        if (playingIndex >= 0 && playingIndex < static_cast<int32_t>(m_rows.size()))
+            videoLabel = L"#" + std::to_wstring(m_rows[playingIndex].number) + L" · ";
+        videoLabel += timeText.c_str();
+        VideoPositionText().Text(winrt::hstring{ videoLabel });
+
+        if (!m_rows.empty() && m_currentIndex >= 0 &&
+            m_currentIndex < static_cast<int32_t>(m_rows.size()))
+        {
+            auto const& row = m_rows[m_currentIndex];
+            TablePositionText().Text(winrt::hstring{
+                L"#" + std::to_wstring(row.number) + L" / " + std::to_wstring(m_rows.size()) +
+                L" · " + std::wstring{ row.start.c_str() } + L" → " + std::wstring{ row.end.c_str() } +
+                L" · video " + std::wstring{ timeText.c_str() } });
+        }
     }
 
     inline void MainWindow::AdjustVideoPosition(double deltaSeconds)

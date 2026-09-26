@@ -196,4 +196,151 @@ namespace winrt::Aegisub_WinUI::implementation
         args.Handled(true);
         ApplyCurrentTimingFromEditors();
     }
+    inline void MainWindow::ShiftAllSubtitles(double deltaSeconds)
+    {
+        if (m_rows.empty() || std::abs(deltaSeconds) < 0.0005)
+            return;
+
+        double earliestStart = WorkflowTimestampSeconds(m_rows.front().start);
+        for (auto const& row : m_rows)
+            earliestStart = (std::min)(earliestStart, WorkflowTimestampSeconds(row.start));
+
+        // Preserve all relative timings. If a negative shift would cross 00:00,
+        // reduce the requested shift rather than clamping rows individually.
+        auto const effectiveDelta = (std::max)(deltaSeconds, -earliestStart);
+
+        for (auto& row : m_rows)
+        {
+            auto const start = WorkflowTimestampSeconds(row.start) + effectiveDelta;
+            auto const end = WorkflowTimestampSeconds(row.end) + effectiveDelta;
+            row.start = FormatWinUiTiming(start);
+            row.end = FormatWinUiTiming(end);
+            row.duration = (std::max)(0.0, end - start);
+            row.timingModified = row.start != row.savedStart || row.end != row.savedEnd;
+            if (row.timingModified)
+            {
+                row.workflowStatus = L"Upraveno";
+                row.status = L"Upraveno";
+            }
+        }
+
+        SyncTargetEntriesFromRows();
+        ClearBulkUndo();
+        UpdateDirtyFromRows();
+        RefreshQaAll();
+        RebuildSubtitleGrid();
+        LoadCurrentRow();
+        RefreshCurrentQaVisuals();
+        RenderWaveform();
+        ScheduleWorkspaceDraftSave();
+
+        std::wostringstream message;
+        message << L"Všechny titulky posunuty o "
+                << std::fixed << std::setprecision(0)
+                << effectiveDelta * 1000.0 << L" ms";
+        if (std::abs(effectiveDelta - deltaSeconds) > 0.0005)
+            message << L" · omezeno začátkem videa";
+        StatusBarText().Text(winrt::hstring{ message.str() });
+    }
+
+    inline void MainWindow::InsertOneMillisecondSubtitleGaps()
+    {
+        if (m_rows.size() < 2)
+            return;
+
+        size_t changed = 0;
+        for (size_t index = 0; index + 1 < m_rows.size(); ++index)
+        {
+            auto& current = m_rows[index];
+            auto const currentStartMs = static_cast<long long>(
+                WorkflowTimestampSeconds(current.start) * 1000.0 + 0.5);
+            auto const currentEndMs = static_cast<long long>(
+                WorkflowTimestampSeconds(current.end) * 1000.0 + 0.5);
+            auto const nextStartMs = static_cast<long long>(
+                WorkflowTimestampSeconds(m_rows[index + 1].start) * 1000.0 + 0.5);
+
+            if (currentEndMs != nextStartMs)
+                continue;
+
+            auto const newEndMs = nextStartMs - 1;
+            if (newEndMs <= currentStartMs)
+                continue;
+
+            auto const newEnd = static_cast<double>(newEndMs) / 1000.0;
+            current.end = FormatWinUiTiming(newEnd);
+            current.duration = newEnd - static_cast<double>(currentStartMs) / 1000.0;
+            current.timingModified = true;
+            current.workflowStatus = L"Upraveno";
+            current.status = L"Upraveno";
+            ++changed;
+        }
+
+        if (changed == 0)
+        {
+            StatusBarText().Text(L"Nebyly nalezeny titulky s přesně navazujícím koncem a začátkem");
+            return;
+        }
+
+        SyncTargetEntriesFromRows();
+        ClearBulkUndo();
+        UpdateDirtyFromRows();
+        RefreshQaAll();
+        RebuildSubtitleGrid();
+        LoadCurrentRow();
+        RefreshCurrentQaVisuals();
+        RenderWaveform();
+        ScheduleWorkspaceDraftSave();
+
+        StatusBarText().Text(winrt::hstring{
+            L"Vložena 1 ms mezera u " + std::to_wstring(changed) + L" navazujících titulků" });
+    }
+
+    inline winrt::fire_and_forget MainWindow::ShowShiftAllSubtitlesDialog()
+    {
+        auto lifetime = get_strong();
+
+        winrt::Microsoft::UI::Xaml::Controls::ContentDialog dialog;
+        dialog.XamlRoot(RootGrid().XamlRoot());
+        dialog.Title(winrt::box_value(winrt::hstring{ L"Posunout všechny titulky" }));
+        dialog.PrimaryButtonText(L"Použít");
+        dialog.CloseButtonText(L"Zrušit");
+        dialog.DefaultButton(winrt::Microsoft::UI::Xaml::Controls::ContentDialogButton::Primary);
+
+        winrt::Microsoft::UI::Xaml::Controls::StackPanel panel;
+        panel.Spacing(8.0);
+
+        winrt::Microsoft::UI::Xaml::Controls::TextBlock description;
+        description.Text(L"Zadejte posun v milisekundách. Záporná hodnota posune titulky zpět.");
+        description.TextWrapping(winrt::Microsoft::UI::Xaml::TextWrapping::Wrap);
+        panel.Children().Append(description);
+
+        winrt::Microsoft::UI::Xaml::Controls::NumberBox offsetBox;
+        offsetBox.Value(0.0);
+        offsetBox.Minimum(-3600000.0);
+        offsetBox.Maximum(3600000.0);
+        offsetBox.SmallChange(10.0);
+        offsetBox.LargeChange(100.0);
+        panel.Children().Append(offsetBox);
+
+        dialog.Content(panel);
+
+        auto const result = co_await dialog.ShowAsync();
+        if (result == winrt::Microsoft::UI::Xaml::Controls::ContentDialogResult::Primary)
+            ShiftAllSubtitles(offsetBox.Value() / 1000.0);
+    }
+
+    inline void MainWindow::ShiftAllSubtitlesMenuItem_Click(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        ShowShiftAllSubtitlesDialog();
+    }
+
+    inline void MainWindow::InsertSubtitleGapMenuItem_Click(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        InsertOneMillisecondSubtitleGaps();
+    }
+
 }

@@ -1443,8 +1443,13 @@ namespace winrt::Aegisub_WinUI::implementation
         RenderWaveform();
         RefreshWaveformPlayhead();
 
-        TablePositionText().Text(hstring{
-            L"#" + std::to_wstring(row.number) + L" / " + std::to_wstring(m_rows.size()) });
+        std::wstring tablePosition =
+            L"#" + std::to_wstring(row.number) + L" / " + std::to_wstring(m_rows.size()) +
+            L" · " + std::wstring{ row.start.c_str() } + L" → " + std::wstring{ row.end.c_str() };
+        auto const videoSeconds = CurrentVideoSeconds();
+        if (videoSeconds >= 0.0)
+            tablePosition += L" · video " + std::wstring{ FormatWinUiTiming(videoSeconds).c_str() };
+        TablePositionText().Text(hstring{ tablePosition });
 
         UpdateSelectionVisuals();
         ScrollCurrentRowIntoView();
@@ -1797,8 +1802,73 @@ namespace winrt::Aegisub_WinUI::implementation
 
             Grid::SetRow(rowBorder, visualRow);
             Grid::SetColumnSpan(rowBorder, 6);
+            rowBorder.PointerPressed([this, index](
+                auto const& sender,
+                winrt::Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
+            {
+                auto const border = sender.as<winrt::Microsoft::UI::Xaml::Controls::Border>();
+                auto const point = args.GetCurrentPoint(border);
+                if (!point.Properties().IsLeftButtonPressed())
+                    return;
+
+                m_subtitleDragSelecting = true;
+                m_subtitleDragSelectionMoved = false;
+                m_subtitleDragAnchor = index;
+            });
+
+            rowBorder.PointerEntered([this, index](
+                auto const& sender,
+                winrt::Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
+            {
+                if (!m_subtitleDragSelecting || m_subtitleDragAnchor < 0)
+                    return;
+
+                auto const border = sender.as<winrt::Microsoft::UI::Xaml::Controls::Border>();
+                auto const point = args.GetCurrentPoint(border);
+                if (!point.Properties().IsLeftButtonPressed() || index == m_subtitleDragAnchor)
+                    return;
+
+                m_subtitleDragSelectionMoved = true;
+                auto const first = (std::min)(m_subtitleDragAnchor, index);
+                auto const last = (std::max)(m_subtitleDragAnchor, index);
+
+                m_selectedSubtitleIndices.clear();
+                for (int32_t rowIndex = first; rowIndex <= last; ++rowIndex)
+                    m_selectedSubtitleIndices.push_back(rowIndex);
+
+                UpdateSelectionVisuals();
+                RefreshSubtitleSelectionText();
+            });
+
+            rowBorder.PointerReleased([this, index](
+                auto const&,
+                winrt::Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
+            {
+                if (!m_subtitleDragSelecting)
+                    return;
+
+                m_subtitleDragSelecting = false;
+                if (!m_subtitleDragSelectionMoved)
+                    return;
+
+                if (index != m_currentIndex)
+                    StoreCurrentEditorSelection();
+
+                m_currentIndex = index;
+                m_selectionAnchorIndex = m_subtitleDragAnchor;
+                LoadCurrentRow();
+                TargetTextBox().Focus(FocusState::Programmatic);
+                args.Handled(true);
+            });
+
             rowBorder.Tapped([this, index](auto const&, auto const&)
             {
+                if (m_subtitleDragSelectionMoved)
+                {
+                    m_subtitleDragSelectionMoved = false;
+                    return;
+                }
+
                 if (index < 0 || index >= static_cast<int32_t>(m_rows.size()))
                     return;
 
