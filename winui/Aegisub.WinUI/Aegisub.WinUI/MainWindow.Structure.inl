@@ -52,9 +52,7 @@ namespace winrt::Aegisub_WinUI::implementation
         StatusBarText().Text(status);
     }
 
-    inline void MainWindow::SplitSubtitleButton_Click(
-        winrt::Windows::Foundation::IInspectable const&,
-        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    inline void MainWindow::SplitCurrentSubtitleAtCursor()
     {
         if (m_rows.empty())
             return;
@@ -121,11 +119,17 @@ namespace winrt::Aegisub_WinUI::implementation
         RefreshAfterStructureEdit(split >= start + 0.05 && split <= end - 0.05
             ? L"Titulek rozdělen v místě kurzoru podle aktuální pozice videa"
             : L"Titulek rozdělen v místě kurzoru");
+    
     }
 
-    inline void MainWindow::MergeSelectedSubtitlesButton_Click(
+    inline void MainWindow::SplitSubtitleButton_Click(
         winrt::Windows::Foundation::IInspectable const&,
         winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        SplitCurrentSubtitleAtCursor();
+    }
+
+    inline void MainWindow::MergeSelectedSubtitles()
     {
         NormalizeSubtitleSelection();
         if (m_selectedSubtitleIndices.size() < 2)
@@ -201,6 +205,14 @@ namespace winrt::Aegisub_WinUI::implementation
 
         RefreshAfterStructureEdit(winrt::hstring{
             L"Sloučeno " + std::to_wstring(last - first + 1) + L" titulků" });
+    
+    }
+
+    inline void MainWindow::MergeSelectedSubtitlesButton_Click(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        MergeSelectedSubtitles();
     }
 
     inline void MainWindow::JoinNextSubtitleButton_Click(

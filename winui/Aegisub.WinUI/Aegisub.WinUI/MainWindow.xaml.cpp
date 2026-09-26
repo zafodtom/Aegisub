@@ -560,6 +560,7 @@ namespace winrt::Aegisub_WinUI::implementation
         HookWindowClosing();
         StartExternalChangeMonitoring();
         StartMediaUiTimer();
+        LoadLastGlossaryFile();
         RefreshRecentProjectAction();
         LoadCurrentRow();
         RefreshSearchSummary();
@@ -1366,6 +1367,7 @@ namespace winrt::Aegisub_WinUI::implementation
             OriginalTimingText().Text(hstring{ timing });
         }
         OriginalTextBox().Text(row.original);
+        RefreshGlossaryForCurrentSubtitle();
 
         std::wstring targetInfo = L"#" + std::to_wstring(row.number) + L" \u00B7 ";
         targetInfo += row.status.c_str();
@@ -1758,6 +1760,39 @@ namespace winrt::Aegisub_WinUI::implementation
                 LoadCurrentRow();
                 TargetTextBox().Focus(FocusState::Programmatic);
             });
+            MenuFlyout rowMenu;
+
+            MenuFlyoutItem splitItem;
+            splitItem.Text(L"Rozdělit v kurzoru");
+            splitItem.Click([this, index](auto const&, auto const&)
+            {
+                if (index != m_currentIndex)
+                {
+                    StoreCurrentEditorSelection();
+                    SelectSubtitleRow(index, false, false);
+                    m_currentIndex = index;
+                    LoadCurrentRow();
+                }
+                SplitCurrentSubtitleAtCursor();
+            });
+            rowMenu.Items().Append(splitItem);
+
+            MenuFlyoutItem mergeItem;
+            mergeItem.Text(L"Sloučit vybrané titulky");
+            mergeItem.Click([this, index](auto const&, auto const&)
+            {
+                if (!IsSubtitleRowSelected(index))
+                {
+                    SelectSubtitleRow(index, false, false);
+                    m_currentIndex = index;
+                    LoadCurrentRow();
+                }
+                MergeSelectedSubtitles();
+            });
+            rowMenu.Items().Append(mergeItem);
+
+            rowBorder.ContextFlyout(rowMenu);
+
             grid.Children().Append(rowBorder);
             m_rowBorders.push_back(rowBorder);
             auto& visuals = m_rowVisuals[index];

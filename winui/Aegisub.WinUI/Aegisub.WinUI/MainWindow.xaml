@@ -85,8 +85,8 @@
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <Button x:Name="VideoPlayPauseButton" Grid.Column="0" Content="▶ / ❚❚" Padding="8,2" Click="VideoPlayPauseButton_Click" ToolTipService.ToolTip="Přehrát / pozastavit" />
-                        <Button Grid.Column="1" Content="Přehrát titulek" Padding="8,2" Click="VideoPlaySelectedButton_Click" ToolTipService.ToolTip="Přehrát pouze časový úsek vybraného titulku" />
+                        <Button x:Name="VideoPlayPauseButton" Grid.Column="0" Content="▶" Width="44" MinWidth="44" Padding="0,2" FontSize="14" Click="VideoPlayPauseButton_Click" ToolTipService.ToolTip="Přehrát / pozastavit" />
+                        <Button x:Name="VideoPlaySelectedButton" Grid.Column="1" Content="Přehrát titulek" Width="118" MinWidth="118" Padding="8,2" Click="VideoPlaySelectedButton_Click" ToolTipService.ToolTip="Přehrát pouze časový úsek vybraného titulku" />
                         <TextBlock x:Name="VideoPositionText" Grid.Column="2" Text="00:00:00.000" FontFamily="Consolas" FontSize="10" Opacity="0.58" VerticalAlignment="Center" HorizontalAlignment="Right" />
                     </Grid>
                 </Grid>
@@ -166,8 +166,9 @@
 
                 <Grid Grid.Row="0" Padding="8" ColumnSpacing="8">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="1.0*" />
+                        <ColumnDefinition Width="1.15*" />
+                        <ColumnDefinition Width="340" />
                     </Grid.ColumnDefinitions>
 
                     <Border Grid.Column="0" Padding="10" BorderBrush="Gray" BorderThickness="1" CornerRadius="4">
@@ -238,6 +239,57 @@
                                     <Button Content="Převzít originál" Padding="6,2" FontSize="10" Click="CopyOriginalButton_Click" />
                                     <Button Content="Rozdělit řádky" Padding="6,2" FontSize="10" Click="InsertLineBreakButton_Click" />
                                 </StackPanel>
+                            </Grid>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Column="2" Padding="8" BorderBrush="Gray" BorderThickness="1" CornerRadius="4">
+                        <Grid RowSpacing="5">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="Překladatelský manuál" FontWeight="SemiBold" />
+                                    <TextBlock Text="Výrazy nalezené v aktuálním originálu jsou nahoře" FontSize="9" Opacity="0.48" />
+                                </StackPanel>
+                                <Button Grid.Column="1" Content="+ řádek" Padding="6,2" FontSize="10" Click="GlossaryAddButton_Click" />
+                            </Grid>
+
+                            <Grid Grid.Row="1" ColumnSpacing="5">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Originál" FontSize="10" FontWeight="SemiBold" Opacity="0.65" />
+                                <TextBlock Grid.Column="1" Text="Překlad" FontSize="10" FontWeight="SemiBold" Opacity="0.65" />
+                            </Grid>
+
+                            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                                <Grid x:Name="GlossaryGridHost" ColumnSpacing="5" RowSpacing="4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                </Grid>
+                            </ScrollViewer>
+
+                            <Grid Grid.Row="3" ColumnSpacing="5">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock x:Name="GlossaryFileText" Text="bez souboru" FontSize="9" Opacity="0.5" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                <Button Grid.Column="1" Content="Import…" Padding="6,2" FontSize="10" Click="GlossaryImportButton_Click" />
+                                <Button Grid.Column="2" Content="Export…" Padding="6,2" FontSize="10" Click="GlossaryExportButton_Click" />
                             </Grid>
                         </Grid>
                     </Border>

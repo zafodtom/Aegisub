@@ -183,6 +183,12 @@ namespace winrt::Aegisub_WinUI::implementation
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void WaveformVerticalZoomInButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void GlossaryImportButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void GlossaryExportButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void GlossaryAddButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void RecentProjectsButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
 
@@ -256,6 +262,12 @@ namespace winrt::Aegisub_WinUI::implementation
             bool pairingIgnored{};
         };
 
+        struct GlossaryEntry
+        {
+            winrt::hstring source;
+            winrt::hstring target;
+        };
+
         struct BulkRowSnapshot
         {
             size_t index{};
@@ -309,6 +321,9 @@ namespace winrt::Aegisub_WinUI::implementation
         agi::winui::WinUiWorkspaceSettings m_workspaceSettings;
         std::vector<agi::winui::RecentTranslationProject> m_recentProjects;
         std::vector<std::wstring> m_recoveryVersions;
+        std::vector<GlossaryEntry> m_glossaryEntries;
+        std::wstring m_glossaryPath;
+        bool m_glossaryRebuilding{};
         std::wstring m_videoPath;
         std::wstring m_waveformPath;
         std::vector<std::pair<float, float>> m_waveformPeaks;
@@ -365,6 +380,15 @@ namespace winrt::Aegisub_WinUI::implementation
         void ScheduleWorkspaceDraftSave();
         void RefreshProjectFileLabels();
         void RefreshBackupAction();
+        void LoadLastGlossaryFile();
+        bool LoadGlossaryFromFile(std::wstring const& path);
+        bool SaveGlossaryToFile(std::wstring const& path);
+        void RememberGlossaryPath() const;
+        void RebuildGlossaryGrid();
+        void RefreshGlossaryForCurrentSubtitle();
+        void EnsureGlossaryAutoSavePath();
+        bool SelectGlossaryOpenFile(std::wstring& filename) const;
+        bool SelectGlossarySaveFile(std::wstring& filename) const;
         void SetDirty(bool dirty);
         bool ConfirmSaveBefore(std::wstring const& action);
         bool OfferSaveAsForExternalChange(std::wstring const& errorMessage);
@@ -423,6 +447,8 @@ namespace winrt::Aegisub_WinUI::implementation
         bool ApplyCurrentTimingFromEditors();
         void RenumberSubtitleRows();
         void SyncTargetEntriesFromRows();
+        void SplitCurrentSubtitleAtCursor();
+        void MergeSelectedSubtitles();
         void RefreshAfterStructureEdit(winrt::hstring const& status);
         void AdjustCurrentTiming(double startDelta, double endDelta, winrt::hstring const& action);
         bool OpenVideoFile(std::wstring const& filename);
@@ -461,6 +487,7 @@ namespace winrt::Aegisub_WinUI::implementation
 #include "MainWindow.Video.inl"
 #include "MainWindow.Audio.inl"
 #include "MainWindow.Workflow.inl"
+#include "MainWindow.Glossary.inl"
 #include "MainWindow.Advanced.inl"
 
 namespace winrt::Aegisub_WinUI::factory_implementation

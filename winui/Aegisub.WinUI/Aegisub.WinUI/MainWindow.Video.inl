@@ -80,7 +80,8 @@ namespace winrt::Aegisub_WinUI::implementation
                 return;
             player.Pause();
             m_playSelectedUntil = -1.0;
-            VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"▶ / ❚❚" }));
+            VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"▶" }));
+            VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Přehrát titulek" }));
             auto const seconds = WorkflowTimestampSeconds(m_rows[m_currentIndex].start);
             auto const position = std::chrono::duration_cast<winrt::Windows::Foundation::TimeSpan>(
                 std::chrono::duration<double>{ seconds });
@@ -210,6 +211,7 @@ namespace winrt::Aegisub_WinUI::implementation
         winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
         m_playSelectedUntil = -1.0;
+        VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Přehrát titulek" }));
         try
         {
             auto const player = VideoPlayer().MediaPlayer();
@@ -223,7 +225,7 @@ namespace winrt::Aegisub_WinUI::implementation
                 winrt::Windows::Media::Playback::MediaPlaybackState::Playing)
             {
                 player.Pause();
-                VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"▶ / ❚❚" }));
+                VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"▶" }));
             }
             else
             {
@@ -278,7 +280,8 @@ namespace winrt::Aegisub_WinUI::implementation
                     }
                     catch (...) {}
                     m_playSelectedUntil = -1.0;
-                    VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"▶ / ❚❚" }));
+                    VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"▶" }));
+                    VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Přehrát titulek" }));
                     RefreshWaveformPlayhead();
                 }
             }
@@ -303,6 +306,17 @@ namespace winrt::Aegisub_WinUI::implementation
             if (!player)
                 return;
 
+            if (m_playSelectedUntil >= 0.0 &&
+                player.PlaybackSession().PlaybackState() ==
+                    winrt::Windows::Media::Playback::MediaPlaybackState::Playing)
+            {
+                player.Pause();
+                m_playSelectedUntil = -1.0;
+                VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Přehrát titulek" }));
+                VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"▶" }));
+                return;
+            }
+
             auto const& row = m_rows[m_currentIndex];
             auto const start = WorkflowTimestampSeconds(row.start);
             auto const end = WorkflowTimestampSeconds(row.end);
@@ -312,6 +326,7 @@ namespace winrt::Aegisub_WinUI::implementation
             SeekMediaToSeconds(start);
             m_playSelectedUntil = end;
             player.Play();
+            VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Pozastavit" }));
             VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"❚❚" }));
             RefreshWaveformPlayhead();
         }
@@ -320,5 +335,4 @@ namespace winrt::Aegisub_WinUI::implementation
             StatusBarText().Text(L"Vybraný titulek se nepodařilo přehrát");
         }
     }
-
 }
