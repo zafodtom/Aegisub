@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "MainWindow.xaml.h"
+#include "resource.h"
 #if __has_include("MainWindow.g.cpp")
 #include "MainWindow.g.cpp"
 #endif
@@ -551,6 +552,8 @@ namespace winrt::SRTune::implementation
 
         m_initialized = true;
 
+        // WinUI does not reliably propagate ApplicationIcon to an unpackaged window.
+        // Set both the AppWindow icon and the native Win32 window icons explicitly.
         wchar_t modulePath[32768]{};
         auto const modulePathLength = GetModuleFileNameW(
             nullptr, modulePath, static_cast<DWORD>(std::size(modulePath)));
@@ -559,6 +562,24 @@ namespace winrt::SRTune::implementation
             auto const iconPath = std::filesystem::path{ modulePath }.parent_path() / L"SRTune.ico";
             if (std::filesystem::exists(iconPath))
                 AppWindow().SetIcon(iconPath.wstring());
+        }
+
+        HWND hwnd{};
+        if (auto const windowNative = this->try_as<::IWindowNative>();
+            windowNative && SUCCEEDED(windowNative->get_WindowHandle(&hwnd)) && hwnd)
+        {
+            auto const instance = GetModuleHandleW(nullptr);
+            auto const bigIcon = reinterpret_cast<HICON>(LoadImageW(
+                instance, MAKEINTRESOURCEW(IDI_SRTUNE_ICON), IMAGE_ICON,
+                GetSystemMetrics(SM_CXICON), GetSystemMetrics(SM_CYICON), LR_DEFAULTCOLOR));
+            auto const smallIcon = reinterpret_cast<HICON>(LoadImageW(
+                instance, MAKEINTRESOURCEW(IDI_SRTUNE_ICON), IMAGE_ICON,
+                GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), LR_DEFAULTCOLOR));
+
+            if (bigIcon)
+                SendMessageW(hwnd, WM_SETICON, ICON_BIG, reinterpret_cast<LPARAM>(bigIcon));
+            if (smallIcon)
+                SendMessageW(hwnd, WM_SETICON, ICON_SMALL, reinterpret_cast<LPARAM>(smallIcon));
         }
 
         InitializeDynamicSubtitleGrid();
