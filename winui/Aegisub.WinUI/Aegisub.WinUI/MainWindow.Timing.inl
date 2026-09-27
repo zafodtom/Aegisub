@@ -1,6 +1,6 @@
 #pragma once
 
-namespace winrt::Aegisub_WinUI::implementation
+namespace winrt::SRTune::implementation
 {
     inline bool ParseWinUiTiming(winrt::hstring const& value, double& seconds)
     {

@@ -32,3 +32,6 @@ subprojects/checkasm.wrap
 
 # FFmpeg binary is staged locally for WinUI packaging; do not commit vendor binaries.
 /winui/Aegisub.WinUI/Aegisub.WinUI/External/ffmpeg.exe
+
+bridge-build.log
+winui-build.log

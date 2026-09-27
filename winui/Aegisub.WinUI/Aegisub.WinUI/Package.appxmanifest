@@ -9,15 +9,15 @@
   IgnorableNamespaces="uap rescap systemai">
 
   <Identity
-    Name="392abf8f-af8f-4cca-a8a1-4809346f4cc1"
+    Name="SRTune"
     Publisher="CN=zafod"
     Version="1.0.0.0" />
 
   <mp:PhoneIdentity PhoneProductId="392abf8f-af8f-4cca-a8a1-4809346f4cc1" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
   <Properties>
-    <DisplayName>Aegisub Translation Workspace</DisplayName>
-    <PublisherDisplayName>Aegisub</PublisherDisplayName>
+    <DisplayName>SRTune</DisplayName>
+    <PublisherDisplayName>SRTune Project</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
 
@@ -35,8 +35,8 @@
       Executable="$targetnametoken$.exe"
       EntryPoint="$targetentrypoint$">
       <uap:VisualElements
-        DisplayName="Aegisub Translation Workspace"
-        Description="Pracovní prostředí pro bezpečný překlad a kontrolu titulků"
+        DisplayName="SRTune"
+        Description="Editor titulků pro rychlé časování, překlad a práci s videem"
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png">

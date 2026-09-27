@@ -1,4 +1,4 @@
-namespace Aegisub_WinUI
+namespace SRTune
 {
     [default_interface]
     runtimeclass MainWindow : Microsoft.UI.Xaml.Window

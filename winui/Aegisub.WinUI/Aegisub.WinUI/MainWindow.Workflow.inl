@@ -5,7 +5,7 @@
 #include <fstream>
 #include <cstdlib>
 
-namespace winrt::Aegisub_WinUI::implementation
+namespace winrt::SRTune::implementation
 {
     inline std::filesystem::path WinUiLocalAppDataPath()
     {
@@ -244,7 +244,7 @@ namespace winrt::Aegisub_WinUI::implementation
             if (local.empty()) return;
             std::filesystem::path const source{ m_targetPath.c_str() };
             if (!std::filesystem::exists(source)) return;
-            auto const directory = local / L"Aegisub" / L"TranslationWorkspace" / L"Backups";
+            auto const directory = local / L"SRTune" / L"TranslationWorkspace" / L"Backups";
             std::filesystem::create_directories(directory);
             auto const stamp = std::chrono::duration_cast<std::chrono::seconds>(
                 std::chrono::system_clock::now().time_since_epoch()).count();
@@ -278,7 +278,7 @@ namespace winrt::Aegisub_WinUI::implementation
         {
             StatusBarText().Text(L"Uložení překladu se nezdařilo");
             if (m_lastSaveDetectedExternalChange) { OfferSaveAsForExternalChange(errorMessage); return; }
-            MessageBoxW(GetActiveWindow(), errorMessage.c_str(), L"Aegisub Translation Workspace", MB_OK | MB_ICONERROR);
+            MessageBoxW(GetActiveWindow(), errorMessage.c_str(), L"SRTune", MB_OK | MB_ICONERROR);
             return;
         }
         CaptureRecoveryHistorySnapshot();
@@ -301,7 +301,7 @@ namespace winrt::Aegisub_WinUI::implementation
         {
             StatusBarText().Text(L"Uložení překladu se nezdařilo");
             if (m_lastSaveDetectedExternalChange) { OfferSaveAsForExternalChange(errorMessage); return; }
-            MessageBoxW(GetActiveWindow(), errorMessage.c_str(), L"Aegisub Translation Workspace", MB_OK | MB_ICONERROR);
+            MessageBoxW(GetActiveWindow(), errorMessage.c_str(), L"SRTune", MB_OK | MB_ICONERROR);
             return;
         }
         CaptureRecoveryHistorySnapshot();
@@ -412,7 +412,7 @@ namespace winrt::Aegisub_WinUI::implementation
         {
             auto const local = WinUiLocalAppDataPath();
             if (local.empty()) return;
-            auto const directory = local / L"Aegisub" / L"TranslationWorkspace";
+            auto const directory = local / L"SRTune" / L"TranslationWorkspace";
             std::filesystem::create_directories(directory);
             auto readFile = [](std::filesystem::path const& path) {
                 std::ifstream stream(path, std::ios::binary);
@@ -446,7 +446,7 @@ namespace winrt::Aegisub_WinUI::implementation
         {
             auto const local = WinUiLocalAppDataPath();
             if (local.empty()) return;
-            auto const directory = local / L"Aegisub" / L"TranslationWorkspace";
+            auto const directory = local / L"SRTune" / L"TranslationWorkspace";
             std::filesystem::create_directories(directory);
             std::ofstream stream(directory / L"settings.tsv", std::ios::binary | std::ios::trunc);
             stream << agi::winui::SerializeWorkspaceSettings(m_workspaceSettings);
@@ -463,7 +463,7 @@ namespace winrt::Aegisub_WinUI::implementation
         {
             auto const local = WinUiLocalAppDataPath();
             if (local.empty()) return;
-            auto const directory = local / L"Aegisub" / L"TranslationWorkspace";
+            auto const directory = local / L"SRTune" / L"TranslationWorkspace";
             std::filesystem::create_directories(directory);
             std::ofstream stream(directory / L"recent-projects.tsv", std::ios::binary | std::ios::trunc);
             stream << agi::winui::SerializeRecentProjects(m_recentProjects);

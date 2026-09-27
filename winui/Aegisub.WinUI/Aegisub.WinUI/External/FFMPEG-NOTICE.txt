@@ -1,22 +1,53 @@
-FFmpeg notice
-=============
+FFmpeg third-party notice
+=========================
 
-This application may bundle the ffmpeg executable to provide hardcoded subtitle video export.
-FFmpeg is a separate executable launched by Aegisub Translation Workspace; it is not linked into the application binary.
+SRTune may bundle the ffmpeg.exe command-line program to provide subtitle burning
+and video export.
 
-Windows build provider: Gyan Doshi / CODEX FFMPEG
-https://www.gyan.dev/ffmpeg/builds/
+FFmpeg is a separate third-party executable launched by SRTune. It is not linked
+into the SRTune application binary.
 
-FFmpeg project:
+Upstream project:
 https://ffmpeg.org/
 
-License information:
+Windows build provider used by the SRTune release tooling:
+Gyan Doshi / CODEX FFMPEG
+https://www.gyan.dev/ffmpeg/builds/
+
+License
+-------
+
+The Gyan Windows FFmpeg builds used by this project are distributed under the
+GNU General Public License version 3 (GPLv3).
+
+GPLv3 license text:
+https://www.gnu.org/licenses/gpl-3.0.html
+
+FFmpeg licensing information:
 https://ffmpeg.org/legal.html
 
-The Gyan Windows release builds used by this project are distributed under GNU GPL version 3.
-The exact bundled FFmpeg version can be displayed with:
+Exact bundled version
+---------------------
+
+The exact version and configuration of the bundled executable can be displayed
+with:
 
     ffmpeg.exe -version
+    ffmpeg.exe -buildconf
 
-FFmpeg source code is available from the FFmpeg project repository:
-https://github.com/FFmpeg/FFmpeg
+For the SRTune 1.0.0 release candidate tested by the project, the bundled
+executable reports FFmpeg 9.0.2 from the Gyan Windows builds.
+
+Corresponding upstream source for FFmpeg 9.0.2:
+https://github.com/FFmpeg/FFmpeg/commit/946fcce07b
+
+The Gyan build page also publishes source-code links for its current release
+builds:
+https://www.gyan.dev/ffmpeg/builds/
+
+No warranty
+-----------
+
+FFmpeg is provided under its own license and without any additional warranty
+from the SRTune project. SRTune is derived from Aegisub under the licensing
+terms provided separately in LICENCE.txt.
