@@ -43,11 +43,13 @@
                     <MenuFlyoutItem Text="Otevřít originál + překlad…" Click="OpenBothButton_Click" />
                     <MenuFlyoutItem Text="Otevřít originál…" Click="OpenSourceButton_Click" />
                     <MenuFlyoutItem Text="Otevřít překlad…" Click="OpenTargetButton_Click" />
+                    <MenuFlyoutItem Text="Otevřít kontext / transcript…" Click="OpenTranscriptButton_Click" />
                     <MenuFlyoutItem x:Name="RecentProjectMenuItem" Text="Otevřít naposledy použité" IsEnabled="False" Click="OpenRecentProjectButton_Click" />
                     <MenuFlyoutSeparator />
                     <MenuFlyoutItem Text="Zavřít video" Click="CloseVideoMenuItem_Click" />
                     <MenuFlyoutItem Text="Zavřít originál" Click="CloseSourceMenuItem_Click" />
                     <MenuFlyoutItem Text="Zavřít překlad" Click="CloseTargetMenuItem_Click" />
+                    <MenuFlyoutItem Text="Zavřít kontext / transcript" Click="CloseTranscriptMenuItem_Click" />
                     <MenuFlyoutItem Text="Přehodit originál ↔ překlad" Click="SwapSourceTargetMenuItem_Click" />
                     <MenuFlyoutSeparator />
                     <MenuFlyoutItem Text="Uložit" Click="SaveButton_Click" />
@@ -75,6 +77,7 @@
                     <MenuFlyoutItem Text="Zdvojit řádek" Click="DuplicateSubtitleButton_Click" />
                     <MenuFlyoutItem Text="Smazat titulek" Click="DeleteSubtitleButton_Click" />
                     <MenuFlyoutSeparator />
+                    <MenuFlyoutItem Text="Rozdělit v pozici videa" Click="SplitSubtitleAtVideoButton_Click" />
                     <MenuFlyoutItem Text="Rozdělit v kurzoru" Click="SplitSubtitleButton_Click" />
                     <MenuFlyoutItem Text="Sloučit vybrané titulky" Click="MergeSelectedSubtitlesButton_Click" />
                 </MenuBarItem>
@@ -113,15 +116,19 @@
                     <Border Grid.Row="1" Background="Black" CornerRadius="3">
                         <MediaPlayerElement x:Name="VideoPlayer" AreTransportControlsEnabled="False" AutoPlay="False" Stretch="Uniform" />
                     </Border>
-                    <Grid Grid.Row="2" Margin="0,2,0,0" ColumnSpacing="6">
+                    <Grid Grid.Row="2" Margin="0,2,0,0" ColumnSpacing="5">
                         <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <Button x:Name="VideoPlayPauseButton" Grid.Column="0" Content="▶" Width="44" MinWidth="44" Padding="0,2" FontSize="14" Click="VideoPlayPauseButton_Click" ToolTipService.ToolTip="Přehrát / pozastavit" />
-                        <Button x:Name="VideoPlaySelectedButton" Grid.Column="1" Content="Přehrát titulek" Width="118" MinWidth="118" Padding="8,2" Click="VideoPlaySelectedButton_Click" ToolTipService.ToolTip="Přehrát pouze časový úsek vybraného titulku" />
-                        <TextBlock x:Name="VideoPositionText" Grid.Column="2" Text="00:00:00.000" FontFamily="Consolas" FontSize="10" Opacity="0.58" VerticalAlignment="Center" HorizontalAlignment="Right" />
+                        <Button x:Name="VideoPlayPauseButton" Grid.Column="0" Content="▶" Width="40" MinWidth="40" Padding="0,2" FontSize="14" Click="VideoPlayPauseButton_Click" ToolTipService.ToolTip="Přehrát / pozastavit" />
+                        <Button x:Name="VideoRestartButton" Grid.Column="1" Content="⏮" Width="34" MinWidth="34" Padding="0,2" FontSize="13" Click="VideoRestartButton_Click" ToolTipService.ToolTip="Přehrát video od začátku" />
+                        <Button x:Name="VideoPlaySelectedButton" Grid.Column="2" Content="Titulek" Width="76" MinWidth="76" Padding="7,2" Click="VideoPlaySelectedButton_Click" ToolTipService.ToolTip="Přehrát / pozastavit aktuální titulek od aktuální pozice" />
+                        <Button x:Name="VideoPlaySelectedFromStartButton" Grid.Column="3" Content="⏮" Width="34" MinWidth="34" Padding="0,2" FontSize="13" Click="VideoPlaySelectedFromStartButton_Click" ToolTipService.ToolTip="Přehrát aktuální titulek od jeho začátku a na konci zastavit" />
+                        <TextBlock x:Name="VideoPositionText" Grid.Column="4" Text="00:00:00.000" FontFamily="Consolas" FontSize="10" Opacity="0.58" VerticalAlignment="Center" HorizontalAlignment="Right" />
                     </Grid>
                 </Grid>
             </Border>
@@ -176,11 +183,17 @@
                         <TextBlock x:Name="WaveformRangeText" Text=""
                                    FontFamily="Consolas" FontSize="10" Opacity="0.55"
                                    VerticalAlignment="Center" HorizontalAlignment="Left" />
-                        <Button x:Name="WaveformPlaySelectedButton" Content="▶ Titulek"
-                                Width="190" MinWidth="190" MinHeight="26" Height="26" Padding="10,0"
-                                HorizontalAlignment="Center" VerticalAlignment="Center"
-                                Click="VideoPlaySelectedButton_Click"
-                                ToolTipService.ToolTip="Přehrát / pozastavit aktuální titulek" />
+                        <StackPanel Orientation="Horizontal" Spacing="4"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Button x:Name="WaveformPlaySelectedFromStartButton" Content="⏮"
+                                    Width="34" MinWidth="34" MinHeight="26" Height="26" Padding="0"
+                                    Click="VideoPlaySelectedFromStartButton_Click"
+                                    ToolTipService.ToolTip="Přehrát aktuální titulek od začátku a na konci zastavit" />
+                            <Button x:Name="WaveformPlaySelectedButton" Content="▶ Titulek"
+                                    Width="150" MinWidth="150" MinHeight="26" Height="26" Padding="10,0"
+                                    Click="VideoPlaySelectedButton_Click"
+                                    ToolTipService.ToolTip="Přehrát / pozastavit aktuální titulek od aktuální pozice" />
+                        </StackPanel>
                         <Border Width="22" Height="22" CornerRadius="11" BorderBrush="Gray" BorderThickness="1"
                                 HorizontalAlignment="Right" VerticalAlignment="Center"
                                 ToolTipService.ToolTip="Levé kliknutí = začátek. Dvojklik = automaticky vybrat souvislý aktivní úsek zvuku kolem kurzoru. Levé tažení = vytvořit nový rozsah od–do. Pravé kliknutí/tažení = konec. Prostřední klik = přehrát od tohoto místa. Prostřední tlačítko + tažení = posunout celý titulek. Shift + tažení = posunout pohled waveformu. H± mění časový zoom, V± výšku vlny.">
@@ -193,7 +206,20 @@
             <Border x:Name="TranscriptPanel" Grid.Column="2" Padding="8" BorderBrush="Gray" BorderThickness="1" CornerRadius="6">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Spacing="6">
-                        <TextBlock Text="Kontext / transcript" FontSize="12" FontWeight="SemiBold" />
+                        <Grid ColumnSpacing="5">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="Kontext / transcript" FontSize="12" FontWeight="SemiBold" />
+                                <TextBlock x:Name="TranscriptFileText" Text="zdroj: originál" FontSize="9" Opacity="0.5"
+                                           TextTrimming="CharacterEllipsis" ToolTipService.ToolTip="Bez samostatného transcriptu se kontext bere z načteného originálu." />
+                            </StackPanel>
+                            <Button Grid.Column="1" Content="Otevřít…" Padding="6,2" MinHeight="24"
+                                    Click="OpenTranscriptButton_Click"
+                                    ToolTipService.ToolTip="Načíst samostatný časovaný transcript / kontext ze SRT" />
+                        </Grid>
 
                         <StackPanel x:Name="TranscriptPrev3Block">
                             <TextBlock x:Name="TranscriptPrev3TimeText" FontFamily="Consolas" FontSize="9" Opacity="0.4" />
@@ -324,6 +350,7 @@
                                 <TextBox.ContextFlyout>
                                     <TextCommandBarFlyout>
                                         <TextCommandBarFlyout.SecondaryCommands>
+                                            <AppBarButton Label="Rozdělit v pozici videa" Click="SplitSubtitleAtVideoButton_Click" />
                                             <AppBarButton Label="Rozdělit v kurzoru" Click="SplitSubtitleButton_Click" />
                                         </TextCommandBarFlyout.SecondaryCommands>
                                     </TextCommandBarFlyout>
