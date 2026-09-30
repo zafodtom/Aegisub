@@ -181,11 +181,18 @@
                                 PointerMoved="WaveformCanvas_PointerMoved"
                                 PointerReleased="WaveformCanvas_PointerReleased" />
                     </Border>
-                    <Grid Grid.Row="4">
-                        <TextBlock x:Name="WaveformRangeText" Text=""
+                    <Grid Grid.Row="4" ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock x:Name="WaveformRangeText" Grid.Column="0" Text=""
                                    FontFamily="Consolas" FontSize="10" Opacity="0.55"
                                    VerticalAlignment="Center" HorizontalAlignment="Left" />
-                        <StackPanel Orientation="Horizontal" Spacing="4"
+
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4"
                                     HorizontalAlignment="Center" VerticalAlignment="Center">
                             <Button x:Name="WaveformPlaySelectedFromStartButton" Content="⏮"
                                     Width="34" MinWidth="34" MinHeight="26" Height="26" Padding="0" FontSize="13"
@@ -197,11 +204,23 @@
                                     Click="VideoPlaySelectedButton_Click"
                                     ToolTipService.ToolTip="Přehrát / pozastavit aktuální titulek od aktuální pozice" />
                         </StackPanel>
-                        <Border Width="22" Height="22" CornerRadius="11" BorderBrush="Gray" BorderThickness="1"
-                                HorizontalAlignment="Right" VerticalAlignment="Center"
-                                ToolTipService.ToolTip="Levé kliknutí = začátek. Dvojklik = automaticky vybrat souvislý aktivní úsek zvuku kolem kurzoru. Levé tažení = vytvořit nový rozsah od–do. Pravé kliknutí/tažení = konec. Prostřední klik = přehrát od tohoto místa. Prostřední tlačítko + tažení = posunout celý titulek. Shift + tažení = posunout pohled waveformu. H± mění časový zoom, V± výšku vlny.">
-                            <TextBlock Text="?" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.65" />
-                        </Border>
+
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="5"
+                                    HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <TextBlock Text="🔊" FontSize="12" VerticalAlignment="Center"
+                                       ToolTipService.ToolTip="Hlasitost přehrávání" />
+                            <Slider x:Name="WaveformVolumeSlider"
+                                    Width="88" Minimum="0" Maximum="100" Value="100"
+                                    SmallChange="5" LargeChange="10"
+                                    ValueChanged="WaveformVolumeSlider_ValueChanged"
+                                    ToolTipService.ToolTip="Hlasitost přehrávání"
+                                    AutomationProperties.Name="Hlasitost přehrávání" />
+                            <Border Width="22" Height="22" CornerRadius="11" BorderBrush="Gray" BorderThickness="1"
+                                    VerticalAlignment="Center"
+                                    ToolTipService.ToolTip="Levé kliknutí = začátek. Dvojklik = automaticky vybrat souvislý aktivní úsek zvuku kolem kurzoru. Levé tažení = vytvořit nový rozsah od–do. Pravé kliknutí/tažení = konec. Prostřední klik = přehrát od tohoto místa. Prostřední tlačítko + tažení = posunout celý titulek. Shift + tažení = posunout pohled waveformu. H± mění časový zoom, V± výšku vlny.">
+                                <TextBlock Text="?" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.65" />
+                            </Border>
+                        </StackPanel>
                     </Grid>
                 </Grid>
             </Border>
@@ -221,7 +240,7 @@
                             </StackPanel>
                             <Button Grid.Column="1" Content="Otevřít…" Padding="6,2" MinHeight="24"
                                     Click="OpenTranscriptButton_Click"
-                                    ToolTipService.ToolTip="Načíst samostatný časovaný transcript / kontext ze SRT" />
+                                    ToolTipService.ToolTip="Načíst samostatný transcript / kontext z TXT, DOCX nebo SRT" />
                         </Grid>
 
                         <StackPanel x:Name="TranscriptPrev3Block">
