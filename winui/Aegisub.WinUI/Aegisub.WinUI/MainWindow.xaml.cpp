@@ -2396,7 +2396,7 @@ namespace winrt::SRTune::implementation
         }
 
         m_rowTargetTexts[index].Text(m_rows[index].target);
-        m_rowStatusTexts[index].Text(m_rows[index].status);
+        m_rowStatusTexts[index].Text(m_rows[index].qaIssue.empty() ? L"" : L"Problém");
         if (!m_rows[index].qaIssue.empty())
             ToolTipService::SetToolTip(m_rowStatusTexts[index], winrt::box_value(m_rows[index].qaIssue));
         else
@@ -2660,7 +2660,9 @@ namespace winrt::SRTune::implementation
             auto const endText = addText(row.end, visualRow, 2, false, 8.0);
             auto const originalText = addText(row.original, visualRow, 3, true, 8.0);
             auto const targetText = addText(row.target, visualRow, 4, true, 8.0);
-            auto const statusText = addText(row.status, visualRow, 5, true, 8.0);
+            auto const statusText = addText(
+                row.qaIssue.empty() ? hstring{} : hstring{ L"Problém" },
+                visualRow, 5, true, 8.0);
             statusText.IsHitTestVisible(true);
             if (!row.qaIssue.empty())
                 ToolTipService::SetToolTip(statusText, winrt::box_value(row.qaIssue));
@@ -2778,12 +2780,25 @@ namespace winrt::SRTune::implementation
         }();
     }
 
+    void MainWindow::RefreshWindowTitle()
+    {
+        std::wstring title = L"SRTune";
+        if (!m_targetPath.empty())
+        {
+            auto const filename = std::filesystem::path(m_targetPath.c_str()).filename().wstring();
+            if (!filename.empty())
+                title += L" — " + filename;
+        }
+        if (m_hasUnsavedChanges)
+            title += L" *";
+
+        Title(hstring{ title });
+    }
+
     void MainWindow::SetDirty(bool dirty)
     {
         m_hasUnsavedChanges = dirty;
-        Title(dirty
-            ? L"SRTune *"
-            : L"SRTune");
+        RefreshWindowTitle();
     }
 
     bool MainWindow::ConfirmSaveBefore(std::wstring const& action)
@@ -4121,6 +4136,7 @@ namespace winrt::SRTune::implementation
 
         RefreshOriginalPanelVisibility();
         RefreshBackupAction();
+        RefreshWindowTitle();
     }
 
     void MainWindow::RefreshOriginalPanelVisibility()
