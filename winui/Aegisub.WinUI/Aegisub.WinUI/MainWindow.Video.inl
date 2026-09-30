@@ -190,6 +190,7 @@ namespace winrt::SRTune::implementation
 
         m_videoPath.clear();
         m_playSelectedUntil = -1.0;
+        m_selectedPlaybackFinished = false;
         VideoFileText().Text(L"");
         VideoPositionText().Text(L"");
         VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"▶" }));
@@ -227,6 +228,7 @@ namespace winrt::SRTune::implementation
                 return;
             player.Pause();
             m_playSelectedUntil = -1.0;
+            m_selectedPlaybackFinished = false;
             VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"▶" }));
             VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Titulek" }));
             WaveformPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"▶ Titulek" }));
@@ -508,6 +510,7 @@ namespace winrt::SRTune::implementation
         winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
         m_playSelectedUntil = -1.0;
+        m_selectedPlaybackFinished = false;
         VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Titulek" }));
         WaveformPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"▶ Titulek" }));
 
@@ -556,6 +559,7 @@ namespace winrt::SRTune::implementation
                 return;
 
             m_playSelectedUntil = -1.0;
+            m_selectedPlaybackFinished = false;
             VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Titulek" }));
             WaveformPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"▶ Titulek" }));
             SeekMediaToSeconds(0.0);
@@ -618,6 +622,7 @@ namespace winrt::SRTune::implementation
                     player.Pause();
                     SeekMediaToSeconds(stopAt);
                     m_playSelectedUntil = -1.0;
+                    m_selectedPlaybackFinished = true;
                     VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"▶" }));
                     VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Titulek" }));
                     WaveformPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"▶ Titulek" }));
@@ -668,6 +673,7 @@ namespace winrt::SRTune::implementation
             {
                 player.Pause();
                 m_playSelectedUntil = -1.0;
+                m_selectedPlaybackFinished = false;
                 VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Titulek" }));
                 WaveformPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"▶ Titulek" }));
                 VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"▶" }));
@@ -681,9 +687,13 @@ namespace winrt::SRTune::implementation
                 return;
 
             auto playbackStart = CurrentVideoSeconds();
-            if (fromStart || playbackStart < start || playbackStart >= end)
+            if (fromStart || m_selectedPlaybackFinished ||
+                playbackStart < start || playbackStart >= end)
+            {
                 playbackStart = start;
+            }
 
+            m_selectedPlaybackFinished = false;
             SeekMediaToSeconds(playbackStart);
             m_playSelectedUntil = end;
             player.Play();
