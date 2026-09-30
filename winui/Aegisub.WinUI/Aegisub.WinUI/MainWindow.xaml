@@ -36,6 +36,9 @@
             <MenuBar>
                 <MenuBarItem Title="Soubor">
                     <MenuFlyoutItem Text="Nový projekt    Ctrl+N" Click="NewProjectMenuItem_Click" />
+                    <MenuFlyoutItem Text="Otevřít projekt…" Click="OpenProjectMenuItem_Click" />
+                    <MenuFlyoutItem Text="Uložit projekt" Click="SaveProjectMenuItem_Click" />
+                    <MenuFlyoutItem Text="Uložit projekt jako…" Click="SaveProjectAsMenuItem_Click" />
                     <MenuFlyoutSeparator />
                     <MenuFlyoutItem Text="Otevřít video…" Click="OpenVideoButton_Click" />
                     <MenuFlyoutItem Text="Otevřít audio…" Click="OpenAudioButton_Click" />
@@ -52,8 +55,8 @@
                     <MenuFlyoutItem Text="Zavřít kontext / transcript" Click="CloseTranscriptMenuItem_Click" />
                     <MenuFlyoutItem Text="Přehodit originál ↔ překlad" Click="SwapSourceTargetMenuItem_Click" />
                     <MenuFlyoutSeparator />
-                    <MenuFlyoutItem Text="Uložit" Click="SaveButton_Click" />
-                    <MenuFlyoutItem Text="Uložit jako…" Click="SaveAsButton_Click" />
+                    <MenuFlyoutItem Text="Uložit překlad" Click="SaveButton_Click" />
+                    <MenuFlyoutItem Text="Uložit překlad jako…" Click="SaveAsButton_Click" />
                     <MenuFlyoutSeparator />
                     <MenuFlyoutItem x:Name="BurnSubtitlesMenuItem" Text="Vypálit překlad do videa…" Click="BurnSubtitlesMenuItem_Click" />
                     <MenuFlyoutSeparator />
@@ -78,7 +81,6 @@
                     <MenuFlyoutItem Text="Smazat titulek" Click="DeleteSubtitleButton_Click" />
                     <MenuFlyoutSeparator />
                     <MenuFlyoutItem Text="Rozdělit v pozici videa" Click="SplitSubtitleAtVideoButton_Click" />
-                    <MenuFlyoutItem Text="Rozdělit v kurzoru" Click="SplitSubtitleButton_Click" />
                     <MenuFlyoutItem Text="Sloučit vybrané titulky" Click="MergeSelectedSubtitlesButton_Click" />
                 </MenuBarItem>
 
@@ -348,12 +350,15 @@
                                      SelectionChanged="SubtitleEditor_SelectionChanged"
                                      Loaded="TargetTextBox_WorkflowLoaded" TextChanged="TargetTextBox_TextChanged">
                                 <TextBox.ContextFlyout>
-                                    <TextCommandBarFlyout>
-                                        <TextCommandBarFlyout.SecondaryCommands>
-                                            <AppBarButton Label="Rozdělit v pozici videa" Click="SplitSubtitleAtVideoButton_Click" />
-                                            <AppBarButton Label="Rozdělit v kurzoru" Click="SplitSubtitleButton_Click" />
-                                        </TextCommandBarFlyout.SecondaryCommands>
-                                    </TextCommandBarFlyout>
+                                    <MenuFlyout>
+                                        <MenuFlyoutItem Text="Vyjmout" Click="TargetCutMenuItem_Click" />
+                                        <MenuFlyoutItem Text="Kopírovat" Click="TargetCopyMenuItem_Click" />
+                                        <MenuFlyoutItem Text="Vložit" Click="TargetPasteMenuItem_Click" />
+                                        <MenuFlyoutSeparator />
+                                        <MenuFlyoutItem Text="Vybrat vše" Click="TargetSelectAllMenuItem_Click" />
+                                        <MenuFlyoutSeparator />
+                                        <MenuFlyoutItem Text="Rozdělit v pozici videa" Click="SplitSubtitleAtVideoButton_Click" />
+                                    </MenuFlyout>
                                 </TextBox.ContextFlyout>
                             </TextBox>
 
