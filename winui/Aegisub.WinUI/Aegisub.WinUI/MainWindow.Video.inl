@@ -724,6 +724,38 @@ namespace winrt::SRTune::implementation
         PlayCurrentSubtitle(true);
     }
 
+    inline void MainWindow::WaveformPlayVideoButton_Click(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        if (m_videoPath.empty())
+        {
+            StatusBarText().Text(L"Nejprve otevřete video");
+            return;
+        }
+
+        try
+        {
+            auto const player = VideoPlayer().MediaPlayer();
+            if (!player)
+                return;
+
+            m_playSelectedUntil = -1.0;
+            m_selectedPlaybackFinished = false;
+            VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Titulek" }));
+            WaveformPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"▶ Titulek" }));
+            player.Play();
+            VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"❚❚" }));
+            RefreshVideoPositionText();
+            RefreshTimelineSlider();
+            RefreshWaveformPlayhead();
+        }
+        catch (...)
+        {
+            StatusBarText().Text(L"Video se nepodařilo přehrát od aktuální pozice");
+        }
+    }
+
     inline void MainWindow::WaveformVolumeSlider_ValueChanged(
         winrt::Windows::Foundation::IInspectable const&,
         winrt::Microsoft::UI::Xaml::Controls::Primitives::RangeBaseValueChangedEventArgs const& args)
