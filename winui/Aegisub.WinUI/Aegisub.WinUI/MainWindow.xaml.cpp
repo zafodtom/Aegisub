@@ -3580,6 +3580,7 @@ namespace winrt::SRTune::implementation
         std::string xml{
             std::istreambuf_iterator<char>{ xmlStream },
             std::istreambuf_iterator<char>{} };
+        xmlStream.close();
 
         std::wstring text;
         size_t paragraphSearch = 0;
