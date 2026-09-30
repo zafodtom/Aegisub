@@ -800,9 +800,11 @@ namespace winrt::SRTune::implementation
     {
         m_sourceEntries.clear();
         m_targetEntries.clear();
+        m_transcriptEntries.clear();
         m_rows.clear();
         m_sourcePath = L"";
         m_targetPath = L"";
+        m_transcriptPath = L"";
         m_currentIndex = 0;
         m_selectedSubtitleIndices.clear();
         m_selectionAnchorIndex = -1;
@@ -964,6 +966,29 @@ namespace winrt::SRTune::implementation
         RoutedEventArgs const&)
     {
         OpenTargetFile();
+    }
+
+    void MainWindow::OpenTranscriptButton_Click(
+        Windows::Foundation::IInspectable const&,
+        RoutedEventArgs const&)
+    {
+        OpenTranscriptFile();
+    }
+
+    void MainWindow::CloseTranscriptMenuItem_Click(
+        Windows::Foundation::IInspectable const&,
+        RoutedEventArgs const&)
+    {
+        if (m_transcriptEntries.empty() && m_transcriptPath.empty())
+            return;
+
+        m_transcriptEntries.clear();
+        m_transcriptPath = L"";
+        RefreshProjectFileLabels();
+        RefreshTranscriptContext();
+        StatusBarText().Text(m_sourceEntries.empty()
+            ? L"Samostatn\u00FD transcript zav\u0159en \u00B7 kontext nem\u00E1 zdroj"
+            : L"Samostatn\u00FD transcript zav\u0159en \u00B7 kontext se op\u011Bt bere z origin\u00E1lu");
     }
 
     void MainWindow::OpenRecentProjectButton_Click(
@@ -1612,34 +1637,7 @@ namespace winrt::SRTune::implementation
         TargetStatusText().Text(hstring{ status });
         RefreshApprovalAction();
 
-        auto setTranscriptContext = [this](
-            int32_t index,
-            winrt::Microsoft::UI::Xaml::Controls::StackPanel const& block,
-            winrt::Microsoft::UI::Xaml::Controls::TextBlock const& timeText,
-            winrt::Microsoft::UI::Xaml::Controls::TextBlock const& bodyText)
-        {
-            if (index < 0 || index >= static_cast<int32_t>(m_rows.size()))
-            {
-                block.Visibility(Visibility::Collapsed);
-                return;
-            }
-
-            auto const& contextRow = m_rows[index];
-            block.Visibility(Visibility::Visible);
-            timeText.Text(contextRow.start);
-            bodyText.Text(contextRow.original);
-        };
-
-        setTranscriptContext(m_currentIndex - 3, TranscriptPrev3Block(), TranscriptPrev3TimeText(), TranscriptPrev3Text());
-        setTranscriptContext(m_currentIndex - 2, TranscriptPrev2Block(), TranscriptPrev2TimeText(), TranscriptPrev2Text());
-        setTranscriptContext(m_currentIndex - 1, TranscriptPreviousBlock(), TranscriptPreviousTimeText(), TranscriptPreviousText());
-
-        TranscriptCurrentTimeText().Text(row.start);
-        TranscriptCurrentText().Text(row.original);
-
-        setTranscriptContext(m_currentIndex + 1, TranscriptNextBlock(), TranscriptNextTimeText(), TranscriptNextText());
-        setTranscriptContext(m_currentIndex + 2, TranscriptNext2Block(), TranscriptNext2TimeText(), TranscriptNext2Text());
-        setTranscriptContext(m_currentIndex + 3, TranscriptNext3Block(), TranscriptNext3TimeText(), TranscriptNext3Text());
+        RefreshTranscriptContext();
 
         bool const subtitleSelectionChanged = m_waveformViewportSubtitleIndex != m_currentIndex;
         if (subtitleSelectionChanged)
@@ -1690,6 +1688,122 @@ namespace winrt::SRTune::implementation
         }
 
         m_loadingSelection = false;
+    }
+
+    void MainWindow::RefreshTranscriptContext()
+    {
+        auto hideContextBlocks = [this]()
+        {
+            TranscriptPrev3Block().Visibility(Visibility::Collapsed);
+            TranscriptPrev2Block().Visibility(Visibility::Collapsed);
+            TranscriptPreviousBlock().Visibility(Visibility::Collapsed);
+            TranscriptNextBlock().Visibility(Visibility::Collapsed);
+            TranscriptNext2Block().Visibility(Visibility::Collapsed);
+            TranscriptNext3Block().Visibility(Visibility::Collapsed);
+        };
+
+        if (m_rows.empty() || m_currentIndex < 0 ||
+            m_currentIndex >= static_cast<int32_t>(m_rows.size()))
+        {
+            hideContextBlocks();
+            TranscriptCurrentTimeText().Text(L"");
+            TranscriptCurrentText().Text(L"");
+            return;
+        }
+
+        auto const& row = m_rows[m_currentIndex];
+
+        if (!m_transcriptEntries.empty())
+        {
+            auto const rowStart = WorkflowTimestampSeconds(row.start);
+            auto const rowEnd = WorkflowTimestampSeconds(row.end);
+            auto const rowCenter = (rowStart + rowEnd) * 0.5;
+
+            int32_t bestIndex = 0;
+            double bestQuality = -1.0;
+            double bestCenterDistance = (std::numeric_limits<double>::max)();
+
+            for (int32_t index = 0;
+                index < static_cast<int32_t>(m_transcriptEntries.size()); ++index)
+            {
+                auto const& entry = m_transcriptEntries[index];
+                auto const quality = agi::winui::SubtitleOverlapQuality(
+                    rowStart, rowEnd, entry.startSeconds, entry.endSeconds);
+                auto const entryCenter = (entry.startSeconds + entry.endSeconds) * 0.5;
+                auto const centerDistance = std::abs(rowCenter - entryCenter);
+
+                if (quality > bestQuality ||
+                    (std::abs(quality - bestQuality) < 0.000001 &&
+                        centerDistance < bestCenterDistance))
+                {
+                    bestQuality = quality;
+                    bestCenterDistance = centerDistance;
+                    bestIndex = index;
+                }
+            }
+
+            auto setTranscriptEntry = [this](
+                int32_t index,
+                winrt::Microsoft::UI::Xaml::Controls::StackPanel const& block,
+                winrt::Microsoft::UI::Xaml::Controls::TextBlock const& timeText,
+                winrt::Microsoft::UI::Xaml::Controls::TextBlock const& bodyText)
+            {
+                if (index < 0 || index >= static_cast<int32_t>(m_transcriptEntries.size()))
+                {
+                    block.Visibility(Visibility::Collapsed);
+                    return;
+                }
+
+                auto const& entry = m_transcriptEntries[index];
+                block.Visibility(Visibility::Visible);
+                timeText.Text(entry.start);
+                bodyText.Text(entry.text);
+            };
+
+            setTranscriptEntry(bestIndex - 3, TranscriptPrev3Block(), TranscriptPrev3TimeText(), TranscriptPrev3Text());
+            setTranscriptEntry(bestIndex - 2, TranscriptPrev2Block(), TranscriptPrev2TimeText(), TranscriptPrev2Text());
+            setTranscriptEntry(bestIndex - 1, TranscriptPreviousBlock(), TranscriptPreviousTimeText(), TranscriptPreviousText());
+
+            auto const& current = m_transcriptEntries[bestIndex];
+            TranscriptCurrentTimeText().Text(current.start);
+            TranscriptCurrentText().Text(current.text);
+
+            setTranscriptEntry(bestIndex + 1, TranscriptNextBlock(), TranscriptNextTimeText(), TranscriptNextText());
+            setTranscriptEntry(bestIndex + 2, TranscriptNext2Block(), TranscriptNext2TimeText(), TranscriptNext2Text());
+            setTranscriptEntry(bestIndex + 3, TranscriptNext3Block(), TranscriptNext3TimeText(), TranscriptNext3Text());
+            return;
+        }
+
+        auto setOriginalContext = [this](
+            int32_t index,
+            winrt::Microsoft::UI::Xaml::Controls::StackPanel const& block,
+            winrt::Microsoft::UI::Xaml::Controls::TextBlock const& timeText,
+            winrt::Microsoft::UI::Xaml::Controls::TextBlock const& bodyText)
+        {
+            if (index < 0 || index >= static_cast<int32_t>(m_rows.size()))
+            {
+                block.Visibility(Visibility::Collapsed);
+                return;
+            }
+
+            auto const& contextRow = m_rows[index];
+            block.Visibility(Visibility::Visible);
+            timeText.Text(contextRow.start);
+            bodyText.Text(contextRow.original);
+        };
+
+        setOriginalContext(m_currentIndex - 3, TranscriptPrev3Block(), TranscriptPrev3TimeText(), TranscriptPrev3Text());
+        setOriginalContext(m_currentIndex - 2, TranscriptPrev2Block(), TranscriptPrev2TimeText(), TranscriptPrev2Text());
+        setOriginalContext(m_currentIndex - 1, TranscriptPreviousBlock(), TranscriptPreviousTimeText(), TranscriptPreviousText());
+
+        TranscriptCurrentTimeText().Text(row.start);
+        TranscriptCurrentText().Text(row.original.empty()
+            ? hstring{ L"Na\u010Dt\u011Bte origin\u00E1l nebo samostatn\u00FD transcript." }
+            : row.original);
+
+        setOriginalContext(m_currentIndex + 1, TranscriptNextBlock(), TranscriptNextTimeText(), TranscriptNextText());
+        setOriginalContext(m_currentIndex + 2, TranscriptNext2Block(), TranscriptNext2TimeText(), TranscriptNext2Text());
+        setOriginalContext(m_currentIndex + 3, TranscriptNext3Block(), TranscriptNext3TimeText(), TranscriptNext3Text());
     }
 
     void MainWindow::RefreshCurrentProblemText()
@@ -2662,6 +2776,32 @@ namespace winrt::SRTune::implementation
         RefreshLoadedProject();
     }
 
+    void MainWindow::OpenTranscriptFile()
+    {
+        std::wstring filename;
+        if (!SelectSubtitleFile(L"Otev\u0159\u00EDt kontext / transcript (SRT)", filename))
+            return;
+
+        std::vector<SubtitleEntry> entries;
+        std::wstring errorMessage;
+        if (!ReadSubtitleFile(filename, entries, errorMessage))
+        {
+            MessageBoxW(GetActiveWindow(), errorMessage.c_str(),
+                L"Transcript nelze otev\u0159\u00EDt", MB_OK | MB_ICONERROR);
+            return;
+        }
+
+        m_transcriptEntries = std::move(entries);
+        m_transcriptPath = hstring{ filename };
+        RefreshProjectFileLabels();
+        RefreshTranscriptContext();
+
+        StatusBarText().Text(hstring{
+            L"Kontext / transcript: " +
+            std::filesystem::path(filename).filename().wstring() +
+            L" \u00B7 p\u00E1rov\u00E1n\u00ED podle \u010Dasu" });
+    }
+
     void MainWindow::RefreshLoadedProject()
     {
         m_externalChangeAcknowledged = false;
@@ -3013,6 +3153,27 @@ namespace winrt::SRTune::implementation
 
         update(OriginalFileText(), m_sourcePath, L"");
         update(TargetFileText(), m_targetPath, L"");
+
+        if (!m_transcriptPath.empty())
+        {
+            auto const filename = std::filesystem::path(m_transcriptPath.c_str()).filename().wstring();
+            TranscriptFileText().Text(hstring{ filename });
+            ToolTipService::SetToolTip(TranscriptFileText(), box_value(m_transcriptPath));
+        }
+        else if (!m_sourcePath.empty())
+        {
+            TranscriptFileText().Text(L"zdroj: origin\u00E1l");
+            ToolTipService::SetToolTip(TranscriptFileText(), box_value(hstring{
+                L"Samostatn\u00FD transcript nen\u00ED na\u010Dten. Kontext se bere z origin\u00E1ln\u00EDch titulk\u016F: " +
+                std::wstring{ m_sourcePath.c_str() } }));
+        }
+        else
+        {
+            TranscriptFileText().Text(L"bez zdroje");
+            ToolTipService::SetToolTip(TranscriptFileText(), box_value(
+                L"Na\u010Dt\u011Bte origin\u00E1l nebo samostatn\u00FD \u010Dasovan\u00FD transcript ve form\u00E1tu SRT."));
+        }
+
         RefreshOriginalPanelVisibility();
         RefreshBackupAction();
     }
