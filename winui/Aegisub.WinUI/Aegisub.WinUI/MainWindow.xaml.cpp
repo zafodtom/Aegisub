@@ -3128,30 +3128,239 @@ namespace winrt::SRTune::implementation
         RefreshLoadedProject();
     }
 
+    bool MainWindow::ReadTranscriptTextFile(
+        std::wstring const& filename,
+        std::vector<winrt::hstring>& chunks,
+        std::wstring& errorMessage) const
+    {
+        std::ifstream stream(filename, std::ios::binary);
+        if (!stream)
+        {
+            errorMessage = L"Soubor transcriptu nelze otevřít.";
+            return false;
+        }
+
+        std::string bytes{
+            std::istreambuf_iterator<char>{ stream },
+            std::istreambuf_iterator<char>{} };
+
+        auto text = TrimTranscriptText(DecodeTextBytes(std::move(bytes)));
+        if (text.empty())
+        {
+            errorMessage = L"Transcript je prázdný.";
+            return false;
+        }
+
+        chunks = ChunkTranscriptText(std::move(text));
+        if (chunks.empty())
+        {
+            errorMessage = L"Transcript neobsahuje použitelný text.";
+            return false;
+        }
+        return true;
+    }
+
+    bool MainWindow::ReadTranscriptDocxFile(
+        std::wstring const& filename,
+        std::vector<winrt::hstring>& chunks,
+        std::wstring& errorMessage) const
+    {
+        auto const tempRoot = std::filesystem::temp_directory_path() /
+            (L"srtune-docx-" + std::to_wstring(GetCurrentProcessId()) +
+                L"-" + std::to_wstring(GetTickCount64()));
+        auto const archivePath = tempRoot / L"transcript.zip";
+        auto const extractPath = tempRoot / L"expanded";
+
+        std::error_code error;
+        std::filesystem::create_directories(extractPath, error);
+        if (error)
+        {
+            errorMessage = L"Nepodařilo se vytvořit dočasnou složku pro DOCX.";
+            return false;
+        }
+
+        auto cleanup = [&]()
+        {
+            std::error_code cleanupError;
+            std::filesystem::remove_all(tempRoot, cleanupError);
+        };
+
+        std::filesystem::copy_file(
+            filename, archivePath,
+            std::filesystem::copy_options::overwrite_existing, error);
+        if (error)
+        {
+            cleanup();
+            errorMessage = L"DOCX se nepodařilo připravit k načtení.";
+            return false;
+        }
+
+        std::wstring command =
+            L"powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "
+            L"\"Expand-Archive -LiteralPath " + PowerShellQuoted(archivePath.wstring()) +
+            L" -DestinationPath " + PowerShellQuoted(extractPath.wstring()) + L" -Force\"";
+
+        DWORD exitCode = 0;
+        if (!RunProcess(command, exitCode) || exitCode != 0)
+        {
+            cleanup();
+            errorMessage = L"DOCX se nepodařilo rozbalit. Zkontrolujte, že je soubor platný.";
+            return false;
+        }
+
+        auto const documentPath = extractPath / L"word" / L"document.xml";
+        std::ifstream xmlStream(documentPath, std::ios::binary);
+        if (!xmlStream)
+        {
+            cleanup();
+            errorMessage = L"DOCX neobsahuje očekávaný dokument.xml.";
+            return false;
+        }
+
+        std::string xml{
+            std::istreambuf_iterator<char>{ xmlStream },
+            std::istreambuf_iterator<char>{} };
+
+        std::wstring text;
+        size_t paragraphSearch = 0;
+        while (true)
+        {
+            auto const paragraphStart = xml.find("<w:p", paragraphSearch);
+            if (paragraphStart == std::string::npos)
+                break;
+            auto const paragraphOpenEnd = xml.find('>', paragraphStart);
+            auto const paragraphEnd = xml.find("</w:p>", paragraphOpenEnd);
+            if (paragraphOpenEnd == std::string::npos || paragraphEnd == std::string::npos)
+                break;
+
+            std::wstring paragraph;
+            size_t runSearch = paragraphOpenEnd + 1;
+            while (runSearch < paragraphEnd)
+            {
+                auto const textStart = xml.find("<w:t", runSearch);
+                if (textStart == std::string::npos || textStart >= paragraphEnd)
+                    break;
+                auto const textOpenEnd = xml.find('>', textStart);
+                auto const textEnd = xml.find("</w:t>", textOpenEnd);
+                if (textOpenEnd == std::string::npos || textEnd == std::string::npos ||
+                    textEnd > paragraphEnd)
+                {
+                    break;
+                }
+
+                auto const raw = xml.substr(textOpenEnd + 1, textEnd - textOpenEnd - 1);
+                paragraph += DecodeXmlEntities(DecodeTextBytes(raw));
+                runSearch = textEnd + 6;
+            }
+
+            paragraph = TrimTranscriptText(std::move(paragraph));
+            if (!paragraph.empty())
+            {
+                if (!text.empty())
+                    text += L"\n\n";
+                text += paragraph;
+            }
+
+            paragraphSearch = paragraphEnd + 6;
+        }
+
+        cleanup();
+
+        if (text.empty())
+        {
+            errorMessage = L"V DOCX nebyl nalezen žádný text.";
+            return false;
+        }
+
+        chunks = ChunkTranscriptText(std::move(text));
+        if (chunks.empty())
+        {
+            errorMessage = L"V DOCX nebyl nalezen použitelný transcript.";
+            return false;
+        }
+        return true;
+    }
+
+    bool MainWindow::ReadTranscriptFile(
+        std::wstring const& filename,
+        std::vector<SubtitleEntry>& timedEntries,
+        std::vector<winrt::hstring>& chunks,
+        std::wstring& errorMessage) const
+    {
+        timedEntries.clear();
+        chunks.clear();
+
+        auto extension = std::filesystem::path(filename).extension().wstring();
+        std::transform(extension.begin(), extension.end(), extension.begin(),
+            [](wchar_t ch) { return static_cast<wchar_t>(std::towlower(ch)); });
+
+        if (extension == L".srt")
+            return ReadSubtitleFile(filename, timedEntries, errorMessage);
+        if (extension == L".txt")
+            return ReadTranscriptTextFile(filename, chunks, errorMessage);
+        if (extension == L".docx")
+            return ReadTranscriptDocxFile(filename, chunks, errorMessage);
+        if (extension == L".doc")
+        {
+            errorMessage =
+                L"Starý binární formát DOC nelze bezpečně číst bez Microsoft Word. "
+                L"Uložte přepis jako DOCX nebo TXT.";
+            return false;
+        }
+
+        errorMessage = L"Podporované formáty transcriptu jsou TXT, DOCX a SRT.";
+        return false;
+    }
+
     void MainWindow::OpenTranscriptFile()
     {
-        std::wstring filename;
-        if (!SelectSubtitleFile(L"Otev\u0159\u00EDt kontext / transcript (SRT)", filename))
+        wchar_t buffer[32768]{};
+        wchar_t const filter[] =
+            L"Transcript (*.txt;*.docx;*.srt)\0*.txt;*.docx;*.srt\0"
+            L"Text (*.txt)\0*.txt\0"
+            L"Word dokument (*.docx)\0*.docx\0"
+            L"Časovaný transcript (*.srt)\0*.srt\0"
+            L"Všechny soubory (*.*)\0*.*\0\0";
+
+        OPENFILENAMEW dialog{};
+        dialog.lStructSize = sizeof(dialog);
+        dialog.hwndOwner = GetActiveWindow();
+        dialog.lpstrFilter = filter;
+        dialog.lpstrFile = buffer;
+        dialog.nMaxFile = static_cast<DWORD>(std::size(buffer));
+        dialog.lpstrTitle = L"Otevřít kontext / transcript";
+        dialog.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
+
+        if (!GetOpenFileNameW(&dialog))
             return;
 
-        std::vector<SubtitleEntry> entries;
+        std::wstring filename{ buffer };
+        std::vector<SubtitleEntry> timedEntries;
+        std::vector<winrt::hstring> chunks;
         std::wstring errorMessage;
-        if (!ReadSubtitleFile(filename, entries, errorMessage))
+
+        if (!ReadTranscriptFile(filename, timedEntries, chunks, errorMessage))
         {
             MessageBoxW(GetActiveWindow(), errorMessage.c_str(),
-                L"Transcript nelze otev\u0159\u00EDt", MB_OK | MB_ICONERROR);
+                L"Transcript nelze otevřít", MB_OK | MB_ICONERROR);
             return;
         }
 
-        m_transcriptEntries = std::move(entries);
+        m_transcriptEntries = std::move(timedEntries);
+        m_transcriptChunks = std::move(chunks);
         m_transcriptPath = hstring{ filename };
         RefreshProjectFileLabels();
         RefreshTranscriptContext();
 
+        auto const mode = m_transcriptChunks.empty()
+            ? std::wstring{ L"časovaný SRT" }
+            : std::wstring{ L"textový transcript · " } +
+                std::to_wstring(m_transcriptChunks.size()) + L" částí";
+
         StatusBarText().Text(hstring{
             L"Kontext / transcript: " +
             std::filesystem::path(filename).filename().wstring() +
-            L" \u00B7 p\u00E1rov\u00E1n\u00ED podle \u010Dasu" });
+            L" · " + mode });
     }
 
     void MainWindow::RefreshLoadedProject()
