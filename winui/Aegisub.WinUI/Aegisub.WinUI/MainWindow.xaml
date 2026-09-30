@@ -314,7 +314,10 @@
                             </Grid>
                             <TextBlock x:Name="OriginalTimingText" Grid.Row="1" Margin="0,4,0,6" FontFamily="Consolas" FontSize="11" Opacity="0.58" />
                             <TextBox x:Name="OriginalTextBox" Grid.Row="2" Padding="8" IsReadOnly="True" AcceptsReturn="True"
-                                     TextWrapping="Wrap" FontSize="16" SelectionChanged="SubtitleEditor_SelectionChanged" />
+                                     TextWrapping="Wrap" FontSize="16"
+                                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                     SelectionChanged="SubtitleEditor_SelectionChanged" />
                         </Grid>
                     </Border>
 
@@ -372,6 +375,8 @@
 
                             <TextBox x:Name="TargetTextBox" Grid.Row="2" Padding="8" AcceptsReturn="True" TextWrapping="Wrap" FontSize="16"
                                      Language="cs-CZ" IsSpellCheckEnabled="True" IsTextPredictionEnabled="False"
+                                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                      SelectionChanged="SubtitleEditor_SelectionChanged"
                                      Loaded="TargetTextBox_WorkflowLoaded" TextChanged="TargetTextBox_TextChanged">
                                 <TextBox.ContextFlyout>
