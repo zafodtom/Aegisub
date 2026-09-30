@@ -502,6 +502,16 @@ namespace winrt::SRTune::implementation
         };
 
         // Show source subtitle ranges along the top and target ranges along the bottom.
+        struct WaveformSubtitleLabel
+        {
+            double left{};
+            double right{};
+            double top{};
+            int32_t number{};
+            bool current{};
+        };
+        std::vector<WaveformSubtitleLabel> subtitleLabels;
+
         for (int32_t index = 0; index < static_cast<int32_t>(m_rows.size()); ++index)
         {
             auto const& subtitle = m_rows[index];
@@ -534,12 +544,34 @@ namespace winrt::SRTune::implementation
                     index == m_currentIndex ? 0.42 : 0.14);
             }
 
+            auto const targetStart = WorkflowTimestampSeconds(subtitle.start);
+            auto const targetEnd = WorkflowTimestampSeconds(subtitle.end);
+            auto const targetBarHeight = index == m_currentIndex ? 11.0 : 7.0;
+            auto const targetTop = (std::max)(8.0,
+                height - (index == m_currentIndex ? 28.0 : 24.0));
+
             drawRange(
-                WorkflowTimestampSeconds(subtitle.start),
-                WorkflowTimestampSeconds(subtitle.end),
-                (std::max)(8.0, height - (index == m_currentIndex ? 13.0 : 9.0)),
-                index == m_currentIndex ? 11.0 : 7.0,
+                targetStart,
+                targetEnd,
+                targetTop,
+                targetBarHeight,
                 index == m_currentIndex ? 0.62 : 0.22);
+
+            if (targetEnd >= m_waveformWindowStart &&
+                targetStart <= m_waveformWindowEnd &&
+                targetEnd > targetStart)
+            {
+                auto const left = (std::max)(0.0,
+                    (std::min)(width, mapTimeToX((std::max)(targetStart, m_waveformWindowStart))));
+                auto const right = (std::max)(left,
+                    (std::min)(width, mapTimeToX((std::min)(targetEnd, m_waveformWindowEnd))));
+                subtitleLabels.push_back({
+                    left,
+                    right,
+                    targetTop + targetBarHeight + 1.0,
+                    subtitle.number,
+                    index == m_currentIndex });
+            }
         }
 
         auto const& active = m_rows[m_currentIndex];
@@ -621,6 +653,23 @@ namespace winrt::SRTune::implementation
                 static_cast<float>(x), static_cast<float>(envelope[reverse].second) });
         }
         canvas.Children().Append(waveformShape);
+
+        for (auto const& subtitleLabel : subtitleLabels)
+        {
+            winrt::Microsoft::UI::Xaml::Controls::TextBlock label;
+            label.Text(winrt::hstring{ L"#" + std::to_wstring(subtitleLabel.number) });
+            label.FontFamily(winrt::Microsoft::UI::Xaml::Media::FontFamily{ L"Consolas" });
+            label.FontSize(subtitleLabel.current ? 9.5 : 8.5);
+            label.Opacity(subtitleLabel.current ? 0.95 : 0.62);
+            label.IsHitTestVisible(false);
+
+            auto const centerX = (subtitleLabel.left + subtitleLabel.right) * 0.5;
+            winrt::Microsoft::UI::Xaml::Controls::Canvas::SetLeft(
+                label, (std::max)(0.0, (std::min)(width - 28.0, centerX - 10.0)));
+            winrt::Microsoft::UI::Xaml::Controls::Canvas::SetTop(
+                label, (std::min)(height - 12.0, subtitleLabel.top));
+            canvas.Children().Append(label);
+        }
 
         auto drawBoundary = [&](double seconds, double thickness, double opacity)
             -> winrt::Microsoft::UI::Xaml::Shapes::Line
