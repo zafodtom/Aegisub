@@ -2360,7 +2360,30 @@ namespace winrt::SRTune::implementation
             return;
         }
 
+        // First make sure the selected row itself is visible.
         m_rowBorders[m_currentIndex].StartBringIntoView();
+
+        // Then bring the second following visible row into view as well. Because it is
+        // only two rows below the selection, a normal subtitle-list viewport keeps all
+        // three rows visible and the active subtitle is no longer pinned to the bottom.
+        int32_t lookAheadIndex = m_currentIndex;
+        int visibleRowsAfter = 0;
+
+        for (int32_t index = m_currentIndex + 1;
+            index < static_cast<int32_t>(m_rows.size()) &&
+            index < static_cast<int32_t>(m_rowBorders.size());
+            ++index)
+        {
+            if (!RowMatchesActiveFilter(m_rows[index]))
+                continue;
+
+            lookAheadIndex = index;
+            if (++visibleRowsAfter >= 2)
+                break;
+        }
+
+        if (lookAheadIndex != m_currentIndex)
+            m_rowBorders[lookAheadIndex].StartBringIntoView();
     }
 
     void MainWindow::UpdateTableRow(int32_t index)
