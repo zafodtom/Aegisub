@@ -130,6 +130,39 @@ namespace winrt::SRTune::implementation
         SplitCurrentSubtitleAtCursor();
     }
 
+    inline void MainWindow::SplitCurrentSubtitleAtVideoPosition()
+    {
+        if (m_rows.empty() || m_currentIndex < 0 ||
+            m_currentIndex >= static_cast<int32_t>(m_rows.size()))
+            return;
+
+        auto const videoSeconds = CurrentVideoSeconds();
+        if (videoSeconds < 0.0)
+        {
+            StatusBarText().Text(L"Nejprve otev\u0159ete video");
+            return;
+        }
+
+        auto const& current = m_rows[m_currentIndex];
+        auto const start = WorkflowTimestampSeconds(current.start);
+        auto const end = WorkflowTimestampSeconds(current.end);
+        if (videoSeconds <= start + 0.05 || videoSeconds >= end - 0.05)
+        {
+            StatusBarText().Text(
+                L"Pozice videa mus\u00ED b\u00FDt uvnit\u0159 aktu\u00E1ln\u00EDho titulku");
+            return;
+        }
+
+        SplitCurrentSubtitleAtCursor();
+    }
+
+    inline void MainWindow::SplitSubtitleAtVideoButton_Click(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        SplitCurrentSubtitleAtVideoPosition();
+    }
+
     inline void MainWindow::MergeSelectedSubtitles()
     {
         NormalizeSubtitleSelection();
