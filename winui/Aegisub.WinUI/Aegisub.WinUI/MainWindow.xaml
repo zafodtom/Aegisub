@@ -563,7 +563,7 @@
             <TextBlock x:Name="PairingQualityText" />
 
             <Button Click="MergeLinesButton_Click" />
-            <Button Click="SplitSubtitleButton_Click" />
+            <Button Click="SplitSubtitleAtVideoButton_Click" />
             <Button Click="JoinNextSubtitleButton_Click" />
             <Button Click="InsertSubtitleButton_Click" />
             <Button Click="DeleteSubtitleButton_Click" />
