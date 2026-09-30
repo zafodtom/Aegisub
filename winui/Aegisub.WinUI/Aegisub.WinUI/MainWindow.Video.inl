@@ -198,6 +198,7 @@ namespace winrt::SRTune::implementation
         VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"▶" }));
         VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Titulek" }));
         WaveformPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"▶ Titulek" }));
+        WaveformPlayVideoButton().Content(winrt::box_value(winrt::hstring{ L"▶ Video" }));
     }
 
     inline double MainWindow::CurrentVideoSeconds()
@@ -234,6 +235,7 @@ namespace winrt::SRTune::implementation
             VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"▶" }));
             VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Titulek" }));
             WaveformPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"▶ Titulek" }));
+            WaveformPlayVideoButton().Content(winrt::box_value(winrt::hstring{ L"▶ Video" }));
             auto const seconds = WorkflowTimestampSeconds(m_rows[m_currentIndex].start);
             auto const position = std::chrono::duration_cast<winrt::Windows::Foundation::TimeSpan>(
                 std::chrono::duration<double>{ seconds });
@@ -530,11 +532,13 @@ namespace winrt::SRTune::implementation
             {
                 player.Pause();
                 VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"▶" }));
+                WaveformPlayVideoButton().Content(winrt::box_value(winrt::hstring{ L"▶ Video" }));
             }
             else
             {
                 player.Play();
                 VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"❚❚" }));
+                WaveformPlayVideoButton().Content(winrt::box_value(winrt::hstring{ L"❚❚ Video" }));
             }
             RefreshVideoPositionText();
         }
@@ -567,6 +571,7 @@ namespace winrt::SRTune::implementation
             SeekMediaToSeconds(0.0);
             player.Play();
             VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"❚❚" }));
+            WaveformPlayVideoButton().Content(winrt::box_value(winrt::hstring{ L"❚❚ Video" }));
             RefreshVideoPositionText();
             RefreshTimelineSlider();
             RefreshWaveformPlayhead();
@@ -604,12 +609,19 @@ namespace winrt::SRTune::implementation
             try
             {
                 auto const player = VideoPlayer().MediaPlayer();
-                if (!player ||
-                    player.PlaybackSession().PlaybackState() !=
-                        winrt::Windows::Media::Playback::MediaPlaybackState::Playing)
+                if (!player)
+                    return;
+
+                if (player.PlaybackSession().PlaybackState() !=
+                    winrt::Windows::Media::Playback::MediaPlaybackState::Playing)
                 {
+                    WaveformPlayVideoButton().Content(
+                        winrt::box_value(winrt::hstring{ L"▶ Video" }));
                     return;
                 }
+
+                WaveformPlayVideoButton().Content(
+                    winrt::box_value(winrt::hstring{ L"❚❚ Video" }));
 
                 auto const playbackSeconds = CurrentVideoSeconds();
                 if (playbackSeconds < 0.0)
@@ -628,6 +640,7 @@ namespace winrt::SRTune::implementation
                     VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"▶" }));
                     VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Titulek" }));
                     WaveformPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"▶ Titulek" }));
+                    WaveformPlayVideoButton().Content(winrt::box_value(winrt::hstring{ L"▶ Video" }));
                     RefreshVideoPositionText();
                     RefreshTimelineSlider();
                     RefreshWaveformPlayhead();
@@ -679,6 +692,7 @@ namespace winrt::SRTune::implementation
                 VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Titulek" }));
                 WaveformPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"▶ Titulek" }));
                 VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"▶" }));
+                WaveformPlayVideoButton().Content(winrt::box_value(winrt::hstring{ L"▶ Video" }));
                 return;
             }
 
@@ -702,6 +716,7 @@ namespace winrt::SRTune::implementation
             VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Pozastavit" }));
             WaveformPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"❚❚ Titulek" }));
             VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"❚❚" }));
+            WaveformPlayVideoButton().Content(winrt::box_value(winrt::hstring{ L"❚❚ Video" }));
             RefreshWaveformPlayhead();
         }
         catch (...)
@@ -740,19 +755,30 @@ namespace winrt::SRTune::implementation
             if (!player)
                 return;
 
+            if (player.PlaybackSession().PlaybackState() ==
+                winrt::Windows::Media::Playback::MediaPlaybackState::Playing)
+            {
+                player.Pause();
+                VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"▶" }));
+                WaveformPlayVideoButton().Content(winrt::box_value(winrt::hstring{ L"▶ Video" }));
+                return;
+            }
+
             m_playSelectedUntil = -1.0;
             m_selectedPlaybackFinished = false;
             VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Titulek" }));
             WaveformPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"▶ Titulek" }));
+
             player.Play();
             VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"❚❚" }));
+            WaveformPlayVideoButton().Content(winrt::box_value(winrt::hstring{ L"❚❚ Video" }));
             RefreshVideoPositionText();
             RefreshTimelineSlider();
             RefreshWaveformPlayhead();
         }
         catch (...)
         {
-            StatusBarText().Text(L"Video se nepodařilo přehrát od aktuální pozice");
+            StatusBarText().Text(L"Přehrávání videa se nepodařilo změnit");
         }
     }
 
