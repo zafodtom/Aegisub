@@ -155,7 +155,7 @@ namespace winrt::SRTune::implementation
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void TargetCopyMenuItem_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
-        winrt::fire_and_forget TargetPasteMenuItem_Click(winrt::Windows::Foundation::IInspectable const& sender,
+        void TargetPasteMenuItem_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void SearchMenuItem_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
