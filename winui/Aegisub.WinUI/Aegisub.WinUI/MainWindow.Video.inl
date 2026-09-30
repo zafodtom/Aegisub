@@ -660,7 +660,12 @@ namespace winrt::SRTune::implementation
                 }
 
                 SyncSubtitleToPlayback(playbackSeconds);
-                FollowWaveformPlayback(playbackSeconds);
+
+                // While previewing a single subtitle, keep the waveform viewport fixed.
+                // The subtitle is centered when playback starts, so following the playhead
+                // here would make the waveform jump during the short preview.
+                if (m_playSelectedUntil < 0.0)
+                    FollowWaveformPlayback(playbackSeconds);
             }
             catch (...) {}
         });
@@ -710,6 +715,12 @@ namespace winrt::SRTune::implementation
             }
 
             m_selectedPlaybackFinished = false;
+
+            // A subtitle preview should start from a stable, centered waveform view.
+            // Keep this viewport fixed until the subtitle finishes or is paused.
+            CenterWaveformOnCurrentSubtitle();
+            RenderWaveform();
+
             SeekMediaToSeconds(playbackStart);
             m_playSelectedUntil = end;
             player.Play();
