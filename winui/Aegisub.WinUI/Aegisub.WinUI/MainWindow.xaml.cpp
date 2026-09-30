@@ -1261,6 +1261,7 @@ namespace winrt::SRTune::implementation
             return;
 
         m_transcriptEntries.clear();
+        m_transcriptChunks.clear();
         m_transcriptPath = L"";
         RefreshProjectFileLabels();
         RefreshTranscriptContext();
@@ -1990,6 +1991,75 @@ namespace winrt::SRTune::implementation
         }
 
         auto const& row = m_rows[m_currentIndex];
+
+        if (!m_transcriptChunks.empty())
+        {
+            std::wstring reference = row.original.empty()
+                ? std::wstring{ row.target.c_str() }
+                : std::wstring{ row.original.c_str() };
+
+            int32_t bestIndex = -1;
+            double bestScore = 0.0;
+            for (int32_t index = 0;
+                index < static_cast<int32_t>(m_transcriptChunks.size()); ++index)
+            {
+                auto const score = TranscriptMatchScore(
+                    reference, std::wstring_view{ m_transcriptChunks[index].c_str() });
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    bestIndex = index;
+                }
+            }
+
+            if (bestIndex < 0 || bestScore < 0.08)
+            {
+                if (m_transcriptChunks.size() <= 1 || m_rows.size() <= 1)
+                {
+                    bestIndex = 0;
+                }
+                else
+                {
+                    auto const ratio = static_cast<double>(m_currentIndex) /
+                        static_cast<double>(m_rows.size() - 1);
+                    bestIndex = static_cast<int32_t>(std::llround(
+                        ratio * static_cast<double>(m_transcriptChunks.size() - 1)));
+                }
+            }
+
+            auto setTranscriptChunk = [this](
+                int32_t index,
+                winrt::Microsoft::UI::Xaml::Controls::StackPanel const& block,
+                winrt::Microsoft::UI::Xaml::Controls::TextBlock const& labelText,
+                winrt::Microsoft::UI::Xaml::Controls::TextBlock const& bodyText)
+            {
+                if (index < 0 || index >= static_cast<int32_t>(m_transcriptChunks.size()))
+                {
+                    block.Visibility(Visibility::Collapsed);
+                    return;
+                }
+
+                block.Visibility(Visibility::Visible);
+                labelText.Text(winrt::hstring{
+                    L"část " + std::to_wstring(index + 1) +
+                    L" / " + std::to_wstring(m_transcriptChunks.size()) });
+                bodyText.Text(m_transcriptChunks[index]);
+            };
+
+            setTranscriptChunk(bestIndex - 3, TranscriptPrev3Block(), TranscriptPrev3TimeText(), TranscriptPrev3Text());
+            setTranscriptChunk(bestIndex - 2, TranscriptPrev2Block(), TranscriptPrev2TimeText(), TranscriptPrev2Text());
+            setTranscriptChunk(bestIndex - 1, TranscriptPreviousBlock(), TranscriptPreviousTimeText(), TranscriptPreviousText());
+
+            TranscriptCurrentTimeText().Text(winrt::hstring{
+                L"část " + std::to_wstring(bestIndex + 1) +
+                L" / " + std::to_wstring(m_transcriptChunks.size()) });
+            TranscriptCurrentText().Text(m_transcriptChunks[bestIndex]);
+
+            setTranscriptChunk(bestIndex + 1, TranscriptNextBlock(), TranscriptNextTimeText(), TranscriptNextText());
+            setTranscriptChunk(bestIndex + 2, TranscriptNext2Block(), TranscriptNext2TimeText(), TranscriptNext2Text());
+            setTranscriptChunk(bestIndex + 3, TranscriptNext3Block(), TranscriptNext3TimeText(), TranscriptNext3Text());
+            return;
+        }
 
         if (!m_transcriptEntries.empty())
         {
