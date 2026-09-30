@@ -123,13 +123,6 @@ namespace winrt::SRTune::implementation
     
     }
 
-    inline void MainWindow::SplitSubtitleButton_Click(
-        winrt::Windows::Foundation::IInspectable const&,
-        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
-    {
-        SplitCurrentSubtitleAtCursor();
-    }
-
     inline void MainWindow::SplitCurrentSubtitleAtVideoPosition()
     {
         if (m_rows.empty() || m_currentIndex < 0 ||
