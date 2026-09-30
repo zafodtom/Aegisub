@@ -200,9 +200,14 @@
                                     ToolTipService.ToolTip="Přehrát aktuální titulek od začátku a na jeho konci zastavit"
                                     AutomationProperties.Name="Přehrát aktuální titulek od začátku" />
                             <Button x:Name="WaveformPlaySelectedButton" Content="▶ Titulek"
-                                    Width="150" MinWidth="150" MinHeight="26" Height="26" Padding="10,0"
+                                    Width="120" MinWidth="120" MinHeight="26" Height="26" Padding="10,0"
                                     Click="VideoPlaySelectedButton_Click"
                                     ToolTipService.ToolTip="Přehrát / pozastavit aktuální titulek od aktuální pozice" />
+                            <Button x:Name="WaveformPlayVideoButton" Content="▶ Video"
+                                    Width="82" MinWidth="82" MinHeight="26" Height="26" Padding="8,0"
+                                    Click="WaveformPlayVideoButton_Click"
+                                    ToolTipService.ToolTip="Přehrát celé video od aktuální pozice"
+                                    AutomationProperties.Name="Přehrát celé video od aktuální pozice" />
                         </StackPanel>
 
                         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="5"
