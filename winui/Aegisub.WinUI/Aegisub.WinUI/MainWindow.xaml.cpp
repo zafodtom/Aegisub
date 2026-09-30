@@ -2705,40 +2705,54 @@ namespace winrt::SRTune::implementation
         TargetTextBox().Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
     }
 
-    winrt::fire_and_forget MainWindow::TargetPasteMenuItem_Click(
+    void MainWindow::TargetPasteMenuItem_Click(
         winrt::Windows::Foundation::IInspectable const&,
         winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
-        auto lifetime = get_strong();
+        auto weakThis = get_weak();
 
-        try
+        [weakThis]() -> winrt::fire_and_forget
         {
-            auto const content =
-                winrt::Windows::ApplicationModel::DataTransfer::Clipboard::GetContent();
-            if (!content.Contains(
-                winrt::Windows::ApplicationModel::DataTransfer::StandardDataFormats::Text()))
-            {
+            auto self = weakThis.get();
+            if (!self)
                 co_return;
+
+            try
+            {
+                auto const content =
+                    winrt::Windows::ApplicationModel::DataTransfer::Clipboard::GetContent();
+                if (!content.Contains(
+                    winrt::Windows::ApplicationModel::DataTransfer::StandardDataFormats::Text()))
+                {
+                    co_return;
+                }
+
+                auto const pasted = co_await content.GetTextAsync();
+                self = weakThis.get();
+                if (!self)
+                    co_return;
+
+                auto const text = std::wstring{ self->TargetTextBox().Text().c_str() };
+                auto const start = static_cast<size_t>(
+                    (std::max)(0, self->TargetTextBox().SelectionStart()));
+                auto const length = static_cast<size_t>(
+                    (std::max)(0, self->TargetTextBox().SelectionLength()));
+                auto const safeStart = (std::min)(start, text.size());
+                auto const safeLength = (std::min)(length, text.size() - safeStart);
+
+                auto updated = text.substr(0, safeStart) +
+                    std::wstring{ pasted.c_str() } +
+                    text.substr(safeStart + safeLength);
+
+                self->TargetTextBox().Text(winrt::hstring{ updated });
+                self->TargetTextBox().SelectionStart(static_cast<int32_t>(
+                    safeStart + pasted.size()));
+                self->TargetTextBox().SelectionLength(0);
+                self->TargetTextBox().Focus(
+                    winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
             }
-
-            auto const pasted = co_await content.GetTextAsync();
-            auto const text = std::wstring{ TargetTextBox().Text().c_str() };
-            auto const start = static_cast<size_t>((std::max)(0, TargetTextBox().SelectionStart()));
-            auto const length = static_cast<size_t>((std::max)(0, TargetTextBox().SelectionLength()));
-            auto const safeStart = (std::min)(start, text.size());
-            auto const safeLength = (std::min)(length, text.size() - safeStart);
-
-            auto updated = text.substr(0, safeStart) +
-                std::wstring{ pasted.c_str() } +
-                text.substr(safeStart + safeLength);
-
-            TargetTextBox().Text(winrt::hstring{ updated });
-            TargetTextBox().SelectionStart(static_cast<int32_t>(
-                safeStart + pasted.size()));
-            TargetTextBox().SelectionLength(0);
-            TargetTextBox().Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
-        }
-        catch (...) {}
+            catch (...) {}
+        }();
     }
 
     void MainWindow::SetDirty(bool dirty)
