@@ -1056,10 +1056,12 @@ namespace winrt::SRTune::implementation
         m_sourceEntries.clear();
         m_targetEntries.clear();
         m_transcriptEntries.clear();
+        m_transcriptChunks.clear();
         m_rows.clear();
         m_sourcePath = L"";
         m_targetPath = L"";
         m_transcriptPath = L"";
+        m_projectPath.clear();
         m_currentIndex = 0;
         m_selectedSubtitleIndices.clear();
         m_selectionAnchorIndex = -1;
