@@ -1447,7 +1447,7 @@ namespace winrt::SRTune::implementation
                 {
                     player.Play();
                     VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"❚❚" }));
-                    VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Přehrát titulek" }));
+                    VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Titulek" }));
                     WaveformPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"▶ Titulek" }));
                 }
             }
