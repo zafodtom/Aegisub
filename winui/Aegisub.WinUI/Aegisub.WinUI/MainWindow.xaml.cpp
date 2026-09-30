@@ -727,7 +727,7 @@ namespace
         size_t overlap = 0;
         for (auto const& word : referenceWords)
         {
-            if (candidateWords.contains(word))
+            if (candidateWords.find(word) != candidateWords.end())
                 ++overlap;
         }
         return static_cast<double>(overlap) /
