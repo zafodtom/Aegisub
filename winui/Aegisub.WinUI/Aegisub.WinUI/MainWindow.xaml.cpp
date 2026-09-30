@@ -3016,6 +3016,275 @@ namespace winrt::SRTune::implementation
         return true;
     }
 
+    bool MainWindow::SelectProjectFile(std::wstring& filename) const
+    {
+        wchar_t buffer[32768]{};
+        wchar_t const filter[] =
+            L"SRTune projekt (*.srtuneproj)\0*.srtuneproj\0"
+            L"Všechny soubory (*.*)\0*.*\0\0";
+
+        OPENFILENAMEW dialog{};
+        dialog.lStructSize = sizeof(dialog);
+        dialog.hwndOwner = GetActiveWindow();
+        dialog.lpstrFilter = filter;
+        dialog.lpstrFile = buffer;
+        dialog.nMaxFile = static_cast<DWORD>(std::size(buffer));
+        dialog.lpstrTitle = L"Otevřít projekt SRTune";
+        dialog.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
+
+        if (!GetOpenFileNameW(&dialog))
+            return false;
+
+        filename = buffer;
+        return true;
+    }
+
+    bool MainWindow::SelectProjectSaveFile(std::wstring& filename) const
+    {
+        wchar_t buffer[32768]{};
+
+        std::wstring suggested = L"project.srtuneproj";
+        if (!m_targetPath.empty())
+        {
+            suggested = std::filesystem::path(m_targetPath.c_str()).stem().wstring() +
+                L".srtuneproj";
+        }
+        else if (!m_sourcePath.empty())
+        {
+            suggested = std::filesystem::path(m_sourcePath.c_str()).stem().wstring() +
+                L".srtuneproj";
+        }
+        wcsncpy_s(buffer, suggested.c_str(), _TRUNCATE);
+
+        wchar_t const filter[] =
+            L"SRTune projekt (*.srtuneproj)\0*.srtuneproj\0"
+            L"Všechny soubory (*.*)\0*.*\0\0";
+
+        OPENFILENAMEW dialog{};
+        dialog.lStructSize = sizeof(dialog);
+        dialog.hwndOwner = GetActiveWindow();
+        dialog.lpstrFilter = filter;
+        dialog.lpstrFile = buffer;
+        dialog.nMaxFile = static_cast<DWORD>(std::size(buffer));
+        dialog.lpstrTitle = L"Uložit projekt SRTune";
+        dialog.lpstrDefExt = L"srtuneproj";
+        dialog.Flags = OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR | OFN_OVERWRITEPROMPT;
+
+        if (!GetSaveFileNameW(&dialog))
+            return false;
+
+        filename = buffer;
+        return true;
+    }
+
+    bool MainWindow::SaveProjectFile(bool saveAs)
+    {
+        std::wstring destination = m_projectPath;
+        if (saveAs || destination.empty())
+        {
+            if (!SelectProjectSaveFile(destination))
+                return false;
+        }
+
+        auto const projectFile = std::filesystem::absolute(
+            std::filesystem::path(destination)).lexically_normal();
+        auto tempFile = projectFile;
+        tempFile += L".tmp-" + std::to_wstring(GetCurrentProcessId());
+
+        std::error_code error;
+        std::filesystem::remove(tempFile, error);
+
+        std::ofstream stream(tempFile, std::ios::binary | std::ios::trunc);
+        if (!stream)
+        {
+            MessageBoxW(GetActiveWindow(), L"Projektový soubor nelze vytvořit.",
+                L"Uložení projektu se nezdařilo", MB_OK | MB_ICONERROR);
+            return false;
+        }
+
+        auto writePath = [&](char const* key, std::wstring_view value)
+        {
+            auto const stored = StoreProjectPath(projectFile, value);
+            stream << key << '\t'
+                << EscapeBridgeField(winrt::to_string(winrt::hstring{ stored })) << '\n';
+        };
+
+        stream << "SRTUNE-PROJECT\t1\n";
+        writePath("SOURCE", std::wstring_view{ m_sourcePath.c_str(), m_sourcePath.size() });
+        writePath("TARGET", std::wstring_view{ m_targetPath.c_str(), m_targetPath.size() });
+        writePath("MEDIA", m_videoPath);
+        writePath("WAVEFORM", m_waveformPath);
+        writePath("TRANSCRIPT", std::wstring_view{ m_transcriptPath.c_str(), m_transcriptPath.size() });
+        writePath("GLOSSARY", m_glossaryPath);
+        stream << "CURRENT\t" << m_currentIndex << '\n';
+
+        stream.close();
+        if (!stream)
+        {
+            std::filesystem::remove(tempFile, error);
+            MessageBoxW(GetActiveWindow(), L"Projektový soubor se nepodařilo zapsat.",
+                L"Uložení projektu se nezdařilo", MB_OK | MB_ICONERROR);
+            return false;
+        }
+
+        if (!MoveFileExW(tempFile.c_str(), projectFile.c_str(),
+            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+        {
+            std::filesystem::remove(tempFile, error);
+            MessageBoxW(GetActiveWindow(), L"Projektový soubor se nepodařilo dokončit.",
+                L"Uložení projektu se nezdařilo", MB_OK | MB_ICONERROR);
+            return false;
+        }
+
+        m_projectPath = projectFile.wstring();
+        StatusBarText().Text(winrt::hstring{
+            L"Projekt uložen · " + projectFile.filename().wstring() });
+        return true;
+    }
+
+    void MainWindow::OpenProjectFile()
+    {
+        std::wstring filename;
+        if (!SelectProjectFile(filename))
+            return;
+
+        if (!ConfirmSaveBefore(L"otevřením jiného projektu"))
+            return;
+
+        auto const projectFile = std::filesystem::absolute(
+            std::filesystem::path(filename)).lexically_normal();
+
+        std::ifstream stream(projectFile, std::ios::binary);
+        if (!stream)
+        {
+            MessageBoxW(GetActiveWindow(), L"Projektový soubor nelze otevřít.",
+                L"Projekt nelze otevřít", MB_OK | MB_ICONERROR);
+            return;
+        }
+
+        std::string line;
+        if (!std::getline(stream, line) || line != "SRTUNE-PROJECT\t1")
+        {
+            MessageBoxW(GetActiveWindow(), L"Soubor není platný projekt SRTune.",
+                L"Projekt nelze otevřít", MB_OK | MB_ICONERROR);
+            return;
+        }
+
+        std::map<std::string, std::wstring> values;
+        int32_t savedIndex = 0;
+
+        while (std::getline(stream, line))
+        {
+            if (!line.empty() && line.back() == '\r')
+                line.pop_back();
+            auto const tab = line.find('\t');
+            if (tab == std::string::npos)
+                continue;
+
+            auto const key = line.substr(0, tab);
+            auto const value = line.substr(tab + 1);
+            if (key == "CURRENT")
+            {
+                try { savedIndex = std::stoi(value); }
+                catch (...) { savedIndex = 0; }
+            }
+            else
+            {
+                values[key] = ResolveProjectPath(
+                    projectFile, ToWide(UnescapeBridgeField(value)));
+            }
+        }
+
+        auto getPath = [&](char const* key) -> std::wstring
+        {
+            auto const found = values.find(key);
+            return found == values.end() ? std::wstring{} : found->second;
+        };
+
+        auto const sourcePath = getPath("SOURCE");
+        auto const targetPath = getPath("TARGET");
+        auto const mediaPath = getPath("MEDIA");
+        auto const waveformPath = getPath("WAVEFORM");
+        auto const transcriptPath = getPath("TRANSCRIPT");
+        auto const glossaryPath = getPath("GLOSSARY");
+
+        if (!sourcePath.empty() && !targetPath.empty() &&
+            PathsReferToSameFile(sourcePath, targetPath))
+        {
+            ShowSameSubtitleFileWarning();
+            return;
+        }
+
+        std::vector<SubtitleEntry> sourceEntries;
+        std::vector<SubtitleEntry> targetEntries;
+        std::vector<SubtitleEntry> transcriptEntries;
+        std::vector<winrt::hstring> transcriptChunks;
+        std::wstring errorMessage;
+
+        if (!sourcePath.empty() &&
+            !ReadSubtitleFile(sourcePath, sourceEntries, errorMessage))
+        {
+            MessageBoxW(GetActiveWindow(), errorMessage.c_str(),
+                L"Originál projektu nelze otevřít", MB_OK | MB_ICONERROR);
+            return;
+        }
+
+        if (!targetPath.empty() &&
+            !ReadSubtitleFile(targetPath, targetEntries, errorMessage))
+        {
+            MessageBoxW(GetActiveWindow(), errorMessage.c_str(),
+                L"Překlad projektu nelze otevřít", MB_OK | MB_ICONERROR);
+            return;
+        }
+
+        if (!transcriptPath.empty() &&
+            !ReadTranscriptFile(
+                transcriptPath, transcriptEntries, transcriptChunks, errorMessage))
+        {
+            MessageBoxW(GetActiveWindow(), errorMessage.c_str(),
+                L"Transcript projektu nelze otevřít", MB_OK | MB_ICONERROR);
+            return;
+        }
+
+        ResetWorkspaceToBlank();
+
+        m_sourceEntries = std::move(sourceEntries);
+        m_targetEntries = std::move(targetEntries);
+        m_transcriptEntries = std::move(transcriptEntries);
+        m_transcriptChunks = std::move(transcriptChunks);
+        m_sourcePath = winrt::hstring{ sourcePath };
+        m_targetPath = winrt::hstring{ targetPath };
+        m_transcriptPath = winrt::hstring{ transcriptPath };
+        m_projectPath = projectFile.wstring();
+
+        RefreshLoadedProject();
+
+        if (!mediaPath.empty() && std::filesystem::exists(mediaPath))
+            OpenVideoFile(mediaPath);
+
+        if (!waveformPath.empty() && std::filesystem::exists(waveformPath) &&
+            (mediaPath.empty() || !PathsReferToSameFile(mediaPath, waveformPath)))
+        {
+            LoadWaveformForMedia(waveformPath);
+        }
+
+        if (!glossaryPath.empty() && std::filesystem::exists(glossaryPath))
+            LoadGlossaryFromFile(glossaryPath);
+
+        if (!m_rows.empty())
+        {
+            m_currentIndex = (std::max)(0,
+                (std::min)(static_cast<int32_t>(m_rows.size()) - 1, savedIndex));
+            m_selectedSubtitleIndices.assign(1, m_currentIndex);
+            m_selectionAnchorIndex = m_currentIndex;
+            LoadCurrentRow();
+        }
+
+        RefreshProjectFileLabels();
+        StatusBarText().Text(winrt::hstring{
+            L"Projekt otevřen · " + projectFile.filename().wstring() });
+    }
+
     void MainWindow::OpenProjectFiles()
     {
         if (!ConfirmSaveBefore(L"otev\u0159en\u00EDm jin\u00E9ho projektu"))
