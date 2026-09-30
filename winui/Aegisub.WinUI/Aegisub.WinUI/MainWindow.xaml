@@ -127,9 +127,9 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <Button x:Name="VideoPlayPauseButton" Grid.Column="0" Content="▶" Width="40" MinWidth="40" Padding="0,2" FontSize="14" Click="VideoPlayPauseButton_Click" ToolTipService.ToolTip="Přehrát / pozastavit" />
-                        <Button x:Name="VideoRestartButton" Grid.Column="1" Content="⏮" Width="34" MinWidth="34" Padding="0,2" FontSize="13" Click="VideoRestartButton_Click" ToolTipService.ToolTip="Přehrát video od začátku" />
+                        <Button x:Name="VideoRestartButton" Grid.Column="1" Content="↺" Width="34" MinWidth="34" Padding="0,2" FontSize="17" FontWeight="SemiBold" Click="VideoRestartButton_Click" ToolTipService.ToolTip="Přehrát celé video od začátku" AutomationProperties.Name="Přehrát celé video od začátku" />
                         <Button x:Name="VideoPlaySelectedButton" Grid.Column="2" Content="Titulek" Width="76" MinWidth="76" Padding="7,2" Click="VideoPlaySelectedButton_Click" ToolTipService.ToolTip="Přehrát / pozastavit aktuální titulek od aktuální pozice" />
-                        <Button x:Name="VideoPlaySelectedFromStartButton" Grid.Column="3" Content="⏮" Width="34" MinWidth="34" Padding="0,2" FontSize="13" Click="VideoPlaySelectedFromStartButton_Click" ToolTipService.ToolTip="Přehrát aktuální titulek od jeho začátku a na konci zastavit" />
+                        <Button x:Name="VideoPlaySelectedFromStartButton" Grid.Column="3" Content="⏮" Width="34" MinWidth="34" Padding="0,2" FontSize="13" Click="VideoPlaySelectedFromStartButton_Click" ToolTipService.ToolTip="Přehrát aktuální titulek od začátku a na jeho konci zastavit" AutomationProperties.Name="Přehrát aktuální titulek od začátku" />
                         <TextBlock x:Name="VideoPositionText" Grid.Column="4" Text="00:00:00.000" FontFamily="Consolas" FontSize="10" Opacity="0.58" VerticalAlignment="Center" HorizontalAlignment="Right" />
                     </Grid>
                 </Grid>
@@ -188,9 +188,10 @@
                         <StackPanel Orientation="Horizontal" Spacing="4"
                                     HorizontalAlignment="Center" VerticalAlignment="Center">
                             <Button x:Name="WaveformPlaySelectedFromStartButton" Content="⏮"
-                                    Width="34" MinWidth="34" MinHeight="26" Height="26" Padding="0"
+                                    Width="34" MinWidth="34" MinHeight="26" Height="26" Padding="0" FontSize="13"
                                     Click="VideoPlaySelectedFromStartButton_Click"
-                                    ToolTipService.ToolTip="Přehrát aktuální titulek od začátku a na konci zastavit" />
+                                    ToolTipService.ToolTip="Přehrát aktuální titulek od začátku a na jeho konci zastavit"
+                                    AutomationProperties.Name="Přehrát aktuální titulek od začátku" />
                             <Button x:Name="WaveformPlaySelectedButton" Content="▶ Titulek"
                                     Width="150" MinWidth="150" MinHeight="26" Height="26" Padding="10,0"
                                     Click="VideoPlaySelectedButton_Click"
