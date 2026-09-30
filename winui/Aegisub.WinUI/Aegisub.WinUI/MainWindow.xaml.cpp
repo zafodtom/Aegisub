@@ -8,6 +8,8 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <cmath>
+#include <cwctype>
 #include <commdlg.h>
 #include <filesystem>
 #include <fstream>
@@ -15,6 +17,7 @@
 #include <iterator>
 #include <limits>
 #include <map>
+#include <set>
 #include <shellapi.h>
 #include <sstream>
 #include <string>
@@ -528,6 +531,258 @@ namespace
         return true;
     }
 }
+
+    std::wstring TrimTranscriptText(std::wstring value)
+    {
+        auto const isSpace = [](wchar_t ch) { return std::iswspace(ch) != 0; };
+        while (!value.empty() && isSpace(value.front()))
+            value.erase(value.begin());
+        while (!value.empty() && isSpace(value.back()))
+            value.pop_back();
+        return value;
+    }
+
+    std::wstring DecodeTextBytes(std::string bytes)
+    {
+        if (bytes.size() >= 2 &&
+            static_cast<unsigned char>(bytes[0]) == 0xFF &&
+            static_cast<unsigned char>(bytes[1]) == 0xFE)
+        {
+            std::wstring result;
+            result.reserve((bytes.size() - 2) / 2);
+            for (size_t index = 2; index + 1 < bytes.size(); index += 2)
+            {
+                auto const value = static_cast<wchar_t>(
+                    static_cast<unsigned char>(bytes[index]) |
+                    (static_cast<unsigned char>(bytes[index + 1]) << 8));
+                result.push_back(value);
+            }
+            return result;
+        }
+
+        if (bytes.size() >= 3 &&
+            static_cast<unsigned char>(bytes[0]) == 0xEF &&
+            static_cast<unsigned char>(bytes[1]) == 0xBB &&
+            static_cast<unsigned char>(bytes[2]) == 0xBF)
+        {
+            bytes.erase(0, 3);
+        }
+
+        try
+        {
+            return std::wstring{ winrt::to_hstring(bytes).c_str() };
+        }
+        catch (...)
+        {
+            if (bytes.empty())
+                return {};
+            auto const required = MultiByteToWideChar(
+                CP_ACP, 0, bytes.data(), static_cast<int>(bytes.size()), nullptr, 0);
+            if (required <= 0)
+                return {};
+            std::wstring result(static_cast<size_t>(required), L'\0');
+            MultiByteToWideChar(CP_ACP, 0, bytes.data(), static_cast<int>(bytes.size()),
+                result.data(), required);
+            return result;
+        }
+    }
+
+    std::wstring DecodeXmlEntities(std::wstring value)
+    {
+        auto replaceAll = [&value](std::wstring_view from, std::wstring_view to)
+        {
+            size_t position = 0;
+            while ((position = value.find(from, position)) != std::wstring::npos)
+            {
+                value.replace(position, from.size(), to);
+                position += to.size();
+            }
+        };
+        replaceAll(L"&amp;", L"&");
+        replaceAll(L"&lt;", L"<");
+        replaceAll(L"&gt;", L">");
+        replaceAll(L"&quot;", L"\"");
+        replaceAll(L"&apos;", L"'");
+        replaceAll(L"&#10;", L"\n");
+        replaceAll(L"&#13;", L"\r");
+        return value;
+    }
+
+    std::vector<winrt::hstring> ChunkTranscriptText(std::wstring text)
+    {
+        for (auto& ch : text)
+        {
+            if (ch == L'\r')
+                ch = L'\n';
+            else if (ch == L'\t')
+                ch = L' ';
+        }
+
+        std::vector<std::wstring> paragraphs;
+        std::wistringstream stream(text);
+        std::wstring line;
+        std::wstring paragraph;
+
+        auto flushParagraph = [&]()
+        {
+            auto cleaned = TrimTranscriptText(paragraph);
+            if (!cleaned.empty())
+                paragraphs.push_back(std::move(cleaned));
+            paragraph.clear();
+        };
+
+        while (std::getline(stream, line))
+        {
+            line = TrimTranscriptText(line);
+            if (line.empty())
+            {
+                flushParagraph();
+                continue;
+            }
+            if (!paragraph.empty())
+                paragraph += L' ';
+            paragraph += line;
+        }
+        flushParagraph();
+
+        if (paragraphs.empty())
+        {
+            auto cleaned = TrimTranscriptText(text);
+            if (!cleaned.empty())
+                paragraphs.push_back(std::move(cleaned));
+        }
+
+        std::vector<winrt::hstring> chunks;
+        for (auto const& source : paragraphs)
+        {
+            size_t offset = 0;
+            while (offset < source.size())
+            {
+                auto const remaining = source.size() - offset;
+                if (remaining <= 700)
+                {
+                    auto piece = TrimTranscriptText(source.substr(offset));
+                    if (!piece.empty())
+                        chunks.emplace_back(piece);
+                    break;
+                }
+
+                size_t cut = offset + 620;
+                auto const lowerBound = offset + 360;
+                auto const upperBound = (std::min)(source.size(), offset + 700);
+                for (size_t cursor = upperBound; cursor > lowerBound; --cursor)
+                {
+                    auto const ch = source[cursor - 1];
+                    if (ch == L'.' || ch == L'?' || ch == L'!' || ch == L';')
+                    {
+                        cut = cursor;
+                        break;
+                    }
+                    if (cursor <= offset + 620 && std::iswspace(ch))
+                    {
+                        cut = cursor;
+                        break;
+                    }
+                }
+
+                auto piece = TrimTranscriptText(source.substr(offset, cut - offset));
+                if (!piece.empty())
+                    chunks.emplace_back(piece);
+                offset = cut;
+            }
+        }
+
+        return chunks;
+    }
+
+    std::set<std::wstring> TranscriptWords(std::wstring_view text)
+    {
+        std::set<std::wstring> words;
+        std::wstring current;
+        for (wchar_t ch : text)
+        {
+            if (std::iswalnum(ch))
+            {
+                current.push_back(static_cast<wchar_t>(std::towlower(ch)));
+            }
+            else
+            {
+                if (current.size() >= 3)
+                    words.insert(current);
+                current.clear();
+            }
+        }
+        if (current.size() >= 3)
+            words.insert(current);
+        return words;
+    }
+
+    double TranscriptMatchScore(std::wstring_view reference, std::wstring_view candidate)
+    {
+        auto const referenceWords = TranscriptWords(reference);
+        auto const candidateWords = TranscriptWords(candidate);
+        if (referenceWords.empty() || candidateWords.empty())
+            return 0.0;
+
+        size_t overlap = 0;
+        for (auto const& word : referenceWords)
+        {
+            if (candidateWords.contains(word))
+                ++overlap;
+        }
+        return static_cast<double>(overlap) /
+            std::sqrt(static_cast<double>(referenceWords.size() * candidateWords.size()));
+    }
+
+    std::wstring PowerShellQuoted(std::wstring value)
+    {
+        size_t position = 0;
+        while ((position = value.find(L'\'', position)) != std::wstring::npos)
+        {
+            value.insert(position, 1, L'\'');
+            position += 2;
+        }
+        return L"'" + value + L"'";
+    }
+
+    std::wstring StoreProjectPath(
+        std::filesystem::path const& projectFile,
+        std::wstring_view value)
+    {
+        if (value.empty())
+            return {};
+
+        std::error_code absoluteError;
+        auto const absolute = std::filesystem::absolute(
+            std::filesystem::path(value), absoluteError).lexically_normal();
+        if (absoluteError)
+            return std::wstring{ value };
+
+        std::error_code relativeError;
+        auto const relative = std::filesystem::relative(
+            absolute, projectFile.parent_path(), relativeError);
+        if (!relativeError && !relative.empty())
+            return relative.generic_wstring();
+
+        return absolute.wstring();
+    }
+
+    std::wstring ResolveProjectPath(
+        std::filesystem::path const& projectFile,
+        std::wstring_view value)
+    {
+        if (value.empty())
+            return {};
+
+        std::filesystem::path path{ value };
+        if (path.is_relative())
+            path = projectFile.parent_path() / path;
+
+        std::error_code error;
+        auto absolute = std::filesystem::absolute(path, error);
+        return error ? path.lexically_normal().wstring() : absolute.lexically_normal().wstring();
+    }
+
 
 namespace winrt::SRTune::implementation
 {
