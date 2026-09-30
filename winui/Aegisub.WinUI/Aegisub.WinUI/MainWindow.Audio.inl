@@ -1438,8 +1438,36 @@ namespace winrt::SRTune::implementation
         {
             auto const seconds = WaveformSecondsFromPointer(
                 point.Position().X, WaveformCanvas().ActualWidth(), false);
+            auto const clickedSubtitle = FindSubtitleIndexForTime(seconds);
+
+            if (clickedSubtitle >= 0 &&
+                clickedSubtitle < static_cast<int32_t>(m_rows.size()) &&
+                clickedSubtitle != m_currentIndex)
+            {
+                StoreCurrentEditorSelection();
+                m_currentIndex = clickedSubtitle;
+                m_selectedSubtitleIndices.assign(1, clickedSubtitle);
+                m_selectionAnchorIndex = clickedSubtitle;
+
+                m_mediaDrivenSelectionUpdate = true;
+                LoadCurrentRow();
+                m_mediaDrivenSelectionUpdate = false;
+            }
+
             SeekMediaToSeconds(seconds);
-            m_playSelectedUntil = -1.0;
+            m_selectedPlaybackFinished = false;
+
+            if (clickedSubtitle >= 0 &&
+                clickedSubtitle < static_cast<int32_t>(m_rows.size()))
+            {
+                m_playSelectedUntil =
+                    WorkflowTimestampSeconds(m_rows[clickedSubtitle].end);
+            }
+            else
+            {
+                m_playSelectedUntil = -1.0;
+            }
+
             try
             {
                 auto const player = VideoPlayer().MediaPlayer();
@@ -1447,8 +1475,16 @@ namespace winrt::SRTune::implementation
                 {
                     player.Play();
                     VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"❚❚" }));
-                    VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Titulek" }));
-                    WaveformPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"▶ Titulek" }));
+                    if (m_playSelectedUntil >= 0.0)
+                    {
+                        VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Pozastavit" }));
+                        WaveformPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"❚❚ Titulek" }));
+                    }
+                    else
+                    {
+                        VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Titulek" }));
+                        WaveformPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"▶ Titulek" }));
+                    }
                 }
             }
             catch (...) {}
