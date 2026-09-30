@@ -2599,6 +2599,8 @@ namespace winrt::SRTune::implementation
         m_targetEntries = std::move(targetEntries);
         m_sourcePath = hstring{ sourceFilename };
         m_targetPath = hstring{ targetFilename };
+        m_transcriptEntries.clear();
+        m_transcriptPath = L"";
         RefreshLoadedProject();
     }
 
@@ -2709,6 +2711,8 @@ namespace winrt::SRTune::implementation
         m_sourcePath = hstring{ sourceFilename };
         m_targetEntries = std::move(targetEntries);
         m_targetPath = hstring{ targetFilename };
+        m_transcriptEntries.clear();
+        m_transcriptPath = L"";
         RefreshLoadedProject();
     }
 
