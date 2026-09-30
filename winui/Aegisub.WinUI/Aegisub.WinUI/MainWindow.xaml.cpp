@@ -1114,6 +1114,27 @@ namespace winrt::SRTune::implementation
         ResetWorkspaceToBlank();
     }
 
+    void MainWindow::OpenProjectMenuItem_Click(
+        Windows::Foundation::IInspectable const&,
+        RoutedEventArgs const&)
+    {
+        OpenProjectFile();
+    }
+
+    void MainWindow::SaveProjectMenuItem_Click(
+        Windows::Foundation::IInspectable const&,
+        RoutedEventArgs const&)
+    {
+        SaveProjectFile(false);
+    }
+
+    void MainWindow::SaveProjectAsMenuItem_Click(
+        Windows::Foundation::IInspectable const&,
+        RoutedEventArgs const&)
+    {
+        SaveProjectFile(true);
+    }
+
     void MainWindow::CloseSourceMenuItem_Click(
         Windows::Foundation::IInspectable const&,
         RoutedEventArgs const&)
