@@ -193,7 +193,7 @@ namespace winrt::SRTune::implementation
         VideoFileText().Text(L"");
         VideoPositionText().Text(L"");
         VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"▶" }));
-        VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Přehrát titulek" }));
+        VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Titulek" }));
         WaveformPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"▶ Titulek" }));
     }
 
@@ -228,7 +228,7 @@ namespace winrt::SRTune::implementation
             player.Pause();
             m_playSelectedUntil = -1.0;
             VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"▶" }));
-            VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Přehrát titulek" }));
+            VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Titulek" }));
             WaveformPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"▶ Titulek" }));
             auto const seconds = WorkflowTimestampSeconds(m_rows[m_currentIndex].start);
             auto const position = std::chrono::duration_cast<winrt::Windows::Foundation::TimeSpan>(
@@ -508,8 +508,9 @@ namespace winrt::SRTune::implementation
         winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
         m_playSelectedUntil = -1.0;
-        VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Přehrát titulek" }));
-            WaveformPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"▶ Titulek" }));
+        VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Titulek" }));
+        WaveformPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"▶ Titulek" }));
+
         try
         {
             auto const player = VideoPlayer().MediaPlayer();
@@ -535,6 +536,38 @@ namespace winrt::SRTune::implementation
         catch (...)
         {
             StatusBarText().Text(L"Přehrávání videa se nepodařilo změnit");
+        }
+    }
+
+    inline void MainWindow::VideoRestartButton_Click(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        if (m_videoPath.empty())
+        {
+            StatusBarText().Text(L"Nejprve otevřete video");
+            return;
+        }
+
+        try
+        {
+            auto const player = VideoPlayer().MediaPlayer();
+            if (!player)
+                return;
+
+            m_playSelectedUntil = -1.0;
+            VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Titulek" }));
+            WaveformPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"▶ Titulek" }));
+            SeekMediaToSeconds(0.0);
+            player.Play();
+            VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"❚❚" }));
+            RefreshVideoPositionText();
+            RefreshTimelineSlider();
+            RefreshWaveformPlayhead();
+        }
+        catch (...)
+        {
+            StatusBarText().Text(L"Video se nepodařilo přehrát od začátku");
         }
     }
 
@@ -576,6 +609,24 @@ namespace winrt::SRTune::implementation
                 if (playbackSeconds < 0.0)
                     return;
 
+                // A selected-subtitle preview must stop before playback can advance
+                // the active row to the following subtitle.
+                if (m_playSelectedUntil >= 0.0 &&
+                    playbackSeconds >= m_playSelectedUntil - 0.015)
+                {
+                    auto const stopAt = (std::max)(0.0, m_playSelectedUntil - 0.001);
+                    player.Pause();
+                    SeekMediaToSeconds(stopAt);
+                    m_playSelectedUntil = -1.0;
+                    VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"▶" }));
+                    VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Titulek" }));
+                    WaveformPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"▶ Titulek" }));
+                    RefreshVideoPositionText();
+                    RefreshTimelineSlider();
+                    RefreshWaveformPlayhead();
+                    return;
+                }
+
                 // Lightweight moving line can update often.
                 RefreshWaveformPlayhead();
 
@@ -590,19 +641,6 @@ namespace winrt::SRTune::implementation
 
                 SyncSubtitleToPlayback(playbackSeconds);
                 FollowWaveformPlayback(playbackSeconds);
-
-                if (m_playSelectedUntil >= 0.0 &&
-                    playbackSeconds >= m_playSelectedUntil - 0.005)
-                {
-                    player.Pause();
-                    m_playSelectedUntil = -1.0;
-                    VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"▶" }));
-                    VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Přehrát titulek" }));
-            WaveformPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"▶ Titulek" }));
-                    RefreshVideoPositionText();
-                    RefreshTimelineSlider();
-                    RefreshWaveformPlayhead();
-                }
             }
             catch (...) {}
         });
@@ -610,9 +648,7 @@ namespace winrt::SRTune::implementation
         m_mediaUiTimer = timer;
     }
 
-    inline void MainWindow::VideoPlaySelectedButton_Click(
-        winrt::Windows::Foundation::IInspectable const&,
-        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    inline void MainWindow::PlayCurrentSubtitle(bool fromStart)
     {
         if (m_videoPath.empty() || m_rows.empty())
         {
@@ -626,14 +662,14 @@ namespace winrt::SRTune::implementation
             if (!player)
                 return;
 
-            if (m_playSelectedUntil >= 0.0 &&
+            if (!fromStart && m_playSelectedUntil >= 0.0 &&
                 player.PlaybackSession().PlaybackState() ==
                     winrt::Windows::Media::Playback::MediaPlaybackState::Playing)
             {
                 player.Pause();
                 m_playSelectedUntil = -1.0;
-                VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Přehrát titulek" }));
-            WaveformPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"▶ Titulek" }));
+                VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Titulek" }));
+                WaveformPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"▶ Titulek" }));
                 VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"▶" }));
                 return;
             }
@@ -644,7 +680,11 @@ namespace winrt::SRTune::implementation
             if (end <= start)
                 return;
 
-            SeekMediaToSeconds(start);
+            auto playbackStart = CurrentVideoSeconds();
+            if (fromStart || playbackStart < start || playbackStart >= end)
+                playbackStart = start;
+
+            SeekMediaToSeconds(playbackStart);
             m_playSelectedUntil = end;
             player.Play();
             VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Pozastavit" }));
@@ -656,5 +696,19 @@ namespace winrt::SRTune::implementation
         {
             StatusBarText().Text(L"Vybraný titulek se nepodařilo přehrát");
         }
+    }
+
+    inline void MainWindow::VideoPlaySelectedButton_Click(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        PlayCurrentSubtitle(false);
+    }
+
+    inline void MainWindow::VideoPlaySelectedFromStartButton_Click(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        PlayCurrentSubtitle(true);
     }
 }
