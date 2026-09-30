@@ -57,6 +57,12 @@ namespace winrt::SRTune::implementation
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void NewProjectMenuItem_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void OpenProjectMenuItem_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void SaveProjectMenuItem_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void SaveProjectAsMenuItem_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void CloseSourceMenuItem_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void CloseTargetMenuItem_Click(winrt::Windows::Foundation::IInspectable const& sender,
@@ -146,6 +152,12 @@ namespace winrt::SRTune::implementation
         void SplitSubtitleAtVideoButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void TargetSelectAllMenuItem_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void TargetCutMenuItem_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void TargetCopyMenuItem_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        winrt::fire_and_forget TargetPasteMenuItem_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void SearchMenuItem_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
@@ -348,6 +360,7 @@ namespace winrt::SRTune::implementation
         std::vector<SubtitleEntry> m_sourceEntries;
         std::vector<SubtitleEntry> m_targetEntries;
         std::vector<SubtitleEntry> m_transcriptEntries;
+        std::vector<winrt::hstring> m_transcriptChunks;
         std::vector<winrt::Microsoft::UI::Xaml::Controls::Border> m_rowBorders;
         std::vector<winrt::Microsoft::UI::Xaml::Controls::TextBlock> m_rowOriginalTexts;
         std::vector<winrt::Microsoft::UI::Xaml::Controls::TextBlock> m_rowTargetTexts;
@@ -357,6 +370,7 @@ namespace winrt::SRTune::implementation
         winrt::hstring m_sourcePath;
         winrt::hstring m_targetPath;
         winrt::hstring m_transcriptPath;
+        std::wstring m_projectPath;
 
         int32_t m_currentIndex{ 0 };
         std::vector<int32_t> m_selectedSubtitleIndices;
@@ -435,6 +449,7 @@ namespace winrt::SRTune::implementation
         uint64_t m_lastTimelineSeekTick{};
         winrt::Microsoft::UI::Xaml::DispatcherTimer m_mediaUiTimer{ nullptr };
         double m_playSelectedUntil{-1.0};
+        bool m_selectedPlaybackFinished{};
         bool m_structureDirty{};
         bool m_featureStateLoaded{};
         bool m_videoBurnInProgress{};
@@ -465,6 +480,16 @@ namespace winrt::SRTune::implementation
         void OpenSourceFile();
         void OpenTargetFile();
         void OpenTranscriptFile();
+        bool ReadTranscriptTextFile(std::wstring const& filename, std::vector<winrt::hstring>& chunks,
+            std::wstring& errorMessage) const;
+        bool ReadTranscriptDocxFile(std::wstring const& filename, std::vector<winrt::hstring>& chunks,
+            std::wstring& errorMessage) const;
+        bool ReadTranscriptFile(std::wstring const& filename, std::vector<SubtitleEntry>& timedEntries,
+            std::vector<winrt::hstring>& chunks, std::wstring& errorMessage) const;
+        void OpenProjectFile();
+        bool SaveProjectFile(bool saveAs);
+        bool SelectProjectFile(std::wstring& filename) const;
+        bool SelectProjectSaveFile(std::wstring& filename) const;
         void RefreshTranscriptContext();
         void OpenRecentProject();
         bool LoadRecentProjectPaths(std::wstring& source, std::wstring& target) const;
