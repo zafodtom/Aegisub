@@ -225,6 +225,8 @@ namespace winrt::SRTune::implementation
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void VideoPlaySelectedFromStartButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void WaveformVolumeSlider_ValueChanged(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::Controls::Primitives::RangeBaseValueChangedEventArgs const& args);
         void VideoBackFiveButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void VideoForwardFiveButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
