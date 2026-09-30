@@ -517,6 +517,7 @@ namespace winrt::SRTune::implementation
         bool SelectGlossaryOpenFile(std::wstring& filename) const;
         bool SelectGlossarySaveFile(std::wstring& filename) const;
         void SetDirty(bool dirty);
+        void RefreshWindowTitle();
         bool ConfirmSaveBefore(std::wstring const& action);
         bool OfferSaveAsForExternalChange(std::wstring const& errorMessage);
         bool SelectSubtitleFile(std::wstring const& title, std::wstring& filename) const;
