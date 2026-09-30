@@ -2668,6 +2668,79 @@ namespace winrt::SRTune::implementation
         TargetTextBox().Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
     }
 
+    void MainWindow::TargetCopyMenuItem_Click(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        auto const text = std::wstring{ TargetTextBox().Text().c_str() };
+        auto const start = static_cast<size_t>((std::max)(0, TargetTextBox().SelectionStart()));
+        auto const length = static_cast<size_t>((std::max)(0, TargetTextBox().SelectionLength()));
+        if (length == 0 || start >= text.size())
+            return;
+
+        auto const safeLength = (std::min)(length, text.size() - start);
+        winrt::Windows::ApplicationModel::DataTransfer::DataPackage package;
+        package.SetText(winrt::hstring{ text.substr(start, safeLength) });
+        winrt::Windows::ApplicationModel::DataTransfer::Clipboard::SetContent(package);
+        winrt::Windows::ApplicationModel::DataTransfer::Clipboard::Flush();
+    }
+
+    void MainWindow::TargetCutMenuItem_Click(
+        winrt::Windows::Foundation::IInspectable const& sender,
+        winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args)
+    {
+        auto const text = std::wstring{ TargetTextBox().Text().c_str() };
+        auto const start = static_cast<size_t>((std::max)(0, TargetTextBox().SelectionStart()));
+        auto const length = static_cast<size_t>((std::max)(0, TargetTextBox().SelectionLength()));
+        if (length == 0 || start >= text.size())
+            return;
+
+        TargetCopyMenuItem_Click(sender, args);
+
+        auto const safeLength = (std::min)(length, text.size() - start);
+        auto updated = text.substr(0, start) + text.substr(start + safeLength);
+        TargetTextBox().Text(winrt::hstring{ updated });
+        TargetTextBox().SelectionStart(static_cast<int32_t>(start));
+        TargetTextBox().SelectionLength(0);
+        TargetTextBox().Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
+    }
+
+    winrt::fire_and_forget MainWindow::TargetPasteMenuItem_Click(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        auto lifetime = get_strong();
+
+        try
+        {
+            auto const content =
+                winrt::Windows::ApplicationModel::DataTransfer::Clipboard::GetContent();
+            if (!content.Contains(
+                winrt::Windows::ApplicationModel::DataTransfer::StandardDataFormats::Text()))
+            {
+                co_return;
+            }
+
+            auto const pasted = co_await content.GetTextAsync();
+            auto const text = std::wstring{ TargetTextBox().Text().c_str() };
+            auto const start = static_cast<size_t>((std::max)(0, TargetTextBox().SelectionStart()));
+            auto const length = static_cast<size_t>((std::max)(0, TargetTextBox().SelectionLength()));
+            auto const safeStart = (std::min)(start, text.size());
+            auto const safeLength = (std::min)(length, text.size() - safeStart);
+
+            auto updated = text.substr(0, safeStart) +
+                std::wstring{ pasted.c_str() } +
+                text.substr(safeStart + safeLength);
+
+            TargetTextBox().Text(winrt::hstring{ updated });
+            TargetTextBox().SelectionStart(static_cast<int32_t>(
+                safeStart + pasted.size()));
+            TargetTextBox().SelectionLength(0);
+            TargetTextBox().Focus(winrt::Microsoft::UI::Xaml::FocusState::Programmatic);
+        }
+        catch (...) {}
+    }
+
     void MainWindow::SetDirty(bool dirty)
     {
         m_hasUnsavedChanges = dirty;
