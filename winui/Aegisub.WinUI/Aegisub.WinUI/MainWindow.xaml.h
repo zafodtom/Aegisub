@@ -71,6 +71,10 @@ namespace winrt::SRTune::implementation
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void OpenTargetButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void OpenTranscriptButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void CloseTranscriptMenuItem_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void OpenRecentProjectButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void RecoveryOverviewButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
@@ -139,6 +143,8 @@ namespace winrt::SRTune::implementation
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void SplitSubtitleButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void SplitSubtitleAtVideoButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void TargetSelectAllMenuItem_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void SearchMenuItem_Click(winrt::Windows::Foundation::IInspectable const& sender,
@@ -203,7 +209,11 @@ namespace winrt::SRTune::implementation
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void VideoPlayPauseButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void VideoRestartButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void VideoPlaySelectedButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
+            winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void VideoPlaySelectedFromStartButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void VideoBackFiveButton_Click(winrt::Windows::Foundation::IInspectable const& sender,
             winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
@@ -337,6 +347,7 @@ namespace winrt::SRTune::implementation
         std::vector<SubtitleRowData> m_rows;
         std::vector<SubtitleEntry> m_sourceEntries;
         std::vector<SubtitleEntry> m_targetEntries;
+        std::vector<SubtitleEntry> m_transcriptEntries;
         std::vector<winrt::Microsoft::UI::Xaml::Controls::Border> m_rowBorders;
         std::vector<winrt::Microsoft::UI::Xaml::Controls::TextBlock> m_rowOriginalTexts;
         std::vector<winrt::Microsoft::UI::Xaml::Controls::TextBlock> m_rowTargetTexts;
@@ -345,6 +356,7 @@ namespace winrt::SRTune::implementation
         std::vector<std::vector<winrt::Microsoft::UI::Xaml::UIElement>> m_rowVisuals;
         winrt::hstring m_sourcePath;
         winrt::hstring m_targetPath;
+        winrt::hstring m_transcriptPath;
 
         int32_t m_currentIndex{ 0 };
         std::vector<int32_t> m_selectedSubtitleIndices;
@@ -452,6 +464,8 @@ namespace winrt::SRTune::implementation
         void OpenProjectFiles();
         void OpenSourceFile();
         void OpenTargetFile();
+        void OpenTranscriptFile();
+        void RefreshTranscriptContext();
         void OpenRecentProject();
         bool LoadRecentProjectPaths(std::wstring& source, std::wstring& target) const;
         void SaveRecentProjectPaths() const;
@@ -539,6 +553,7 @@ namespace winrt::SRTune::implementation
         void RenumberSubtitleRows();
         void SyncTargetEntriesFromRows();
         void SplitCurrentSubtitleAtCursor();
+        void SplitCurrentSubtitleAtVideoPosition();
         void MergeSelectedSubtitles();
         void InsertSubtitleRelative(bool above);
         void InsertSubtitleAtVideoPosition();
@@ -555,6 +570,7 @@ namespace winrt::SRTune::implementation
         void SeekVideoToCurrentSubtitle();
         void AdjustVideoPosition(double deltaSeconds);
         void RefreshVideoPositionText();
+        void PlayCurrentSubtitle(bool fromStart);
         void StartBurnSubtitlesToVideo(std::wstring const& outputPath);
         bool LoadWaveformForMedia(std::wstring const& filename);
         void RenderWaveform();
