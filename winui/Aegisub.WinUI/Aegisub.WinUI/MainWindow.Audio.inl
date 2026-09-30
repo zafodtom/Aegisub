@@ -1475,6 +1475,7 @@ namespace winrt::SRTune::implementation
                 {
                     player.Play();
                     VideoPlayPauseButton().Content(winrt::box_value(winrt::hstring{ L"❚❚" }));
+                    WaveformPlayVideoButton().Content(winrt::box_value(winrt::hstring{ L"❚❚ Video" }));
                     if (m_playSelectedUntil >= 0.0)
                     {
                         VideoPlaySelectedButton().Content(winrt::box_value(winrt::hstring{ L"Pozastavit" }));
