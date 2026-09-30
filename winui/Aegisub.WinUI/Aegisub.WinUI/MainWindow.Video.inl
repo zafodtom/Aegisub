@@ -158,6 +158,8 @@ namespace winrt::SRTune::implementation
                 winrt::Windows::Foundation::Uri{ WinUiVideoFileUri(absolute) });
             winrt::Windows::Media::Playback::MediaPlayer player;
             player.AutoPlay(false);
+            player.Volume((std::max)(0.0, (std::min)(1.0,
+                WaveformVolumeSlider().Value() / 100.0)));
             player.Source(mediaSource);
             VideoPlayer().SetMediaPlayer(player);
             m_videoPath = absolute;
@@ -720,5 +722,20 @@ namespace winrt::SRTune::implementation
         winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
         PlayCurrentSubtitle(true);
+    }
+
+    inline void MainWindow::WaveformVolumeSlider_ValueChanged(
+        winrt::Windows::Foundation::IInspectable const&,
+        winrt::Microsoft::UI::Xaml::Controls::Primitives::RangeBaseValueChangedEventArgs const& args)
+    {
+        try
+        {
+            auto const player = VideoPlayer().MediaPlayer();
+            if (!player)
+                return;
+
+            player.Volume((std::max)(0.0, (std::min)(1.0, args.NewValue() / 100.0)));
+        }
+        catch (...) {}
     }
 }
